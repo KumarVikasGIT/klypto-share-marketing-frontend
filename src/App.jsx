@@ -3,6 +3,7 @@ import "./App.css";
 import Chart from "./pages/Chart";
 import Candlestick from "./pages/CandleStick";
 import "bootstrap/dist/css/bootstrap.min.css";
+import Dashboard from "./pages/dashboard/Dashboard";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Chart />} />
           <Route path="/candleStick" element={<Candlestick />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </div>
     </>

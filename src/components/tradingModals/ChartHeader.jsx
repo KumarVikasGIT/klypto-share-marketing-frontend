@@ -3,11 +3,12 @@ import { VscGraphLine } from "react-icons/vsc";
 import { useState, useEffect } from "react";
 import { ListingModal } from "./ListingModal";
 import apiService from "../../services/apiServices";
+import { Form } from "react-bootstrap";
 import { MdAlarmAdd } from "react-icons/md";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { FiChevronDown } from "react-icons/fi";
 import { chartOptions } from "../../util/common";
-// import { EditableNumber } from "../indicator/EditTableLabel";
+import { EditableNumber } from "../indicator/EditTableLabel";
 import { isAuthenticated, logout } from "../../pages/auth/protected";
 import { Navigate, useNavigate } from "react-router-dom";
 import ProfileDropDown from "../auth/profile/ProfileDropDown";
@@ -22,10 +23,12 @@ export default function ChartHeader({
   toggleIndicator,
   setChartType,
   chartType,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }) {
   const navigate = useNavigate();
-
-
   const [timeframe, setTimeframe] = useState(60);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -54,7 +57,7 @@ export default function ChartHeader({
     setError(null);
 
     try {
-      const response = await apiService.post("/api/getTimeFrames");
+      const response = await apiService.post("/equity/getTimeFrames");
       setTimeframe(response.data);
 
       setTimeframeValue(timeframeValue);
@@ -80,7 +83,7 @@ export default function ChartHeader({
           className="btn btn-light fw-bold rounded-pill px-4"
           style={{ height: 40 }}
         >
-          {selectedCurrency || "BTCUSDT"}
+          {selectedCurrency?.name || "TCS"}
         </button>
 
         {/* Divider */}
@@ -177,24 +180,46 @@ export default function ChartHeader({
           </button>
 
           {/* Alert */}
-          <button
+          {/* <button
             title="Create Alert"
             onClick={() => openModal("Alerts")}
             className="btn btn-light d-flex align-items-center gap-2"
           >
             <MdAlarmAdd />
             <span>Alert</span>
-          </button>
+          </button> */}
 
           {/* Simulation */}
-          <button
+          {/* <button
             title="Simulation"
             onClick={() => openModal("Simulation")}
             className="btn btn-primary d-flex align-items-center gap-2"
           >
             <FiPlus />
             <span>Simulation</span>
-          </button>
+          </button> */}
+
+          <div className="d-flex align-items-center gap-2 ms-3">
+            {/* FROM DATE */}
+            <Form.Group controlId="fromDate">
+              <Form.Control
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                style={{ height: "36px", fontSize: "12px" }}
+              />
+            </Form.Group>
+
+            {/* TO DATE */}
+            <Form.Group controlId="toDate">
+              <Form.Control
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                style={{ height: "36px", fontSize: "12px" }}
+              />
+            </Form.Group>
+          </div>
         </div>
         <div className="flex justify-end ">
           {isAuthenticated ? (
@@ -220,7 +245,7 @@ export default function ChartHeader({
             </button>
           )}
         </div>
-          <ProfileDropDown />
+        <ProfileDropDown />
       </div>
 
       {/* MODAL (UNCHANGED) */}

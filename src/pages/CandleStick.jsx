@@ -8,6 +8,7 @@ import {
   HistogramSeries,
   BaselineSeries,
 } from "lightweight-charts";
+// import IndicatorRuleBuilder from "../components/scanner/IndicatorRuleBuilder";
 import { LuCirclePlus, LuCircleMinus } from "react-icons/lu";
 import { RiResetRightLine } from "react-icons/ri";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -38,7 +39,7 @@ import IndicatorPropertyDialog from "../components/indicator/IndicatorPropertyDi
 import useChartFunctions from "../util/useChartFunctions";
 import { indicatorComponents } from "../components/indicator/IndicatorIndex";
 import { Spinner } from "../components/tradingModals/Spinner";
-// import IndicatorBar from "../components/indicator/IndicatorBar";
+import IndicatorBar from "../components/indicator/IndicatorBar";
 import {
   indicatorConfigDefault,
   resolvePaneKey,
@@ -58,13 +59,17 @@ export default function Candlestick() {
   const syncingRef = useRef(false);
   const fetchedIndicatorsRef = useRef(new Set());
   const mainChartHeightRef = useRef(500);
-  const loadChartVersionRef = useRef(0);
-  const [sampledata, setSampleData] = useState();
 
-  // IST offset: +5:30 = 19800 seconds
-  const IST_OFFSET = 5.5 * 60 * 60; // 19800 seconds
+  const [openForm, setOpenForm] = useState(false);
   const [timeframeValue, setTimeframeValue] = useState("1m");
-  const [selectedCurrency, setSelectedCurrency] = useState("BTCUSDT");
+  const [selectedCurrency, setSelectedCurrency] = useState({
+    symbol: "TCS-EQ",
+    name: "TCS",
+    token: 11536,
+  });
+  const [fromDate, setFromDate] = useState("2024-01-01");
+  // console.log(fromDate,"fromDate")
+  const [toDate, setToDate] = useState("2026-04-30");
   const [selectedIndicator, setSelectedIndicator] = useState([]);
   const [rangeValue, setRangeValue] = useState("1000");
   const [chartType, setChartType] = useState("candlestick");
@@ -82,13 +87,7 @@ export default function Candlestick() {
   const prevTimeframeRef = useRef(timeframeValue);
   const prevCurrencyRef = useRef(selectedCurrency);
 
-  const tinyPriceFormat = {
-    priceFormat: {
-      type: "price",
-      precision: 10,
-      minMove: 0.00000001,
-    },
-  };
+
 
   const [indicatorConfigs, setIndicatorConfigs] = useState(
     indicatorConfigDefault,
@@ -114,33 +113,7 @@ export default function Candlestick() {
 
       if (indicatorsToFetch.length === 0) return;
     } else {
-      // 🔥 Context changed — remove all drawn indicator series from the chart
-      Object.entries(indicatorSeriesRef.current).forEach(
-        ([indicator, entry]) => {
-          if (!entry) return;
-          const paneKey = resolvePaneKey(indicator);
-          const pane = panesRef.current[paneKey];
-          const chart = pane?.chart ?? chartRef.current;
-          if (!chart) return;
-
-          if (entry && typeof entry === "object" && !entry.priceScale) {
-            Object.values(entry).forEach((series) => {
-              if (!series || typeof series.setData !== "function") return;
-              try {
-                chart.removeSeries(series);
-              } catch {}
-            });
-          } else if (entry && typeof entry.setData === "function") {
-            try {
-              chart.removeSeries(entry);
-            } catch {}
-          }
-        },
-      );
-
-      // Clear refs so indicator components re-create their series
-      indicatorSeriesRef.current = {};
-      latestIndicatorValuesRef.current = {};
+      // 🔥 Reset on timeframe / currency change
       fetchedIndicatorsRef.current.clear();
     }
 
@@ -151,7 +124,7 @@ export default function Candlestick() {
     // update previous values
     prevTimeframeRef.current = timeframeValue;
     prevCurrencyRef.current = selectedCurrency;
-  }, [selectedIndicator, selectedCurrency, timeframeValue]);
+  }, [selectedIndicator, selectedCurrency, timeframeValue,fromDate, toDate]);
 
   const toggleIndicatorVisibility = (indicator) => {
     const currentVisible = indicatorVisibility[indicator] ?? true;
@@ -361,7 +334,7 @@ export default function Candlestick() {
       const price = Number(msg.mark_price);
       const intervalSec = TIMEFRAME_TO_SECONDS[timeframeValue];
       const rawTime = Math.floor(msg.timestamp / intervalSec) * intervalSec;
-      const time = rawTime + IST_OFFSET; // offset to IST for display
+      const time = rawTime + 19800; // Shift to IST
 
       if (!currentCandle || currentCandle.time !== time) {
         currentCandle = {
@@ -445,7 +418,7 @@ export default function Candlestick() {
 
       return (
         <span style={{ color }}>
-          {Number(value).toPrecision(6)}
+          {Number(value).toFixed(2)}
           {showPercent ? "%" : ""}
         </span>
       );
@@ -666,15 +639,13 @@ export default function Candlestick() {
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // Increment version so stale async responses are ignored
-    loadChartVersionRef.current += 1;
-    const thisVersion = loadChartVersionRef.current;
+    let isMounted = true;
 
     const loadChart = async () => {
       try {
         setMainChartLoading(true);
 
-        // Remove previous series immediately to avoid showing old data
+        // remove previous series immediately to avoid showing old data
         if (seriesRef.current) {
           try {
             chartRef.current.removeSeries(seriesRef.current);
@@ -685,33 +656,23 @@ export default function Candlestick() {
         const response = await fetchDataByCurrency(
           selectedCurrency,
           timeframeValue,
-          chartType,
+          fromDate,
+          toDate,
         );
-       
 
-        // ✅ Stale guard: if a newer loadChart was triggered, discard this result
-        if (thisVersion !== loadChartVersionRef.current) return;
+        if (!isMounted) return;
 
-        const rawData = response || [];
-
-        if (!Array.isArray(rawData) || !rawData.length) return;
-
-        // ✅ Sanitize: coerce time to number, add IST offset, sort, deduplicate
-        const data = rawData
-          .map((d) => ({ ...d, time: Number(d.time) + IST_OFFSET }))
-          .sort((a, b) => a.time - b.time)
-          .filter((d, i, arr) => i === 0 || d.time > arr[i - 1].time);
-
-        if (!data.length) return;
-        
-        // ✅ Double-check: remove any series that might have been added
-        // between the async gap (e.g. from a quick chart-type toggle)
+        // Ensure we remove any series that might have been added concurrently
         if (seriesRef.current) {
           try {
             chartRef.current.removeSeries(seriesRef.current);
           } catch (e) {}
           seriesRef.current = null;
         }
+
+        const data = response?.data || [];
+
+        if (!Array.isArray(data) || !data.length) return;
 
         switch (chartType) {
           case "line":
@@ -825,17 +786,19 @@ export default function Candlestick() {
 
         chartRef.current.timeScale().fitContent();
       } catch (err) {
+        if (!isMounted) return;
         console.error("Chart load error", err);
       } finally {
-        // Only clear loading if this is still the latest request
-        if (thisVersion === loadChartVersionRef.current) {
-          setMainChartLoading(false);
-        }
+        if (isMounted) setMainChartLoading(false);
       }
     };
 
     loadChart();
-  }, [chartType, timeframeValue, selectedCurrency]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [chartType, timeframeValue, selectedCurrency, fromDate, toDate]);
 
   const { fetchDataByCurrency, fetchIndicatorData } = useChartFunctions({
     chartRef,
@@ -844,7 +807,8 @@ export default function Candlestick() {
     indicatorStyle,
     latestIndicatorValuesRef,
     indicatorConfigs,
-    sampledata,
+    fromDate,
+    toDate
   });
 
   const zoomCharts = (delta) => {
@@ -884,7 +848,7 @@ export default function Candlestick() {
         <div className="container-fluid p-0 m-0">
           <div className="row">
             <div className="col-md-12">
-              <div className="trading-chart-header z-[9999]">
+              <div className="trading-chart-header">
                 <ChartHeader
                   timeframeValue={timeframeValue}
                   setTimeframeValue={setTimeframeValue}
@@ -897,13 +861,17 @@ export default function Candlestick() {
                   selectedIndicator={selectedIndicator}
                   setSelectedIndicator={setSelectedIndicator}
                   toggleIndicator={toggleIndicator}
+                  fromDate={fromDate}
+                  toDate={toDate}
+                  setFromDate={setFromDate}
+                  setToDate={setToDate}
                 />
               </div>
             </div>
           </div>
 
           <div
-            className="row z-10000"
+            className="row"
             ref={paneContainerRef}
             style={{
               position: "relative",
@@ -923,7 +891,7 @@ export default function Candlestick() {
                   top: "50%",
                   left: "50%",
                   transform: "translate(-50%, -50%)",
-                  zIndex: 10,
+                  zIndex: 1000,
                 }}
               >
                 <Spinner />
@@ -958,10 +926,10 @@ export default function Candlestick() {
                 </div>
               )}
               {/* -------------------------------sub-header live Values----------------------- */}
-              <div className="d-flex px-2 top-2 z-10 absolute items-center gap-2 bg-slate-100 justify-start">
+              <div className="flex px-2 top-2 z-10 absolute items-center gap-2 bg-slate-100 justify-start">
                 {/* LEFT: Symbol */}
                 <div className="text-sm text-slate-950">
-                  {selectedCurrency} : {timeframeValue} :
+                  {selectedCurrency?.name} : {timeframeValue} :
                 </div>
                 <div className="flex items-center justify-center">
                   <div className="relative">
@@ -987,16 +955,16 @@ export default function Candlestick() {
                   ) : (
                     // Other charts → OHLC
                     <>
-                      <h6 className="px-2 py-1 mb-0">
+                      <h6 className="px-2 py-1 mb-0 text-black">
                         O: <span className={valueColor}>{liveOhlcv?.open}</span>
                       </h6>
-                      <h6 className="px-2 py-1 mb-0">
+                      <h6 className="px-2 py-1 mb-0 text-black">
                         H: <span className={valueColor}>{liveOhlcv?.high}</span>
                       </h6>
-                      <h6 className="px-2 py-1 mb-0">
+                      <h6 className="px-2 py-1 mb-0 text-black">
                         L: <span className={valueColor}>{liveOhlcv?.low}</span>
                       </h6>
-                      <h6 className="px-2 py-1 mb-0">
+                      <h6 className="px-2 py-1 mb-0 text-black">
                         C:{" "}
                         <span className={valueColor}>{liveOhlcv?.close}</span>
                       </h6>
@@ -1119,17 +1087,17 @@ export default function Candlestick() {
         </div>
         {/* </div> */}
 
-        {/* <SourceCodePanel
+        <SourceCodePanel
           show={showSourcePanel}
           indicator={activeSourceIndicator}
           onClose={() => setShowSourcePanel(false)}
-        /> */}
+        />
       </section>
       <section className="market-trading-part">
         <div className="container p-0 m-0">
           <div className="row">
             <div className="d-flex align-items-center position-relative">
-              <div className="mx-auto mt-4 d-flex align-items-center gap-2">
+              <div className="mx-auto d-flex align-items-center gap-2">
                 {/* Zoom In */}
                 <button
                   onClick={zoomIn}
@@ -1317,6 +1285,8 @@ export default function Candlestick() {
               selectedCurrency={selectedCurrency}
               timeframeValue={timeframeValue}
               latestIndicatorValuesRef={latestIndicatorValuesRef}
+              fromDate={fromDate}
+              toDate={toDate}
             />
           </div>
         </div>
@@ -1324,274 +1294,3 @@ export default function Candlestick() {
     </>
   );
 }
-
-// import React, { useEffect, useRef, useState } from "react";
-// import {
-//   createChart,
-//   CandlestickSeries,
-//   LineSeries,
-//   HistogramSeries,
-// } from "lightweight-charts";
-// import IndicatorDropdown from "../components/indicator/IndicatorDropdown";
-
-// const BINANCE_URL =
-//   "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=2000";
-
-// /* ================= INDICATORS ================= */
-
-// const calculateSMA = (data, period = 14) => {
-//   const res = [];
-//   for (let i = period - 1; i < data.length; i++) {
-//     let sum = 0;
-//     for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
-//     res.push({ time: data[i].time, value: sum / period });
-//   }
-//   return res;
-// };
-
-// const calculateEMA = (data, period = 14) => {
-//   const k = 2 / (period + 1);
-//   const res = [];
-//   let ema = data[0].close;
-
-//   data.forEach((d, i) => {
-//     ema = d.close * k + ema * (1 - k);
-//     if (i >= period - 1) res.push({ time: d.time, value: ema });
-//   });
-
-//   return res;
-// };
-
-// const calculateBB = (data, period = 20) => {
-//   const upper = [],
-//     lower = [];
-
-//   for (let i = period - 1; i < data.length; i++) {
-//     const slice = data.slice(i - period + 1, i + 1);
-//     const mean = slice.reduce((a, b) => a + b.close, 0) / period;
-
-//     const variance =
-//       slice.reduce((a, b) => a + Math.pow(b.close - mean, 2), 0) / period;
-
-//     const std = Math.sqrt(variance);
-
-//     upper.push({ time: data[i].time, value: mean + 2 * std });
-//     lower.push({ time: data[i].time, value: mean - 2 * std });
-//   }
-
-//   return { upper, lower };
-// };
-
-// const calculateRSI = (data, period = 14) => {
-//   const res = [];
-//   let gains = 0,
-//     losses = 0;
-
-//   for (let i = 1; i < period; i++) {
-//     const diff = data[i].close - data[i - 1].close;
-//     if (diff >= 0) gains += diff;
-//     else losses -= diff;
-//   }
-
-//   let avgGain = gains / period;
-//   let avgLoss = losses / period;
-
-//   for (let i = period; i < data.length; i++) {
-//     const diff = data[i].close - data[i - 1].close;
-//     if (diff >= 0) {
-//       avgGain = (avgGain * (period - 1) + diff) / period;
-//       avgLoss = (avgLoss * (period - 1)) / period;
-//     } else {
-//       avgGain = (avgGain * (period - 1)) / period;
-//       avgLoss = (avgLoss * (period - 1) - diff) / period;
-//     }
-
-//     const rs = avgGain / avgLoss;
-//     const rsi = 100 - 100 / (1 + rs);
-
-//     res.push({ time: data[i].time, value: rsi });
-//   }
-
-//   return res;
-// };
-
-// const calculateVWAP = (data) => {
-//   let cumulativePV = 0;
-//   let cumulativeVolume = 0;
-
-//   return data.map((d) => {
-//     const price = (d.high + d.low + d.close) / 3;
-//     cumulativePV += price * (d.volume || 1);
-//     cumulativeVolume += d.volume || 1;
-
-//     return {
-//       time: d.time,
-//       value: cumulativePV / cumulativeVolume,
-//     };
-//   });
-// };
-
-// /* ================= MAIN COMPONENT ================= */
-
-// export default function TradingChart() {
-//   const chartRef = useRef(null);
-//   const containerRef = useRef(null);
-
-//   const [ohlc, setOhlc] = useState({});
-//   const [activeIndicators, setActiveIndicators] = useState({});
-
-//   const seriesRef = useRef(null);
-//   const indicatorSeries = useRef({});
-
-//   /* ================= LOAD DATA ================= */
-
-//   useEffect(() => {
-//     const chart = createChart(containerRef.current, {
-//       width: window.innerWidth,
-//       height: window.innerHeight,
-//       layout: { background: { color: "#ffffff" } },
-//     });
-
-//     chartRef.current = chart;
-
-//     const candleSeries = chart.addSeries(CandlestickSeries, {});
-//     seriesRef.current = candleSeries;
-
-//     fetch(BINANCE_URL)
-//       .then((res) => res.json())
-//       .then((data) => {
-//         const formatted = data.map((d) => ({
-//           time: d[0] / 1000,
-//           open: +d[1],
-//           high: +d[2],
-//           low: +d[3],
-//           close: +d[4],
-//           volume: +d[5],
-//         }));
-
-//         candleSeries.setData(formatted);
-//         chart.timeScale().fitContent();
-
-//         chart.subscribeCrosshairMove((param) => {
-//           const d = param.seriesData.get(candleSeries);
-//           if (d) setOhlc(d);
-//         });
-
-//         window.chartData = formatted; // debug
-//       });
-
-//     return () => chart.remove();
-//   }, []);
-
-//   /* ================= INDICATOR TOGGLE ================= */
-
-//   const toggleIndicator = (name) => {
-//     const data = window.chartData;
-//     if (!data) return;
-
-//     if (indicatorSeries.current[name]) {
-//       indicatorSeries.current[name].forEach((s) =>
-//         chartRef.current.removeSeries(s),
-//       );
-//       delete indicatorSeries.current[name];
-//       setActiveIndicators((p) => ({ ...p, [name]: false }));
-//       return;
-//     }
-
-//     let seriesArr = [];
-
-//     if (name === "SMA") {
-//       const sma = calculateSMA(data);
-//       const s = chartRef.current.addSeries(LineSeries, { color: "blue" });
-//       s.setData(sma);
-//       seriesArr.push(s);
-//     }
-
-//     if (name === "EMA") {
-//       const ema = calculateEMA(data);
-//       const s = chartRef.current.addSeries(LineSeries, { color: "orange" });
-//       s.setData(ema);
-//       seriesArr.push(s);
-//     }
-
-//     if (name === "BB") {
-//       const { upper, lower } = calculateBB(data);
-//       const s1 = chartRef.current.addSeries(LineSeries, { color: "green" });
-//       const s2 = chartRef.current.addSeries(LineSeries, { color: "red" });
-
-//       s1.setData(upper);
-//       s2.setData(lower);
-
-//       seriesArr.push(s1, s2);
-//     }
-
-//     if (name === "RSI") {
-//       const rsi = calculateRSI(data);
-//       const s = chartRef.current.addSeries(LineSeries, {
-//         color: "purple",
-//         priceScaleId: "rsi",
-//       });
-//       s.setData(rsi);
-//       seriesArr.push(s);
-//     }
-
-//     if (name === "VWAP") {
-//       const vwap = calculateVWAP(data);
-//       const s = chartRef.current.addSeries(LineSeries, { color: "black" });
-//       s.setData(vwap);
-//       seriesArr.push(s);
-//     }
-
-//     indicatorSeries.current[name] = seriesArr;
-//     setActiveIndicators((p) => ({ ...p, [name]: true }));
-//   };
-
-//   /* ================= UI ================= */
-
-//   return (
-//     <div style={{ width: "100vw", height: "100vh" }}>
-//       {/* TOP BAR */}
-//       <div
-//         style={{
-//           position: "absolute",
-//           top: 0,
-//           left: 0,
-//           width: "100%",
-//           background: "#eee",
-//           padding: 10,
-//           zIndex: 10,
-//           gap: 10,
-//         }}
-//       >
-//         <div className="d-flex align-items-start">
-//           <b>BTCUSDT 1D</b>
-//           <span>O: {ohlc.open}</span>
-//           <span>H: {ohlc.high}</span>
-//           <span>L: {ohlc.low}</span>
-//           <span>C: {ohlc.close}</span>
-//         </div>
-//         <div className="d-flex">
-//           {/* {["SMA", "EMA", "BB", "RSI", "VWAP"].map((ind) => (
-//           <label key={ind}>
-//             <input
-//               type="checkbox"
-//               checked={activeIndicators[ind] || false}
-//               onChange={() => toggleIndicator(ind)}
-//             />
-//             {ind}
-//           </label>
-//         ))} */}
-
-//           <IndicatorDropdown
-//             activeIndicators={activeIndicators}
-//             toggleIndicator={toggleIndicator}
-//           />
-//         </div>
-//       </div>
-
-//       {/* CHART */}
-//       <div ref={containerRef} />
-//     </div>
-//   );
-// }
-

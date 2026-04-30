@@ -7,44 +7,62 @@ export default function UOPlot({
   indicatorSeriesRef,
   addSeries,
 }) {
-  useEffect(() => {
-    const raw = result?.data?.series;
 
-    if (!Array.isArray(raw) || raw.length === 0) {
-      console.log(":x: UO data missing", result);
-      return;
-    }
 
-    if (indicatorSeriesRef.current?.UO) {
-      Object.values(indicatorSeriesRef.current.UO).forEach((s) => {
-        try {
-          s.setData([]);
-        } catch {}
-      });
-      indicatorSeriesRef.current.UO = null;
-    }
 
-    const uoData = raw.map((d) => ({
+ useEffect(() => {
+  if (!result || !Array.isArray(result?.data?.series)) {
+    console.log("⏳ UO waiting for valid result...", result);
+    return;
+  }
+
+  const raw =result?.data?.series;
+
+  if (raw.length === 0) {
+    console.log("❌ UO empty data");
+    return;
+  }
+
+  console.log("✅ UO valid data received:", raw.length);
+
+  // 🔥 CLEAN OLD SERIES
+  if (indicatorSeriesRef.current?.UO?.uoLine) {
+    try {
+      indicatorSeriesRef.current.UO.uoLine.setData([]);
+    } catch {}
+    indicatorSeriesRef.current.UO = null;
+  }
+
+  // 🔥 MAP DATA
+  const uoData = raw
+    .filter((d) => d.time && (d.uo ?? d.ultimate) !== undefined)
+    .map((d) => ({
       time: Number(d.time),
-      value: Number(d.uo),
+      value: Number(d.uo ?? d.ultimate),
     }));
 
-    const uoSeries = addSeries("UO", LineSeries, {
-      color: indicatorStyle?.UO?.uoLine?.color ?? "#E05273",
-      lineWidth: indicatorStyle?.UO?.uoLine?.width ?? 2,
-      lineStyle: indicatorStyle?.UO?.uoLine?.lineStyle ?? 0,
-      visible: indicatorStyle?.UO?.uoLine?.visible ?? true,
-    });
+  if (!uoData.length) {
+    console.log("❌ No valid mapped UO data");
+    return;
+  }
 
-    uoSeries.setData(uoData);
+  // 🔥 CREATE SERIES
+  const uoSeries = addSeries("UO", LineSeries, {
+    color: indicatorStyle?.UO?.uoLine?.color ?? "#E05273",
+    lineWidth: indicatorStyle?.UO?.uoLine?.width ?? 2,
+    lineStyle: indicatorStyle?.UO?.uoLine?.lineStyle ?? 0,
+    visible: indicatorStyle?.UO?.uoLine?.visible ?? true,
+  });
 
-    indicatorSeriesRef.current.UO = {
-      uoLine: uoSeries,
-      uoData,
-    };
+  uoSeries.setData(uoData);
 
-    console.log(":white_check_mark: UO plotted");
-  }, [result]);
+  indicatorSeriesRef.current.UO = {
+    uoLine: uoSeries,
+    uoData,
+  };
+
+  console.log("✅ UO plotted successfully");
+}, [result]);
 
   useEffect(() => {
     const g = indicatorSeriesRef.current?.UO;

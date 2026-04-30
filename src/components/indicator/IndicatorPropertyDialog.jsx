@@ -172,6 +172,8 @@ export default function IndicatorPropertyDialog({
   selectedCurrency,
   timeframeValue,
   latestIndicatorValuesRef,
+  fromDate,
+  toDate,
 }) {
   const labelStyle = {
     display: "inline-block",
@@ -245,7 +247,7 @@ export default function IndicatorPropertyDialog({
       setIndicatorLoading(true); // START LOADER
 
       const response = await apiService.post(
-        `/api/updateIndicator?symbol=${selectedCurrency}&interval=${timeframeValue}`,
+        `/equity/updateIndicator?symbol=${selectedCurrency?.name}&interval=${timeframeValue}&fromdate=${fromDate} 09:15&todate=${toDate} 15:30`,
         payload,
       );
 

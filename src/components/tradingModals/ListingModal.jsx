@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { IoCloseSharp } from "react-icons/io5";
 import { FiSearch } from "react-icons/fi";
 import { GrBitcoin } from "react-icons/gr";
 import { Link } from "react-router-dom";
+import { Form, InputGroup, ListGroup } from "react-bootstrap";
 import { Spinner } from "./Spinner";
 import apiService from "../../services/apiServices";
 import { useDebounce } from "../../util/common";
@@ -17,68 +18,47 @@ export const ListingModal = ({
   setSelectedIndicator,
   toggleIndicator,
 }) => {
-  const [activeTab, setActiveTab] = useState("Indicators");
+  const [activeTab] = useState("Indicators");
   const [indicators, setIndicators] = useState([]);
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchIndicator, setSearchIndicator] = useState("");
   const [searchCurrency, setSearchCurrency] = useState("");
-  const debouncedCurrency = useDebounce(selectedCurrency, 500);
-  const debouncedIndicator = useDebounce(selectedIndicator, 500);
 
-   const indicatorsData = [
-  { label: "Simple Moving Average (SMA)", slug: "SMA" },
-  { label: "Exponential Moving Average (EMA)", slug: "EMA" },
-  { label: "Relative Strength Index (RSI)", slug: "RSI" },
-  { label: "Moving Average Convergence Divergence (MACD)", slug: "MACD" },
-  { label: "Bollinger Bands", slug: "BB" },
-  { label: "Stochastic", slug: "STOCH" },
-  { label: "Average True Range (ATR)", slug: "ATR" },
-  { label: "Commodity Channel Index (CCI)", slug: "CCI" },
-  { label: "VWAP", slug: "VWAP" },
-  { label: "Supertrend", slug: "SUPERTREND" },
-   ]
-    
-  // API calling- Indicators
-  // async function fetchIndicators() {
-       
-    // try {
-    //   if (debouncedIndicator) {
-    //     response = await apiService.post(
-    //       `/api/getIndicators?q=${debouncedIndicator}`,
-    //     );
-    //   } else {
-    //     response = await apiService.post(`/api/getIndicators`);
-    //   }
-    //   setIndicators(indicatorsData);
-    // } catch (err) {
-    //   console.error(err);
-    //   setError(err?.message || "Failed to fetch indicators");
-    // } finally {
-    //   setLoading(false);
-    // }
-  // }
+  const debouncedIndicator = useDebounce(searchIndicator, 500);
 
-    const fetchIndicators = () => {
-    setIndicators(indicatorsData);
-    setLoading(false); // 🔥 IMPORTANT
-  };
+  // 🔥 Fetch Indicators
+  async function fetchIndicators() {
+    setLoading(true);
+    setError(null);
 
-  //API-Calling Currencies
+    try {
+      const response = await apiService.post(
+        debouncedIndicator
+          ? `/equity/getIndicators?q=${debouncedIndicator}`
+          : `/equity/getIndicators`,
+      );
+
+      setIndicators(response?.data || []);
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "Failed to fetch indicators");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 🔥 Fetch Stocks (Currencies replaced)
   async function fetchCurrencies() {
     setLoading(true);
     setError(null);
-    let response;
+
     try {
-      if (!debouncedCurrency) {
-        response = await apiService.post(
-          `api/getCurrencies?symbol=${debouncedCurrency}`,
-        );
-      } else {
-        response = await apiService.post(`api/getCurrencies`);
-      }
-      setCurrencies(await response?.data);
+      const response = await apiService.get(`equity/stocks`);
+      console.log("stocks API response:", response);
+
+      setCurrencies(response?.stocks || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -87,48 +67,50 @@ export const ListingModal = ({
   }
 
   useEffect(() => {
-    if (title === "Indicators") {
-      fetchIndicators();
-    }
-    if (title === "Symbol Search") {
-      fetchCurrencies();
-    }
-  }, [title]);
+    if (title === "Indicators") fetchIndicators();
+    if (title === "Symbol Search") fetchCurrencies();
+  }, [title, debouncedIndicator]);
 
+  // 🔍 Indicator Filter
   const filteredIndicators = (indicators ?? []).filter((item) => {
     if (!searchIndicator) return true;
 
-    const getInitials = (text) =>
-    text
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .toLowerCase();
     const search = searchIndicator.toLowerCase().trim();
 
-    const label = item.label.toLowerCase();
-    const initials = getInitials(item.label);
+    const getInitials = (text) =>
+      text
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .toLowerCase();
 
     return (
-      label.includes(search) || // normal search
-      initials.includes(search) || // SMA type search
+      item.label.toLowerCase().includes(search) ||
+      getInitials(item.label).includes(search) ||
       item.slug?.toLowerCase().includes(search)
     );
   });
 
-  const filteredCurrencies = currencies?.filter((curr) => {
-    if (!searchCurrency) return true;
-    const search = searchCurrency.toLowerCase();
+  // 🔍 Stock Filter
+const filteredCurrencies = currencies?.filter((curr) => {
+  if (!searchCurrency) return true;
 
-    return (
-      curr?.raw?.toLowerCase().includes(search) ||
-      curr?.base?.toLowerCase().includes(search)
-    );
-  });
+  const search = searchCurrency.toLowerCase().trim();
 
-  
+  const name = curr?.name?.toLowerCase() || "";
+  const symbol = curr?.actualSymbol?.toLowerCase() || "";
+  const cleanSymbol = symbol.replace("-eq", ""); // 🔥 important
+  const userCode = curr?.userCode?.toLowerCase() || "";
+  const fullName = curr?.fullName?.toLowerCase() || "";
 
-  if (activeTab !== "Indicators") return null;
+  return (
+    name.includes(search) ||
+    symbol.includes(search) ||
+    cleanSymbol.includes(search) || // 🔥 handles ABB vs ABB-EQ
+    userCode.includes(search) ||
+    fullName.includes(search)
+  );
+});
 
   if (!isOpen) return null;
 
@@ -136,146 +118,122 @@ export const ListingModal = ({
     <div className="fixed inset-0 z-99 flex items-center justify-center bg-black/60">
       <div className="w-full px-5 py-4 max-w-3xl h-[90vh] rounded-md bg-white border border-slate-700 shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between  ">
-          <h2 className="text-xl">{title}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl text-black">{title}</h2>
           <IoCloseSharp
             size={20}
             onClick={onClose}
             className="cursor-pointer text-slate-400"
           />
         </div>
+
+        {/* ================= SYMBOL SEARCH ================= */}
+
         {title === "Symbol Search" && (
-          <div className=" py-3 ">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
+          <div className="py-3">
+            {/* Search */}
+            <InputGroup className="mb-3">
+              <InputGroup.Text>
+                <FiSearch />
+              </InputGroup.Text>
+              <Form.Control
                 type="text"
                 autoFocus
                 placeholder="Search symbol..."
                 value={searchCurrency}
-                onChange={(e) => {
-                  setSearchCurrency(e.target.value);
-                }}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md "
+                onChange={(e) => setSearchCurrency(e.target.value)}
               />
-            </div>
+            </InputGroup>
 
-            {/* Listing Grid */}
-            <div className="overflow-y-auto mt-3 max-h-[65vh]">
+            {/* List */}
+            <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
               {loading ? (
                 <Spinner />
               ) : filteredCurrencies?.length > 0 ? (
-                filteredCurrencies?.map((curr, index) => (
-                  <Link
-                    to="#"
-                    // key={curr.id}
-                    onClick={() => {
-                      setSelectedCurrency(curr?.symbol);
-                      onClose();
-                    }}
-                    className="w-full flex border-b border-slate-200 justify-between px-1 py-3 text-left hover:bg-slate-100"
-                  >
-                    <div className="flex gap-2 fs-6 items-center">
-                      <span className=" text-yellow-500">
-                        <GrBitcoin />
-                      </span>
-                      <h2 className="uppercase fs-6">
-                        {curr?.base}/{curr?.quote}
-                      </h2>
-                    </div>
-                    <div>
-                      <h3 className=" fs-6">{curr?.symbol}</h3>
-                    </div>
-                  </Link>
-                ))
+                <ListGroup variant="flush">
+                  {filteredCurrencies.map((curr, index) => (
+                    <ListGroup.Item
+                      key={curr.token || index}
+                      action
+                      onClick={() => {
+                        setSelectedCurrency({
+                          symbol: curr.actualSymbol,
+                          name: curr.name,
+                          token: curr.token,
+                        });
+                        onClose();
+                      }}
+                      className="d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div className="d-flex align-items-center gap-2">
+                        {/* <span className="text-warning">
+                          <GrBitcoin />
+                        </span> */}
+
+                        <div className="text-uppercase fw-medium small">
+                          {curr?.name} ({curr?.actualSymbol})
+                        </div>
+                      </div>
+
+                      <div>
+                        <small className="text-muted">{curr?.userCode}</small>
+                      </div>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
               ) : (
-                <p className="text-center text-md text-slate-900 py-6">
-                  No Data found
-                </p>
+                <p className="text-center text-dark py-3">No Data found</p>
               )}
             </div>
           </div>
         )}
 
+        {/* ================= INDICATORS ================= */}
         {title === "Indicators" && (
-          <div className="mt-3 space-y-4 z-999 max-h-[45vh]">
+          <div className="mt-3" style={{ maxHeight: "70vh" }}>
             {/* Search */}
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
+            <InputGroup className="mb-3">
+              <InputGroup.Text>
+                <FiSearch />
+              </InputGroup.Text>
+              <Form.Control
                 type="text"
                 autoFocus
                 placeholder="Search indicators"
                 value={searchIndicator}
                 onChange={(e) => setSearchIndicator(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md"
               />
-            </div>
-            {/* {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 text-sm rounded-md transition ${
-                  activeTab === tab
-                    ? "bg-slate-600 text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {tab}
-              </button>
-            ))} */}
-            {/* Indicators tab */}
-            {activeTab === "Indicators" && (
-              <div
-                className="flex-grow overflow-auto"
-                style={{ maxHeight: "63vh" }}
-              >
-                {loading ? (
-                  <div
-                    className="d-flex align-items-center justify-content-center"
-                    style={{ height: "10rem" }}
-                  >
-                    <div
-                      className="spinner-border text-secondary"
-                      role="status"
-                    >
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                  </div>
-                ) : filteredIndicators.length > 0 ? (
-                  <ul className="list-unstyled ps-7 text-secondary fs-6">
-                    {filteredIndicators?.map((item, index) => (
-                      <li key={index}>
-                        <label className="d-flex align-items-center gap-2 px-2 py-1 rounded">
-                          <input
-                            type="checkbox"
-                            checked={selectedIndicator.includes(item.slug)}
-                            onChange={() => toggleIndicator(item.slug)}
-                            className="form-check-input cursor-pointer"
-                          />
-                          <span>{item.label}  </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted">No Data found</p>
-                )}
-              </div>
-            )}
+            </InputGroup>
 
-            {/* Other tabs */}
-            {activeTab !== "Indicators" && !loading && (
-              <p className="text-sm text-slate-500 text-center">
-                {activeTab} content coming soon
-              </p>
-            )}
+            {/* List */}
+            <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+              {loading ? (
+                <Spinner />
+              ) : filteredIndicators.length > 0 ? (
+                <ListGroup variant="flush">
+                  {filteredIndicators.map((item, index) => (
+                    <ListGroup.Item key={index}>
+                      <Form.Check
+                        type="checkbox"
+                        label={`${item.label} -- ${item.slug}`}
+                        checked={selectedIndicator.includes(item.slug)}
+                        onChange={() => toggleIndicator(item.slug)}
+                      />
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              ) : (
+                <p className="text-muted">No Data found</p>
+              )}
+            </div>
           </div>
         )}
 
+        {/* ================= ALERT ================= */}
         {title === "Alerts" && (
           <div>
-            <h1> Create Alert</h1>
+            <h1>Create Alert</h1>
           </div>
         )}
       </div>
