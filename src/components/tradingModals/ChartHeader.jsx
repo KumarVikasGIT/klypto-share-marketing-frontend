@@ -13,6 +13,85 @@ import { isAuthenticated, logout } from "../../pages/auth/protected";
 import { Navigate, useNavigate } from "react-router-dom";
 import ProfileDropDown from "../auth/profile/ProfileDropDown";
 
+const d = {
+  bar: {
+    display: "flex", alignItems: "center", gap: 12,
+    padding: "8px 16px",
+    background: "#0d1117",
+    borderBottom: "1px solid #1f2937",
+    flexWrap: "wrap",
+  },
+  btn: {
+    display: "flex", alignItems: "center", gap: 6,
+    background: "#1f2937",
+    border: "1px solid #374151",
+    borderRadius: 6,
+    color: "#d1d5db",
+    padding: "6px 14px",
+    fontSize: "0.8rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    height: 36,
+    whiteSpace: "nowrap",
+  },
+  btnPrimary: {
+    display: "flex", alignItems: "center", gap: 6,
+    background: "#4f46e5",
+    border: "1px solid #4338ca",
+    borderRadius: 6,
+    color: "#fff",
+    padding: "6px 14px",
+    fontSize: "0.8rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    height: 36,
+  },
+  select: {
+    background: "#1f2937",
+    border: "1px solid #374151",
+    borderRadius: 6,
+    color: "#d1d5db",
+    padding: "6px 10px",
+    fontSize: "0.8rem",
+    height: 36,
+    width: 120,
+    cursor: "pointer",
+  },
+  dateInput: {
+    background: "#1f2937",
+    border: "1px solid #374151",
+    borderRadius: 6,
+    color: "#d1d5db",
+    height: 36,
+    fontSize: "0.78rem",
+    padding: "0 8px",
+    colorScheme: "dark",
+  },
+  divider: {
+    width: 1, height: 24, background: "#1f2937", flexShrink: 0,
+  },
+  dropdownContent: {
+    background: "#111827",
+    border: "1px solid #1f2937",
+    borderRadius: 8,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+    padding: 6,
+    zIndex: 999,
+    minWidth: 160,
+  },
+  dropdownItem: {
+    display: "flex", alignItems: "center", gap: 8,
+    padding: "8px 12px",
+    borderRadius: 6,
+    color: "#d1d5db",
+    fontSize: "0.8rem",
+    cursor: "pointer",
+    background: "transparent",
+    border: "none",
+    width: "100%",
+  },
+};
+
 export default function ChartHeader({
   timeframeValue,
   setTimeframeValue,
@@ -34,32 +113,21 @@ export default function ChartHeader({
   const [error, setError] = useState(null);
   const active = chartOptions.find((c) => c.value === chartType);
 
-  const [modalConfig, setModalConfig] = useState({
-    open: false,
-    title: "",
-    items: [],
-  });
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const maxDate = tomorrow.toISOString().split("T")[0];
 
-  const openModal = (title, items) => {
-    setModalConfig({
-      open: true,
-      title,
-      items,
-    });
-  };
+  const [modalConfig, setModalConfig] = useState({ open: false, title: "", items: [] });
 
-  const closeModal = () => {
-    setModalConfig((prev) => ({ ...prev, open: false }));
-  };
+  const openModal  = (title, items) => setModalConfig({ open: true, title, items });
+  const closeModal = () => setModalConfig((prev) => ({ ...prev, open: false }));
 
   async function fetchTimeframe() {
     setLoading(true);
     setError(null);
-
     try {
       const response = await apiService.post("/equity/getTimeFrames");
       setTimeframe(response.data);
-
       setTimeframeValue(timeframeValue);
     } catch (err) {
       console.error(err);
@@ -69,186 +137,118 @@ export default function ChartHeader({
     }
   }
 
-  useEffect(() => {
-    fetchTimeframe();
-  }, []);
+  useEffect(() => { fetchTimeframe(); }, []);
 
   return (
-    <div className="w-100 d-flex flex-column gap-3 small">
-      <div className="d-flex align-items-center gap-3 px-3 py-2 bg-white shadow-sm">
-        {/* Name/Symbol Button */}
-        <button
-          title="Symbol Search"
-          onClick={() => openModal("Symbol Search")}
-          className="btn btn-light fw-bold rounded-pill px-4"
-          style={{ height: 40 }}
-        >
+    <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 0, fontSize: "0.85rem" }}>
+      <div style={d.bar}>
+
+        {/* Symbol button */}
+        <button title="Symbol Search" onClick={() => openModal("Symbol Search")} style={{ ...d.btn, fontWeight: 700, borderRadius: 20, padding: "6px 18px" }}>
           {selectedCurrency?.name || "TCS"}
         </button>
 
-        {/* Divider */}
-        <div className="vr" />
+        <div style={d.divider} />
 
-        {/* TimeFrame Dropdown */}
+        {/* Timeframe select */}
         <div title={timeframeValue}>
           <select
-            value={timeframeValue ? timeframeValue : "1m"}
+            value={timeframeValue || "1m"}
             onChange={(e) => setTimeframeValue(e.target.value)}
-            className="form-select form-select-sm "
-            style={{ height: 40, width: 120 }}
+            style={d.select}
           >
             {!timeframe && <option value="1m">1 Minute</option>}
-
-            {timeframe && Object.keys(timeframe).length === 0 && (
-              <option value="1m">1 Minute</option>
-            )}
-
-            {timeframe &&
-              Object.entries(timeframe)?.map(([group, items]) => (
-                <optgroup key={group} label={group?.toUpperCase()}>
-                  {items?.map((item) => (
-                    <option key={item?.seconds} value={item?.value}>
-                      {item?.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+            {timeframe && Object.keys(timeframe).length === 0 && <option value="1m">1 Minute</option>}
+            {timeframe && Object.entries(timeframe)?.map(([group, items]) => (
+              <optgroup key={group} label={group?.toUpperCase()} style={{ background: "#1f2937" }}>
+                {items?.map((item) => (
+                  <option key={item?.seconds} value={item?.value} style={{ background: "#1f2937" }}>
+                    {item?.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </div>
 
-        {/* Divider */}
-        <div className="vr" />
+        <div style={d.divider} />
 
-        {/* Chart Type Dropdown */}
+        {/* Chart type dropdown */}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
-            <button className="btn btn-light d-flex align-items-center gap-2">
-              {active?.icon && <active.icon size={16} />}
+            <button style={d.btn}>
+              {active?.icon && <active.icon size={15} />}
               <span>{active?.label}</span>
-              <FiChevronDown size={14} />
+              <FiChevronDown size={13} />
             </button>
           </DropdownMenu.Trigger>
-
           <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              sideOffset={8}
-              className="bg-white border rounded shadow z-999 p-2"
-            >
+            <DropdownMenu.Content sideOffset={6} style={d.dropdownContent}>
               {chartOptions.map((item) => (
-                <DropdownMenu.Item
-                  key={item.value}
-                  onClick={() => setChartType(item.value)}
-                  className="d-flex align-items-center gap-2 px-3 py-2 rounded"
-                >
-                  <item.icon size={16} />
-                  <span className="flex-grow-1">{item.label}</span>
-
-                  {chartType === item.value && (
-                    <span className="badge bg-primary">✓</span>
-                  )}
+                <DropdownMenu.Item key={item.value} asChild>
+                  <button
+                    onClick={() => setChartType(item.value)}
+                    style={{
+                      ...d.dropdownItem,
+                      background: chartType === item.value ? "#1f2937" : "transparent",
+                      color: chartType === item.value ? "#a78bfa" : "#d1d5db",
+                    }}
+                    onMouseEnter={(e) => { if (chartType !== item.value) e.currentTarget.style.background = "#1f2937"; }}
+                    onMouseLeave={(e) => { if (chartType !== item.value) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <item.icon size={15} />
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    {chartType === item.value && <span style={{ color: "#8b5cf6", fontSize: "0.7rem" }}>✓</span>}
+                  </button>
                 </DropdownMenu.Item>
               ))}
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
 
-        {/* Divider */}
-        <div className="vr" />
+        <div style={d.divider} />
 
-        {/* Action Buttons */}
-        <div className="d-flex align-items-center w-full gap-2">
-          {/* Range */}
-          {/* <div className="d-flex align-items-center gap-2">
-            <label className="mb-0">Range:</label>
-            <input
-              type="number"
-              min="10"
-              defaultValue="10"
-              className="form-control form-control-sm"
-              style={{ width: 90, height: 40 }}
-            />
-          </div> */}
+        {/* Indicators */}
+        <button title="Indicators" onClick={() => openModal("Indicators")} style={d.btn}>
+          <VscGraphLine size={15} />
+          <span>Indicators</span>
+        </button>
 
-          {/* Indicators */}
-          <button
-            title="Indicators"
-            onClick={() => openModal("Indicators")}
-            className="btn btn-light d-flex align-items-center gap-2"
-          >
-            <VscGraphLine />
-            <span>Indicators</span>
+        {/* Date pickers */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 4 }}>
+          <input
+            type="date"
+            value={fromDate}
+            max={maxDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            style={d.dateInput}
+          />
+          <input
+            type="date"
+            value={toDate}
+            max={maxDate}
+            onChange={(e) => setToDate(e.target.value)}
+            style={d.dateInput}
+          />
+        </div>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Auth button */}
+        {isAuthenticated ? (
+          <button title="Logout" onClick={() => { logout(); navigate("/login"); }} style={d.btnPrimary}>
+            <span>Logout</span>
           </button>
+        ) : (
+          <button title="Signup" onClick={() => navigate("/signup")} style={d.btnPrimary}>
+            <span>Signup</span>
+          </button>
+        )}
 
-          {/* Alert */}
-          {/* <button
-            title="Create Alert"
-            onClick={() => openModal("Alerts")}
-            className="btn btn-light d-flex align-items-center gap-2"
-          >
-            <MdAlarmAdd />
-            <span>Alert</span>
-          </button> */}
-
-          {/* Simulation */}
-          {/* <button
-            title="Simulation"
-            onClick={() => openModal("Simulation")}
-            className="btn btn-primary d-flex align-items-center gap-2"
-          >
-            <FiPlus />
-            <span>Simulation</span>
-          </button> */}
-
-          <div className="d-flex align-items-center gap-2 ms-3">
-            {/* FROM DATE */}
-            <Form.Group controlId="fromDate">
-              <Form.Control
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                style={{ height: "36px", fontSize: "12px" }}
-              />
-            </Form.Group>
-
-            {/* TO DATE */}
-            <Form.Group controlId="toDate">
-              <Form.Control
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                style={{ height: "36px", fontSize: "12px" }}
-              />
-            </Form.Group>
-          </div>
-        </div>
-        <div className="flex justify-end ">
-          {isAuthenticated ? (
-            <button
-              title="Logout"
-              onClick={() => {
-                logout();
-                navigate("/login");
-              }}
-              className="btn btn-primary d-flex align-items-center gap-2"
-            >
-              <span>Logout</span>
-            </button>
-          ) : (
-            <button
-              title="Signup"
-              onClick={() => {
-                navigate("/signup");
-              }}
-              className="btn btn-primary d-flex align-items-center gap-2"
-            >
-              <span>Signup</span>
-            </button>
-          )}
-        </div>
         <ProfileDropDown />
       </div>
 
-      {/* MODAL (UNCHANGED) */}
       <ListingModal
         isOpen={modalConfig.open}
         onClose={closeModal}

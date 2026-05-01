@@ -16,7 +16,7 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 20 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 20,  padding: "14px 24px"   }}>
       {STEPS.map((step, i) => {
         const done   = stepFilled[step.id] && step.id !== currentStep;
         const active = step.id === currentStep;

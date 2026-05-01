@@ -87,8 +87,6 @@ export default function Candlestick() {
   const prevTimeframeRef = useRef(timeframeValue);
   const prevCurrencyRef = useRef(selectedCurrency);
 
-
-
   const [indicatorConfigs, setIndicatorConfigs] = useState(
     indicatorConfigDefault,
   );
@@ -115,6 +113,31 @@ export default function Candlestick() {
     } else {
       // 🔥 Reset on timeframe / currency change
       fetchedIndicatorsRef.current.clear();
+
+      // Clear existing indicator chart series to prevent overlaying old data
+      selectedIndicator.forEach((indicator) => {
+        const entry = indicatorSeriesRef.current[indicator];
+        if (!entry) return;
+
+        const paneKey = resolvePaneKey(indicator);
+        const pane = panesRef.current[paneKey];
+        const chartToUse = pane?.chart ?? chartRef.current;
+        if (!chartToUse) return;
+
+        if (typeof entry === "object" && !entry.priceScale) {
+          Object.values(entry).forEach((series) => {
+            if (!series || typeof series.setData !== "function") return;
+            try {
+              chartToUse.removeSeries(series);
+            } catch {}
+          });
+        } else {
+          try {
+            chartToUse.removeSeries(entry);
+          } catch {}
+        }
+        delete indicatorSeriesRef.current[indicator];
+      });
     }
 
     fetchIndicatorData(indicatorsToFetch, selectedCurrency, timeframeValue);
@@ -124,7 +147,7 @@ export default function Candlestick() {
     // update previous values
     prevTimeframeRef.current = timeframeValue;
     prevCurrencyRef.current = selectedCurrency;
-  }, [selectedIndicator, selectedCurrency, timeframeValue,fromDate, toDate]);
+  }, [selectedIndicator, selectedCurrency, timeframeValue, fromDate, toDate]);
 
   const toggleIndicatorVisibility = (indicator) => {
     const currentVisible = indicatorVisibility[indicator] ?? true;
@@ -808,7 +831,7 @@ export default function Candlestick() {
     latestIndicatorValuesRef,
     indicatorConfigs,
     fromDate,
-    toDate
+    toDate,
   });
 
   const zoomCharts = (delta) => {
@@ -926,48 +949,99 @@ export default function Candlestick() {
                 </div>
               )}
               {/* -------------------------------sub-header live Values----------------------- */}
-              <div className="flex px-2 top-2 z-10 absolute items-center gap-2 bg-slate-100 justify-start">
-                {/* LEFT: Symbol */}
-                <div className="text-sm text-slate-950">
+              <div
+                className="d-flex px-2 py-1 align-items-center gap-2 justify-content-start position-absolute top-0 start-0 z-index-10"
+                style={{
+                  background: "#1e2330",
+                  borderBottom: "1px solid #2e3347",
+                  borderRight: "1px solid #2e3347",
+                  borderBottomRightRadius: 8,
+                  zIndex: 10,
+                }}
+              >
+                <style>{`
+    @keyframes ping {
+      75%, 100% { transform: scale(2); opacity: 0; }
+    }
+    .dot-ping {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+  `}</style>
+
+                {/* Symbol + Timeframe */}
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "#94a3b8",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {selectedCurrency?.name} : {timeframeValue} :
-                </div>
-                <div className="flex items-center justify-center">
-                  <div className="relative">
-                    {/* outer ring */}
-                    <span
-                      className={`absolute inset-0 rounded-full opacity-30 animate-ping ${isMarketOpen ? "bg-green-500" : "bg-red-400"}`}
-                    ></span>
+                </span>
 
-                    {/* inner dot */}
-                    <span
-                      className={`relative block w-3 h-3 rounded-full ${isMarketOpen ? "bg-green-500" : "bg-red-400"}`}
-                    ></span>
-                  </div>
+                {/* Market status dot */}
+                <div
+                  style={{
+                    position: "relative",
+                    width: 12,
+                    height: 12,
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    className="dot-ping"
+                    style={{ background: isMarketOpen ? "#22c55e" : "#f87171" }}
+                  />
+                  <span
+                    style={{
+                      display: "block",
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      background: isMarketOpen ? "#22c55e" : "#f87171",
+                      position: "relative",
+                    }}
+                  />
                 </div>
 
-                {/* CENTER: Timeframes */}
-                <div className="d-flex gap-2 align-items-center">
+                {/* OHLC Values */}
+                <div className="d-flex align-items-center gap-1">
                   {SINGLE_VALUE_CHARTS.includes(chartType) ? (
-                    // Line / Area / Baseline → Close only
-                    <h6 className="px-2 py-1 mb-0">
-                      <span className="text-primary">{liveOhlcv?.value}</span>
-                    </h6>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: "#60a5fa",
+                        padding: "2px 6px",
+                      }}
+                    >
+                      {liveOhlcv?.value}
+                    </span>
                   ) : (
-                    // Other charts → OHLC
                     <>
-                      <h6 className="px-2 py-1 mb-0 text-black">
-                        O: <span className={valueColor}>{liveOhlcv?.open}</span>
-                      </h6>
-                      <h6 className="px-2 py-1 mb-0 text-black">
-                        H: <span className={valueColor}>{liveOhlcv?.high}</span>
-                      </h6>
-                      <h6 className="px-2 py-1 mb-0 text-black">
-                        L: <span className={valueColor}>{liveOhlcv?.low}</span>
-                      </h6>
-                      <h6 className="px-2 py-1 mb-0 text-black">
-                        C:{" "}
-                        <span className={valueColor}>{liveOhlcv?.close}</span>
-                      </h6>
+                      {[
+                        { label: "O", value: liveOhlcv?.open },
+                        { label: "H", value: liveOhlcv?.high },
+                        { label: "L", value: liveOhlcv?.low },
+                        { label: "C", value: liveOhlcv?.close },
+                      ].map(({ label, value }) => (
+                        <span
+                          key={label}
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 500,
+                            padding: "2px 5px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <span style={{ color: "#64748b" }}>{label}: </span>
+                          <span className={valueColor}>{value}</span>
+                        </span>
+                      ))}
                     </>
                   )}
                 </div>
@@ -976,27 +1050,83 @@ export default function Candlestick() {
               {/* -----------------INDICATOR BAR------------------- */}
 
               {selectedIndicator?.length > 0 && (
-                <div className="absolute top-10 left-2 flex flex-col gap-1 z-50">
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 40,
+                    left: 8,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    zIndex: 50,
+                  }}
+                >
+                  <style>{`
+    .ind-btn {
+      background: transparent;
+      border: none;
+      padding: 2px;
+      cursor: pointer;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s;
+    }
+    .ind-btn:hover { color: #e2e8f0; }
+  `}</style>
+
                   {selectedIndicator &&
-                    selectedIndicator?.map((indicator, index) => {
+                    selectedIndicator.map((indicator, index) => {
                       const normalizedType = indicator.replace(/[\s/%]+/g, "");
                       const value = liveIndicatorData[normalizedType];
                       return (
                         <div
                           key={index}
-                          className="flex w-full justify-between items-center gap-3 bg-white shadow-sm border border-slate-200 rounded-3 px-3 h-8 text-xs "
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            background: "#1e2330a4",
+                            border: "1px solid #2e3347",
+                            borderRadius: 6,
+                            padding: "0 10px",
+                            height: 32,
+                            fontSize: 12,
+                            whiteSpace: "nowrap",
+                          }}
                         >
-                          <span className="font-medium w-full text-slate-800 flex items-center gap-2">
-                            {indicator} :{" "}
-                            {indicatorConfigs?.[normalizedType]?.length ?? ""}{" "}
-                            {indicatorConfigs?.[normalizedType]?.source ?? ""}{" "}
+                          {/* Label + value */}
+                          <span
+                            style={{
+                              color: "#94a3b8",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <span style={{ color: "#cbd5e1", fontWeight: 500 }}>
+                              {indicator}
+                            </span>
+                            {" : "}
+                            {indicatorConfigs?.[normalizedType]?.length ??
+                              ""}{" "}
+                            {indicatorConfigs?.[normalizedType]?.source ?? ""}
                             <span style={{ display: "flex", gap: 6 }}>
                               {renderValue(normalizedType, value)}
                             </span>
                           </span>
 
-                          <div className="flex items-center gap-2">
+                          {/* Action buttons */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
                             <button
+                              className="ind-btn"
                               title={
                                 indicatorVisibility[normalizedType]
                                   ? "Hide Indicator"
@@ -1005,42 +1135,42 @@ export default function Candlestick() {
                               onClick={() =>
                                 toggleIndicatorVisibility(normalizedType)
                               }
-                              className="text-slate-600"
                             >
                               {indicatorVisibility[normalizedType] ? (
-                                <IoEyeOutline size={18} />
+                                <IoEyeOutline size={15} />
                               ) : (
-                                <IoEyeOffOutline size={18} />
+                                <IoEyeOffOutline size={15} />
                               )}
                             </button>
 
                             <button
+                              className="ind-btn"
                               title="Indicator Settings"
                               onClick={() => {
                                 setActiveBarIndicator(indicator);
                                 setIndicatorProperty((prev) => !prev);
                               }}
-                              className="text-slate-600"
                             >
-                              <IoSettingsOutline size={18} />
+                              <IoSettingsOutline size={15} />
                             </button>
 
                             <button
+                              className="ind-btn"
                               title="Source Code"
                               onClick={() => {
                                 setActiveSourceIndicator(indicator);
                                 setShowSourcePanel(true);
                               }}
-                              className="text-slate-600"
                             >
-                              <FaCode size={18} />
+                              <FaCode size={15} />
                             </button>
 
                             <button
+                              className="ind-btn"
+                              title="Remove"
                               onClick={() => removeIndicator(normalizedType)}
-                              className="text-slate-600"
                             >
-                              <IoCloseSharp size={18} />
+                              <IoCloseSharp size={15} />
                             </button>
                           </div>
 
@@ -1098,175 +1228,81 @@ export default function Candlestick() {
           <div className="row">
             <div className="d-flex align-items-center position-relative">
               <div className="mx-auto d-flex align-items-center gap-2">
+                {/* Shared style */}
+                <style>{`
+      .zoom-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        letter-spacing: 0.01em;
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid #2e3347;
+        background: #1e2330;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: all 0.18s ease;
+      }
+      .zoom-btn svg {
+        transition: transform 0.25s ease;
+      }
+      .zoom-btn:hover {
+        background: #262d3f;
+        border-color: #3d4560;
+        color: #e2e8f0;
+      }
+      .zoom-btn:hover svg {
+        transform: scale(1.15);
+      }
+      .zoom-btn:active {
+        transform: scale(0.97);
+      }
+      .zoom-btn-reset {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+      }
+      .zoom-btn-reset:hover {
+        background: #374151;
+        border-color: #6b7280;
+        color: #fff;
+      }
+      .zoom-btn-reset:hover svg {
+        transform: rotate(360deg);
+        transition: transform 0.5s ease;
+      }
+      .zoom-divider {
+        width: 1px;
+        height: 22px;
+        background: #2e3347;
+      }
+    `}</style>
+
                 {/* Zoom In */}
-                <button
-                  onClick={zoomIn}
-                  title="Zoom in"
-                  className="d-flex align-items-center gap-2 fw-semibold"
-                  style={{
-                    borderColor: "#e9d5ff",
-                    color: "#7c3aed",
-                    background: "#faf5ff",
-                    borderRadius: "10px",
-                    borderWidth: "1.5px",
-                    borderStyle: "solid",
-                    fontSize: "0.8rem",
-                    letterSpacing: "0.01em",
-                    padding: "6px 14px",
-                    boxShadow:
-                      "0 1px 3px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
-                    transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#a855f7";
-                    e.currentTarget.style.color = "#6d28d9";
-                    e.currentTarget.style.background = "#f3e8ff";
-                    e.currentTarget.style.boxShadow =
-                      "0 4px 14px rgba(124,58,237,0.18), inset 0 1px 0 rgba(255,255,255,0.9)";
-                    e.currentTarget.querySelector("svg").style.transform =
-                      "scale(1.15) rotate(90deg)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#e9d5ff";
-                    e.currentTarget.style.color = "#7c3aed";
-                    e.currentTarget.style.background = "#faf5ff";
-                    e.currentTarget.style.boxShadow =
-                      "0 1px 3px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.9)";
-                    e.currentTarget.querySelector("svg").style.transform =
-                      "scale(1) rotate(0deg)";
-                  }}
-                  onMouseDown={(e) =>
-                    (e.currentTarget.style.transform = "scale(0.97)")
-                  }
-                  onMouseUp={(e) =>
-                    (e.currentTarget.style.transform = "scale(1)")
-                  }
-                >
-                  <LuCirclePlus
-                    size={14}
-                    style={{ transition: "transform 0.3s ease" }}
-                  />
+                <button onClick={zoomIn} title="Zoom in" className="zoom-btn">
+                  <LuCirclePlus size={14} />
                   Zoom In
                 </button>
 
-                {/* Divider */}
-                <div
-                  style={{
-                    width: "1px",
-                    height: "22px",
-                    background: "#d1d5db",
-                  }}
-                />
+                <div className="zoom-divider" />
 
                 {/* Zoom Out */}
-                <button
-                  onClick={zoomOut}
-                  title="Zoom out"
-                  className="d-flex align-items-center gap-2 fw-semibold"
-                  style={{
-                    borderColor: "#e9d5ff",
-                    color: "#7c3aed",
-                    background: "#faf5ff",
-                    borderRadius: "10px",
-                    borderWidth: "1.5px",
-                    borderStyle: "solid",
-                    fontSize: "0.8rem",
-                    letterSpacing: "0.01em",
-                    padding: "6px 14px",
-                    boxShadow:
-                      "0 1px 3px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
-                    transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#a855f7";
-                    e.currentTarget.style.color = "#6d28d9";
-                    e.currentTarget.style.background = "#f3e8ff";
-                    e.currentTarget.style.boxShadow =
-                      "0 4px 14px rgba(124,58,237,0.18), inset 0 1px 0 rgba(255,255,255,0.9)";
-                    e.currentTarget.querySelector("svg").style.transform =
-                      "scale(1.15) rotate(90deg)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#e9d5ff";
-                    e.currentTarget.style.color = "#7c3aed";
-                    e.currentTarget.style.background = "#faf5ff";
-                    e.currentTarget.style.boxShadow =
-                      "0 1px 3px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.9)";
-                    e.currentTarget.querySelector("svg").style.transform =
-                      "scale(1) rotate(0deg)";
-                  }}
-                  onMouseDown={(e) =>
-                    (e.currentTarget.style.transform = "scale(0.97)")
-                  }
-                  onMouseUp={(e) =>
-                    (e.currentTarget.style.transform = "scale(1)")
-                  }
-                >
-                  <LuCircleMinus
-                    size={14}
-                    style={{ transition: "transform 0.3s ease" }}
-                  />
+                <button onClick={zoomOut} title="Zoom out" className="zoom-btn">
+                  <LuCircleMinus size={14} />
                   Zoom Out
                 </button>
 
-                {/* Divider */}
-                <div
-                  style={{
-                    width: "1px",
-                    height: "22px",
-                    background: "#d1d5db",
-                  }}
-                />
+                <div className="zoom-divider" />
 
-                {/* Reset — filled/primary style */}
+                {/* Reset */}
                 <button
                   onClick={resetZoom}
                   title="Reset zoom"
-                  className="d-flex align-items-center gap-2 fw-semibold"
-                  style={{
-                    borderColor: "#7c3aed",
-                    color: "#ffffff",
-                    background: "#7c3aed",
-                    borderRadius: "10px",
-                    borderWidth: "1.5px",
-                    borderStyle: "solid",
-                    fontSize: "0.8rem",
-                    letterSpacing: "0.01em",
-                    padding: "6px 14px",
-                    boxShadow:
-                      "0 1px 3px rgba(124,58,237,0.25), 0 4px 12px rgba(124,58,237,0.15)",
-                    transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#6d28d9";
-                    e.currentTarget.style.borderColor = "#6d28d9";
-                    e.currentTarget.style.boxShadow =
-                      "0 4px 14px rgba(124,58,237,0.4)";
-                    e.currentTarget.querySelector("svg").style.transform =
-                      "rotate(360deg)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#7c3aed";
-                    e.currentTarget.style.borderColor = "#7c3aed";
-                    e.currentTarget.style.boxShadow =
-                      "0 1px 3px rgba(124,58,237,0.25), 0 4px 12px rgba(124,58,237,0.15)";
-                    e.currentTarget.querySelector("svg").style.transform =
-                      "rotate(0deg)";
-                  }}
-                  onMouseDown={(e) =>
-                    (e.currentTarget.style.transform = "scale(0.97)")
-                  }
-                  onMouseUp={(e) =>
-                    (e.currentTarget.style.transform = "scale(1)")
-                  }
+                  className="zoom-btn zoom-btn-reset"
                 >
-                  <RiResetRightLine
-                    size={14}
-                    style={{ transition: "transform 0.5s ease" }}
-                  />
+                  <RiResetRightLine size={14} />
                   Reset
                 </button>
               </div>

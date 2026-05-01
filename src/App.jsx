@@ -4,6 +4,9 @@ import Chart from "./pages/Chart";
 import Candlestick from "./pages/CandleStick";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Dashboard from "./pages/dashboard/Dashboard";
+import Signup from "./pages/auth/signup";
+import Login from "./pages/auth/login";
+import { ProtectedRoute } from "./pages/auth/ProtectedRoute";
 
 function App() {
   return (
@@ -17,9 +20,15 @@ function App() {
 
         {/* Routes */}
         <Routes>
-          <Route path="/" element={<Chart />} />
-          <Route path="/candleStick" element={<Candlestick />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Chart />} />
+            <Route path="/candleStick" element={<Candlestick />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
         </Routes>
       </div>
     </>

@@ -13,120 +13,96 @@ import {
 export const ChartProprties = {
   width: 1350,
   height: 515,
-
   layout: {
-    background: { type: "solid", color: "#ffffff" },
-    textColor: "#334155",
+    background: { type: "solid", color: "#0d1117" },
+    textColor: "#9ca3af",
     fontSize: 12,
     fontFamily: "Inter, sans-serif",
   },
-
-localization: {
-  priceFormatter: (price) => {
-    if (!price || price === 0) return "0.00";
-
-    const abs = Math.abs(price);
-
-    // 🔥 Very small numbers → show full decimal (no exponential)
-    if (abs < 0.0001) {
-      // convert to string with high precision, then trim
-      return Number(price)
-        .toFixed(12)              // enough precision
-        .replace(/\.?0+$/, "");   // remove trailing zeros
-    }
-
-    // 🔥 Normal numbers → always 2 decimal places
-    return Number(price).toFixed(2);
+  localization: {
+    priceFormatter: (price) => {
+      if (!price || price === 0) return "0.00";
+      const abs = Math.abs(price);
+      if (abs < 0.0001) {
+        return Number(price)
+          .toFixed(12)
+          .replace(/\.?0+$/, "");
+      }
+      return Number(price).toFixed(2);
+    },
   },
-},
-
   timeScale: {
     timeVisible: true,
     secondsVisible: false,
-
-    borderColor: "#e2e8f0",
-
+    borderColor: "#1f2937",
     rightBarStaysOnScroll: true,
     rightBarStaysOnScale: true,
-
-    rightBarSpacing: 80, // ✅ Future space
-    barSpacing: 10, // Slightly tighter like TV
-
-    minBarSpacing: 5, // Prevent over-zoom crush
+    rightBarSpacing: 80,
+    barSpacing: 10,
+    minBarSpacing: 5,
     fixLeftEdge: false,
     fixRightEdge: false,
-
     lockVisibleTimeRangeOnResize: true,
     rightEdgeStaysOnScroll: true,
   },
-
   handleScroll: {
     mouseWheel: true,
     pressedMouseMove: true,
     horzTouchDrag: true,
     vertTouchDrag: true,
   },
-
   handleScale: {
     mouseWheel: true,
     pinch: true,
     axisPressedMouseMove: true,
-    axisDoubleClickReset: true, // ✅ TV behaviour
+    axisDoubleClickReset: true,
   },
-
   kineticScroll: {
-    mouse: true, // ✅ Smooth inertial scrolling like TV
+    mouse: true,
     touch: true,
   },
-
   rightPriceScale: {
     autoScale: true,
-    mode: 1, // 🔥 LOG SCALE (this is the fix)
+    mode: 1,
     scaleMargins: {
       top: 0.2,
       bottom: 0.2,
     },
   },
-
   grid: {
     vertLines: {
       visible: true,
-      color: "#f1f5f9",
+      color: "#1f2937",
       style: 0,
     },
     horzLines: {
       visible: true,
-      color: "#f1f5f9",
+      color: "#1f2937",
       style: 0,
     },
   },
-
   crosshair: {
-    mode: 1, // Normal crosshair
-
+    mode: 1,
     vertLine: {
       visible: true,
       labelVisible: true,
-      color: "#94a3b8",
+      color: "#374151",
       width: 1,
-      style: 2, // Dotted like TV
+      style: 2,
     },
-
     horzLine: {
       visible: true,
       labelVisible: true,
-      color: "#94a3b8",
+      color: "#374151",
       width: 1,
       style: 2,
     },
   },
   attributionLogo: false,
-
   interaction: {
-    mode: 0, // Normal interaction
+    mode: 0,
   },
 };
-
 export function getIndicatorChartProperties() {
   return {
     ...ChartProprties,

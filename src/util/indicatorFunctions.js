@@ -650,7 +650,7 @@ export let indicatorStyleDefault = {
   },
   EMA: {
     ema: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -686,7 +686,7 @@ export let indicatorStyleDefault = {
   },
   WMA: {
     wma: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -704,7 +704,7 @@ export let indicatorStyleDefault = {
   },
   DEMA: {
     dema: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -713,7 +713,7 @@ export let indicatorStyleDefault = {
   },
   TEMA: {
     tema: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,

@@ -13,6 +13,7 @@ import {
   FiX,
   FiChevronRight,
   FiUser,
+  FiGrid,
 } from "react-icons/fi";
 import { FaRegKeyboard } from "react-icons/fa";
 
@@ -24,29 +25,49 @@ const getUser = () => {
   }
 };
 
+// ─── Theme tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg:         "#141720",
+  bgHover:    "#1e2330",
+  border:     "#2e3347",
+  text:       "#e2e8f0",
+  muted:      "#64748b",
+  label:      "#475569",
+  icon:       "#64748b",
+  danger:     "#f87171",
+  badge:      "#185FA5",
+  toggleOn:   "#185FA5",
+  toggleOff:  "#2e3347",
+  kbd:        "#1e2330",
+  kbdBorder:  "#2e3347",
+  kbdText:    "#94a3b8",
+  divider:    "#1e2330",
+  headerBg:   "#0f1117",
+};
+
 export default function ProfileDropDown() {
-  const [open, setOpen] = useState(false);
-  const [dark, setDark] = useState(false);
+  const [open, setOpen]               = useState(false);
+  const [dark, setDark]               = useState(false);
   const [drawingsPanel, setDrawingsPanel] = useState(true);
-  const [language, setLanguage] = useState("English (India)");
+  const [language, setLanguage]       = useState("English (India)");
   const navigate = useNavigate();
 
-  const user = getUser();
-  const userEmail = user?.email || "user@example.com";
+  const user        = getUser();
+  const userEmail   = user?.email || "user@example.com";
   const userInitial = userEmail.charAt(0).toUpperCase();
 
   return (
     <>
-      {/* ===== TRIGGER BUTTON ===== */}
+      {/* ===== TRIGGER ===== */}
       <button
         onClick={() => setOpen(true)}
         style={{
-          background: "none",
-          border: "1px solid #dee2e6",
+          background: T.bgHover,
+          border: `1px solid ${T.border}`,
           borderRadius: 8,
           padding: "6px 10px",
           cursor: "pointer",
-          color: "#495057",
+          color: T.text,
           display: "flex",
           alignItems: "center",
           gap: 6,
@@ -56,14 +77,14 @@ export default function ProfileDropDown() {
         <FiMenu size={16} />
       </button>
 
-      {/* ===== OVERLAY — very light, no blur ===== */}
+      {/* ===== OVERLAY ===== */}
       {open && (
         <div
           onClick={() => setOpen(false)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.10)",
+            background: "rgba(0,0,0,0.45)",
             zIndex: 1040,
           }}
         />
@@ -77,8 +98,9 @@ export default function ProfileDropDown() {
           left: open ? 0 : -300,
           width: 264,
           height: "100vh",
-          background: "#ffffff",
-          boxShadow: "2px 0 16px rgba(0,0,0,0.10)",
+          background: T.bg,
+          borderRight: `1px solid ${T.border}`,
+          boxShadow: "4px 0 24px rgba(0,0,0,0.4)",
           zIndex: 1050,
           display: "flex",
           flexDirection: "column",
@@ -89,24 +111,23 @@ export default function ProfileDropDown() {
         {/* ── HEADER ── */}
         <div
           style={{
-            background: "linear-gradient(135deg, #185FA5 0%, #2179c4 100%)",
+            background: T.headerBg,
+            borderBottom: `1px solid ${T.border}`,
             padding: "18px 16px 16px",
             position: "relative",
             display: "flex",
             gap: 10,
             alignItems: "center",
-            justifyContent: "start",
           }}
         >
-          {/* Close button */}
           <button
             onClick={() => setOpen(false)}
             style={{
               position: "absolute",
               top: 10,
               right: 10,
-              background: "rgba(255,255,255,0.18)",
-              border: "none",
+              background: T.bgHover,
+              border: `1px solid ${T.border}`,
               borderRadius: 6,
               width: 24,
               height: 24,
@@ -114,7 +135,7 @@ export default function ProfileDropDown() {
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              color: "#fff",
+              color: T.muted,
               padding: 0,
             }}
           >
@@ -127,8 +148,8 @@ export default function ProfileDropDown() {
               width: 40,
               height: 40,
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.20)",
-              border: "2px solid rgba(255,255,255,0.45)",
+              background: "#185FA5",
+              border: `2px solid #2179c4`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -141,26 +162,20 @@ export default function ProfileDropDown() {
             {userInitial}
           </div>
 
-          <div className="align-items-start text-left">
-            <div
-              style={{
-                color: "#fff",
-                fontWeight: 600,
-                fontSize: 13,
-                // marginBottom: 4,
-                lineHeight: 1.3,
-              }}
-            >
+          <div>
+            <div style={{ color: T.text, fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>
               {userEmail}
             </div>
             <Link
               to="/profile"
               style={{
                 fontSize: 11.5,
-                color: "rgba(255,255,255,0.78)",
+                color: T.muted,
                 textDecoration: "none",
                 display: "inline-flex",
                 alignItems: "center",
+                gap: 4,
+                marginTop: 2,
               }}
             >
               <FiUser size={10} />
@@ -171,77 +186,38 @@ export default function ProfileDropDown() {
 
         {/* ── BODY ── */}
         <div style={{ flex: 1, paddingTop: 4, paddingBottom: 12 }}>
+
           <SectionLabel label="Navigation" />
-          <Item
-            icon={<FiHome size={14} />}
-            label="Home"
-            onClick={() => navigate("/home")}
-          />
-          <Item
-            icon={<FiHelpCircle size={14} />}
-            label="Help Center"
-            onClick={() => alert("Help Center")}
-          />
-          <Item
-            icon={<FiZap size={14} />}
-            label="What's new"
-            badge="New"
-            onClick={() => alert("What's new")}
-          />
+          <Item icon={<FiHome size={14} />}        label="Home"          onClick={() => navigate("/home")} />
+          <Item icon={<FiGrid size={14} />}         label="Dashboard"     onClick={() => navigate("/dashboard")} />
+          <Item icon={<FiHelpCircle size={14} />}   label="Help Center"   onClick={() => alert("Help Center")} />
+          <Item icon={<FiZap size={14} />}          label="What's new"    badge="New" onClick={() => alert("What's new")} />
 
           <Divider />
 
           <SectionLabel label="Preferences" />
-          <ToggleItem
-            icon={<FiMoon size={14} />}
-            label="Dark theme"
-            value={dark}
-            onChange={() => setDark(!dark)}
-          />
-          <ToggleItem
-            icon={<FiLayout size={14} />}
-            label="Drawings panel"
-            value={drawingsPanel}
-            onChange={() => setDrawingsPanel(!drawingsPanel)}
-          />
+          <ToggleItem icon={<FiMoon size={14} />}   label="Dark theme"     value={dark}          onChange={() => setDark(!dark)} />
+          <ToggleItem icon={<FiLayout size={14} />} label="Drawings panel" value={drawingsPanel}  onChange={() => setDrawingsPanel(!drawingsPanel)} />
           <Item
             icon={<FiGlobe size={14} />}
             label="Language"
-            right={
-              <span
-                style={{
-                  fontSize: 11.5,
-                  color: "#6c757d",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {language}
-              </span>
-            }
-            onClick={() =>
-              setLanguage(
-                language === "English (India)"
-                  ? "English (US)"
-                  : "English (India)",
-              )
-            }
+            right={<span style={{ fontSize: 11.5, color: T.muted, whiteSpace: "nowrap" }}>{language}</span>}
+            onClick={() => setLanguage(language === "English (India)" ? "English (US)" : "English (India)")}
           />
           <Item
             icon={<FaRegKeyboard size={14} />}
             label="Keyboard shortcuts"
             right={
-              <kbd
-                style={{
-                  fontSize: 11,
-                  background: "#f1f3f5",
-                  border: "1px solid #dee2e6",
-                  borderRadius: 4,
-                  padding: "1px 5px",
-                  color: "#495057",
-                  fontFamily: "monospace",
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <kbd style={{
+                fontSize: 11,
+                background: T.kbd,
+                border: `1px solid ${T.kbdBorder}`,
+                borderRadius: 4,
+                padding: "1px 5px",
+                color: T.kbdText,
+                fontFamily: "monospace",
+                whiteSpace: "nowrap",
+              }}>
                 Ctrl + /
               </kbd>
             }
@@ -254,19 +230,13 @@ export default function ProfileDropDown() {
           <Item
             icon={<FiMonitor size={14} />}
             label="Get desktop app"
-            onClick={() =>
-              window.open("https://www.tradingview.com/desktop/", "_blank")
-            }
+            onClick={() => window.open("https://www.tradingview.com/desktop/", "_blank")}
           />
 
           <Divider />
 
-          <Item
-            icon={<FiLogOut size={14} />}
-            label="Sign out"
-            danger
-            onClick={() => alert("Signed out")}
-          />
+          <Item icon={<FiLogOut size={14} />} label="Sign out" danger onClick={() => alert("Signed out")} />
+
         </div>
       </div>
     </>
@@ -278,17 +248,15 @@ export default function ProfileDropDown() {
 ===================== */
 
 const SectionLabel = ({ label }) => (
-  <div
-    style={{
-      fontSize: 10,
-      fontWeight: 700,
-      color: "#adb5bd",
-      letterSpacing: "0.85px",
-      textTransform: "uppercase",
-      padding: "10px 16px 3px",
-      textAlign: "left",
-    }}
-  >
+  <div style={{
+    fontSize: 10,
+    fontWeight: 700,
+    color: T.label,
+    letterSpacing: "0.85px",
+    textTransform: "uppercase",
+    padding: "10px 16px 3px",
+    textAlign: "left",
+  }}>
     {label}
   </div>
 );
@@ -296,120 +264,69 @@ const SectionLabel = ({ label }) => (
 const Item = ({ icon, label, right, onClick, danger, badge }) => (
   <div
     onClick={onClick}
-    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")}
+    onMouseEnter={(e) => (e.currentTarget.style.background = T.bgHover)}
     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     style={{
       display: "flex",
       alignItems: "center",
       padding: "7px 16px",
       cursor: "pointer",
-      color: danger ? "#dc3545" : "#212529",
+      color: danger ? T.danger : T.text,
       fontSize: 13,
-      gap: 0,
       userSelect: "none",
       transition: "background 0.1s",
     }}
   >
-    {/* Icon column — fixed width, left-aligned */}
-    <span
-      style={{
-        width: 28,
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        color: danger ? "#dc3545" : "#868e96",
-      }}
-    >
+    <span style={{ width: 28, flexShrink: 0, display: "flex", alignItems: "center", color: danger ? T.danger : T.icon }}>
       {icon}
     </span>
-
-    {/* Label — takes remaining space, left-aligned */}
     <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
-
-    {/* Right slot */}
     {badge && (
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          background: "#185FA5",
-          color: "#fff",
-          borderRadius: 4,
-          padding: "2px 6px",
-          flexShrink: 0,
-        }}
-      >
+      <span style={{
+        fontSize: 10, fontWeight: 600,
+        background: T.badge, color: "#fff",
+        borderRadius: 4, padding: "2px 6px", flexShrink: 0,
+      }}>
         {badge}
       </span>
     )}
     {right && !badge && <span style={{ flexShrink: 0 }}>{right}</span>}
-    {!right && !badge && (
-      <FiChevronRight size={12} style={{ color: "#ced4da", flexShrink: 0 }} />
-    )}
+    {!right && !badge && <FiChevronRight size={12} style={{ color: T.border, flexShrink: 0 }} />}
   </div>
 );
 
 const ToggleItem = ({ icon, label, value, onChange }) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      padding: "7px 16px",
-      fontSize: 13,
-      color: "#212529",
-      userSelect: "none",
-      gap: 0,
-    }}
-  >
-    {/* Icon column — fixed width, left-aligned */}
-    <span
-      style={{
-        width: 28,
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        color: "#868e96",
-      }}
-    >
+  <div style={{
+    display: "flex", alignItems: "center",
+    padding: "7px 16px", fontSize: 13,
+    color: T.text, userSelect: "none",
+  }}>
+    <span style={{ width: 28, flexShrink: 0, display: "flex", alignItems: "center", color: T.icon }}>
       {icon}
     </span>
-
-    {/* Label */}
     <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
-
-    {/* Toggle switch */}
     <div
       onClick={onChange}
       style={{
-        width: 34,
-        height: 18,
-        borderRadius: 999,
-        background: value ? "#185FA5" : "#dee2e6",
-        position: "relative",
-        cursor: "pointer",
-        transition: "background 0.18s",
-        flexShrink: 0,
+        width: 34, height: 18, borderRadius: 999,
+        background: value ? T.toggleOn : T.toggleOff,
+        position: "relative", cursor: "pointer",
+        transition: "background 0.18s", flexShrink: 0,
+        border: `1px solid ${value ? "#2179c4" : T.border}`,
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: 2,
-          left: value ? 15 : 2,
-          width: 14,
-          height: 14,
-          borderRadius: "50%",
-          background: "#fff",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
-          transition: "left 0.18s",
-        }}
-      />
+      <div style={{
+        position: "absolute", top: 2,
+        left: value ? 15 : 2,
+        width: 14, height: 14,
+        borderRadius: "50%", background: "#fff",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+        transition: "left 0.18s",
+      }} />
     </div>
   </div>
 );
 
 const Divider = () => (
-  <div style={{ height: 1, background: "#f1f3f5", margin: "3px 0" }} />
+  <div style={{ height: 1, background: T.border, margin: "3px 0" }} />
 );

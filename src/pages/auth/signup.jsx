@@ -5,9 +5,13 @@ import apiService from "../../services/apiServices";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated } from "./protected";
-import SEO from "../../components/SEO";
+import PhoneInputImport from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import Swal from "sweetalert2";
+const PhoneInput = PhoneInputImport.default;
 
 export default function Signup() {
+  console.log("PhoneInput:", PhoneInput);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +32,7 @@ export default function Signup() {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [phoneUI, setPhoneUI] = useState("");
 
   // Returns the first error found as { field, message }, or null if all valid
   const validateOneByOne = () => {
@@ -46,9 +51,9 @@ export default function Signup() {
     if (form.password.length < 6)
       return { field: "password", message: "Minimum 6 characters required" };
 
-    if (!form.mobile) return { field: "mobile", message: "Mobile is required" };
-    if (!/^\d{10,15}$/.test(form.mobile))
+    if (!form.mobile || form.mobile.length < 10) {
       return { field: "mobile", message: "Invalid mobile number" };
+    }
 
     if (!form.country.trim())
       return { field: "country", message: "Country is required" };
@@ -75,21 +80,41 @@ export default function Signup() {
     setErrors({});
     setLoading(true);
     try {
-      const response = await apiService.post("/api/register", { ...form });
-      const token = response.data?.token;
-      if (token) localStorage.setItem("token", token);
-      const userData = response.data?.user;
+      const response = await apiService.post("/auth/register", { ...form });
+      const token = response?.data?.token;
+      const userData = response?.data?.user;
 
-      if (userData) {
-        localStorage.setItem("user", JSON.stringify(userData));
+      // ✅ validate before storing
+      if (!token) {
+        throw new Error("Token not received from API");
       }
-      toast.success("Signup successful!");
+
+      const sessionData = {
+        token,
+        user: userData,
+      };
+
+      localStorage.setItem("session", JSON.stringify(sessionData));
+
+      Swal.fire({
+        icon: "success",
+        title: "Signup Successful",
+        text: "Welcome to Klypto Share Marketing!",
+        timer: 1500,
+        showConfirmButton: false,
+      });
       navigate("/candleStick");
     } catch (error) {
       const message =
         error.response?.data?.message || error.message || "Signup failed";
       console.error("SignUp error:", error);
-      toast.error(message);
+      Swal.fire({
+        icon: "error",
+        title: "Signup Failed",
+        text: message,
+        timer: 1500,
+        showConfirmButton: false,
+      });
     } finally {
       setLoading(false);
     }
@@ -97,14 +122,6 @@ export default function Signup() {
 
   return (
     <>
-      <SEO
-        title="Best Crypto Trading Platform"
-        description="Trade crypto instantly with low fees"
-        keywords="crypto, trading, bitcoin, ethereum"
-        url="https://yourdomain.com/"
-        image="https://yourdomain.com/banner.jpg"
-      />
-
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-body-secondary py-4">
         <div
           className="card border-0 shadow-sm"
@@ -219,22 +236,34 @@ export default function Signup() {
 
               {/* Mobile + Country */}
               <div className="d-flex gap-2 mb-3">
-                <Form.Group style={{ flex: 1 }}>
+                <div style={{ flex: 1 }}>
                   <Form.Label className="small fw-medium text-secondary">
                     Mobile
                   </Form.Label>
-                  <Form.Control
-                    name="mobile"
-                    type="tel"
-                    placeholder="10–15 digits"
-                    value={form.mobile}
-                    onChange={handleChange}
-                    isInvalid={!!errors.mobile}
+
+                  <PhoneInput
+                    country={"in"}
+                    enableSearch={true}
+                    value={phoneUI}
+                    onChange={(value) => {
+                      setPhoneUI(value);
+                      setForm((prev) => ({
+                        ...prev,
+                        mobile: value,
+                      }));
+                    }}
+                    inputStyle={{
+                      width: "100%",
+                      height: "38px",
+                      borderRadius: "6px",
+                      border: "1px solid #ced4da",
+                    }}
                   />
-                  <Form.Control.Feedback type="invalid">
-                    {errors.mobile}
-                  </Form.Control.Feedback>
-                </Form.Group>
+
+                  {errors.mobile && (
+                    <div className="text-danger small">{errors.mobile}</div>
+                  )}
+                </div>
 
                 <Form.Group style={{ flex: 1 }}>
                   <Form.Label className="small fw-medium text-secondary">
@@ -243,7 +272,6 @@ export default function Signup() {
                   <Form.Control
                     name="country"
                     type="text"
-                    placeholder="e.g. India"
                     value={form.country}
                     onChange={handleChange}
                     isInvalid={!!errors.country}
@@ -252,6 +280,7 @@ export default function Signup() {
                     {errors.country}
                   </Form.Control.Feedback>
                 </Form.Group>
+
               </div>
 
               {/* Submit */}

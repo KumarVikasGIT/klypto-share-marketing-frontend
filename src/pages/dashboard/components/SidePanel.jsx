@@ -3,7 +3,7 @@ import React from 'react';
 const SidePanel = () => {
   return (
     <div className="side-panel">
-      <button className="btn-action btn-buy-put mb-3" style={{ background: '#ef4444' }}>SQUARE OFF ALL</button>
+      <button className="btn-action btn-buy-put mb-3" style={{ background: '#ef4444', }}>SQUARE OFF ALL</button>
 
       {/* LIVE OPTION CHAIN */}
       <div className="card-custom p-0">

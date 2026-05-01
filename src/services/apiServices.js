@@ -1,9 +1,5 @@
 import axios from "axios";
-
-const token =
-  localStorage.getItem("session") &&
-  JSON.parse(localStorage.getItem("session"));
-// console.log(localStorage.getItem("session"), "tokennnnnnn kkkkkkkkkkkkkkkkkkkkk")
+import { getToken } from "../pages/auth/protected";
 
 // 🔹 Create axios instance
 const api = axios.create({
@@ -16,15 +12,16 @@ const api = axios.create({
 });
 
 // 🔹 Request Interceptor (Auth, logging, etc.)
-api.interceptors.request.use(
-  (config) => {
-    // Example: attach token
-    // const token = localStorage.getItem("token");
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+api.interceptors.request.use((config) => {
+  const token = getToken();
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 
 // 🔹 Response Interceptor
 api.interceptors.response.use(
@@ -42,47 +39,65 @@ api.interceptors.response.use(
 );
 
 // 🔹 API Methods
-const getAuthHeaders = () => {
-  const session =
-    JSON.parse(localStorage.getItem("session")) ||
-    JSON.parse(sessionStorage.getItem("session"));
+// const getAuthHeaders = () => {
+//   let session = null;
 
-  const token = session?.token;
+//   try {
+//     const raw =
+//       localStorage.getItem("session") ||
+//       sessionStorage.getItem("session");
 
-  return {
-    "Content-Type": "application/json",
-    Authorization: token ? `Bearer ${token}` : "",
-  };
-};
+//     if (raw) {
+//       session = JSON.parse(raw);
+//     }
+//   } catch (err) {
+//     console.error("Invalid session JSON in headers:", err);
+//   }
+
+//   const token = session?.token;
+
+//   return {
+//     "Content-Type": "application/json",
+//     Authorization: token ? `Bearer ${token}` : "",
+//   };
+// };
 
 // console.log(localStorage.getItem("session"), "tokennnnnnn kkkkkkkkkkkkkkkkkkkkk")
 
+// const apiService = {
+//   get: (url, params = {}) =>
+//     api.get(url, {
+//       headers: getAuthHeaders(),
+//       params,
+//     }),
+
+//   post: (url, data = {}) =>
+//     api.post(url, data, {
+//       headers: getAuthHeaders(),
+//     }),
+
+//   put: (url, data = {}) =>
+//     api.put(url, data, {
+//       headers: getAuthHeaders(),
+//     }),
+
+//   patch: (url, data = {}) =>
+//     api.patch(url, data, {
+//       headers: getAuthHeaders(),
+//     }),
+
+//   delete: (url) =>
+//     api.delete(url, {
+//       headers: getAuthHeaders(),
+//     }),
+// };
+
 const apiService = {
-  get: (url, params = {}) =>
-    api.get(url, {
-      headers: getAuthHeaders(),
-      params,
-    }),
-
-  post: (url, data = {}) =>
-    api.post(url, data, {
-      headers: getAuthHeaders(),
-    }),
-
-  put: (url, data = {}) =>
-    api.put(url, data, {
-      headers: getAuthHeaders(),
-    }),
-
-  patch: (url, data = {}) =>
-    api.patch(url, data, {
-      headers: getAuthHeaders(),
-    }),
-
-  delete: (url) =>
-    api.delete(url, {
-      headers: getAuthHeaders(),
-    }),
+  get: (url, params = {}) => api.get(url, { params }),
+  post: (url, data = {}) => api.post(url, data),
+  put: (url, data = {}) => api.put(url, data),
+  patch: (url, data = {}) => api.patch(url, data),
+  delete: (url) => api.delete(url),
 };
 
 export default apiService;
