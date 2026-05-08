@@ -125,6 +125,7 @@ const GoldChart = () => {
         });
 
         socket.on("historicalDataResponse", (payload) => {
+            console.log("Historical data response:", payload);
             if (payload.success && payload.data?.length > 0 && seriesRef.current) {
                 const formattedData = payload.data
                     .map(c => ({

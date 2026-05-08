@@ -27,7 +27,7 @@ function App() {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Chart />} />
+            <Route path="/goldchart" element={<Chart />} />
             <Route path="/candleStick" element={<Candlestick />} />
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>

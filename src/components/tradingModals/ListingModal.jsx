@@ -22,6 +22,7 @@ export const ListingModal = ({
   toggleIndicator,
   setAlertResult,
   alertResult,
+  renderActions,
 }) => {
   const [indicators, setIndicators] = useState([]);
   const [currencies, setCurrencies] = useState([]);
@@ -244,9 +245,11 @@ const handleSubmitAlert = () => {
         symbol: item?.symbol, // ✅ correct field
         token: item?.token,
         segment: item?.segment,
-        userCode: item?.userCode,
         type,
         expiry: item?.expiry, // optional but useful
+        high: item?.high,
+        low: item?.low,
+        ltp: item?.ltp,
       };
     }
 
@@ -256,8 +259,10 @@ const handleSubmitAlert = () => {
       symbol: item?.actualSymbol, // ✅ equity uses this
       token: item?.token,
       segment: item?.segment,
-      userCode: item?.userCode,
       type,
+      high: item?.high,
+      low: item?.low,
+      ltp: item?.ltp,
     };
   };
 
@@ -385,15 +390,17 @@ const handleSubmitAlert = () => {
                         key={`${item.symbol}-${index}`}
                         action
                         onClick={() => {
-                          setSelectedCurrency({
-                            symbol: item.symbol,
-                            name: item.name,
-                            token: item.token,
-                            segment: item.segment,
-                            type: item.type,
-                            userCode: item.userCode,
-                          });
-                          onClose();
+                          if (!renderActions) {
+                            setSelectedCurrency({
+                                symbol: item.symbol,
+                                name: item.name,
+                                token: item.token,
+                                segment: item.segment,
+                                type: item.type,
+                                userCode: item.userCode,
+                            });
+                            onClose();
+                          }
                         }}
                         className="d-flex justify-content-between align-items-center"
                         style={{ cursor: "pointer" }}
@@ -425,14 +432,20 @@ const handleSubmitAlert = () => {
                         </div>
 
                         <div className="text-end d-flex gap-2 align-items-center">
-                          <small className="text-muted">{item.segment}</small>
-                          <img
-                            src={
-                              item.segment?.toLowerCase() === "nse" ? NSE : BSE
-                            }
-                            className="rounded-full"
-                            alt={item.segment}
-                          />
+                          {renderActions ? (
+                            renderActions(item)
+                          ) : (
+                            <>
+                              <small className="text-muted">{item.segment}</small>
+                              <img
+                                src={
+                                  item.segment?.toLowerCase() === "nse" ? NSE : BSE
+                                }
+                                className="rounded-full"
+                                alt={item.segment}
+                              />
+                            </>
+                          )}
                         </div>
                       </ListGroup.Item>
                     );

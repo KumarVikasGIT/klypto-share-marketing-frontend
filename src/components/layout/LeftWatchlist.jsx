@@ -7,35 +7,66 @@ import { io } from "socket.io-client";
 const LeftWatchlist = ({ onClose, setSelectedCurrency, alertResult }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [stocksData, setStocksData] = useState([]);
-// console.log(stocksData, "stocksData")
-//   console.log(alertResult, "alertResult")
- useEffect(() => {
-    const fetchStocks = async () => {
-      try {
-        const response = await apiService.get("/equity/stocks");
-        if (response && response.stocks) {
-          setStocksData(response.stocks);
-        }
-      } catch (error) {
-        console.error("Error fetching stocks:", error);
-      }
-    };
 
-    fetchStocks(); // Initial fetch
+useEffect(() => {
+  const socket = io("http://192.168.1.9:7000");
 
-    const socket = io("http://192.168.1.9:7000");
+  socket.emit("getAllStocks");
 
-    socket.on("getAllStocks", (data) => {
-      if (data && data.stocks) {
-        setStocksData(data.stocks);
-      }
-    });
+  /*
+    INITIAL STOCKS
+  */
+  socket.on("stocks", (data) => {
+    console.log("stocks event", data);
 
-    return () => {
-      socket.off("getAllStocks");
-      socket.disconnect();
-    };
-  }, []);
+    const stocksArray = Array.isArray(data)
+      ? data
+      : data?.stocks || [];
+
+    setStocksData(stocksArray);
+  });
+
+  /*
+    SINGLE STOCK UPDATE
+  */
+  socket.on("stockUpdate", (updatedStock) => {
+    // console.log("stockUpdate", updatedStock);
+
+    if (!updatedStock?.token) return;
+
+    setStocksData((prev) =>
+      prev.map((stock) =>
+        stock.token === updatedStock.token
+          ? { ...stock, ...updatedStock }
+          : stock
+      )
+    );
+  });
+
+  /*
+    LIVE TICK
+  */
+  socket.on("liveTick", (tick) => {
+    // console.log("liveTick", tick);
+
+    if (!tick?.token) return;
+
+    setStocksData((prev) =>
+      prev.map((stock) =>
+        stock.token === tick.token
+          ? {
+              ...stock,
+              ...tick,
+            }
+          : stock
+      )
+    );
+  });
+
+  return () => {
+    socket.disconnect();
+  };
+}, []);
 
   const styles = {
     container: {
@@ -107,7 +138,7 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency, alertResult }) => {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      padding: "10px 16px",
+      padding: "10px 14px",
       borderBottom: "1px solid #1e222d",
       cursor: "pointer",
     },
@@ -210,10 +241,9 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency, alertResult }) => {
       <div className="custom-scrollbar" style={styles.listContainer}>
         {/* {alertResult?.length && alertResult */}
         {stocksData
-          .filter((s) =>
-            s.name.toLowerCase().includes(searchTerm.toLowerCase()),
+          .filter(
+            (s) => s.name.toLowerCase().includes(searchTerm.toLowerCase()),
             // s.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
-
           )
           .map((stock, idx) => {
             const isPositive = parseFloat(stock.percent_change) >= 0;
@@ -242,15 +272,16 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency, alertResult }) => {
                 }
               >
                 <div style={styles.stockLeft}>
-                  <div style={styles.stockName} >
-                    {stock.name}{stock.symbol} {stock.rsi}
+                  <div style={styles.stockName}>
+                    {stock.symbol}
+                    {/* {stock.symbol} {stock.rsi} */}
                     {/* <span className="text-xs text-gray-500">{stock.userCode}</span> */}
                     <span style={styles.segment}>{stock.segment}</span>
                   </div>
                 </div>
                 <div style={styles.stockRight}>
                   <div style={{ ...styles.ltp, color }}>
-                    {stock.ltp} <span className="ml-2"> {Arrow} </span>
+                    {stock.ltp} <span> {Arrow} </span>
                   </div>
                   <div style={{ ...styles.changeData, color }}>
                     {stock.change} (

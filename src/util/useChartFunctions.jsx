@@ -23,45 +23,52 @@ export default function useChartFunctions({
   indicatorConfigs,
   fromDate,
   toDate,
+  socket,
+  candlesRef, // ✅ ADD THIS
 }) {
   /* ================= FETCH INDICATOR API ================= */
 
-  async function fetchDataByCurrency(selectedCurrency, timeframeValue, fromDate, toDate) {
-    if (!selectedCurrency) return;
+  // async function fetchDataByCurrency(
+  //   selectedCurrency,
+  //   timeframeValue,
+  //   fromDate,
+  //   toDate,
+  // ) {
+  //   if (!selectedCurrency) return;
 
-    const symbol = selectedCurrency?.name || "TCS";
-    const interval = timeframeValue || "5m";
-    const segment = selectedCurrency?.segment || "NSE";
+  //   const symbol = selectedCurrency?.name || "TCS";
+  //   const interval = timeframeValue || "5m";
+  //   const segment = selectedCurrency?.segment || "NSE";
 
-    const from = `${fromDate} 09:15`;
-    const to = `${toDate} 15:30`;
+  //   const from = `${fromDate} 09:15`;
+  //   const to = `${toDate} 15:30`;
 
-    let url = "";
+  //   let url = "";
 
-    // 🔥 SWITCH BASED ON TYPE
-    switch (selectedCurrency?.type) {
-      case "OPTIONS":
-        url = `options/historical?symbol=${symbol}&strike=${selectedCurrency?.strike}&type=${selectedCurrency?.optionType}&interval=${interval}&fromdate=${fromDate}&todate=${toDate}`;
-        break;
+  //   // 🔥 SWITCH BASED ON TYPE
+  //   switch (selectedCurrency?.type) {
+  //     case "OPTIONS":
+  //       url = `options/historical?symbol=${symbol}&strike=${selectedCurrency?.strike}&type=${selectedCurrency?.optionType}&interval=${interval}&fromdate=${fromDate}&todate=${toDate}`;
+  //       break;
 
-      case "FUTURES":
-        url = `futures/historical?symbol=${symbol}&interval=${interval}&fromdate=${fromDate}&todate=${toDate}`;
-        break;
+  //     case "FUTURES":
+  //       url = `futures/historical?symbol=${symbol}&interval=${interval}&fromdate=${fromDate}&todate=${toDate}`;
+  //       break;
 
-      case "EQUITY":
-      default:
-        url = `equity/historical-v2?symbol=${symbol}&interval=${interval}&segment=${segment}&fromDate=${from}&toDate=${to}`;
-        break;
-    }
+  //     case "EQUITY":
+  //     default:
+  //       url = `equity/historical-v2?symbol=${symbol}&interval=${interval}&segment=${segment}&fromDate=${from}&toDate=${to}`;
+  //       break;
+  //   }
 
-    console.log("🚀 API HIT:", url);
+  //   console.log("🚀 API HIT:", url);
 
-    const response = await apiService.get(url);
+  //   const response = await apiService.get(url);
 
-    // if (response) shiftTimeToIST(response);
+  //   // if (response) shiftTimeToIST(response);
 
-    return response;
-  }
+  //   return response;
+  // }
 
   // async function fetchDataByCurrency(
   //   selectedCurrency,
@@ -109,11 +116,13 @@ export default function useChartFunctions({
       selectedIndicator.map(async (indicator) => {
         try {
           const result = await fetchDataForIndicators(
+            candlesRef.current,
             selectedCurrency,
             indicator,
             timeframeValue,
             fromDate,
             toDate,
+            socket,
           );
           processIndicatorResponse(indicator, result);
         } catch (error) {
@@ -134,969 +143,974 @@ export default function useChartFunctions({
     const rows = getRowsByIndicator(indicator, maType, indicatorConfigs);
 
     switch (indicator) {
-            case "RSI": {
-              const rsiData = result?.data?.rsi ?? [];
-              const smoothingData = result?.data?.smoothingMA ?? [];
-              const bbUpperData = result?.data?.bbUpperBand ?? [];
-              const bbLowerData = result?.data?.bbLowerBand ?? [];
-
-              indicatorDataRef.current.RSI = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.RSI = {
-                rsi: rsiData[rsiData.length - 1]?.value,
-                smoothingMA: smoothingData[smoothingData.length - 1]?.value,
-                bbUpperBand:
-                  bbUpperData.length > 0
-                    ? bbUpperData[bbUpperData.length - 1]?.value
-                    : null,
-                bbLowerBand:
-                  bbLowerData.length > 0
-                    ? bbLowerData[bbLowerData.length - 1]?.value
-                    : null,
-              };
-
-              break;
-            }
-            case "BBW": {
-              const bbwData = result?.data?.bbw ?? [];
-              const highestData = result?.data?.highest ?? [];
-              const lowestData = result?.data?.lowest ?? [];
-
-              indicatorDataRef.current.BBW = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.BBW = {
-                bbw: bbwData[bbwData.length - 1]?.value ?? null,
-
-                highest:
-                  highestData.length > 0
-                    ? highestData[highestData.length - 1]?.value
-                    : null,
-
-                lowest:
-                  lowestData.length > 0
-                    ? lowestData[lowestData.length - 1]?.value
-                    : null,
-              };
-
-              break;
-            }
-            case "MACD": {
-              const macdData = result?.data?.macd ?? [];
-              const signalData = result?.data?.signal ?? [];
-              const histogramData = result?.data?.histogram ?? [];
-
-              indicatorDataRef.current.MACD = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.MACD = {
-                macd: macdData[macdData.length - 1]?.value ?? null,
-
-                signal: signalData[signalData.length - 1]?.value ?? null,
-
-                histogram:
-                  histogramData[histogramData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "BBPERB": {
-              const percentBData = result?.data?.percentB ?? [];
-
-              indicatorSeriesRef.current[indicator] = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current[indicator] = {
-                percentB:
-                  percentBData.length > 0
-                    ? percentBData[percentBData.length - 1]?.value
-                    : null,
-              };
-
-              break;
-            }
-            case "VWAP": {
-              const vwapData = result?.data?.vwap ?? [];
-              const upper1Data = result?.data?.upper1 ?? [];
-              const lower1Data = result?.data?.lower1 ?? [];
-              const upper2Data = result?.data?.upper2 ?? [];
-              const lower2Data = result?.data?.lower2 ?? [];
-              const upper3Data = result?.data?.upper3 ?? [];
-              const lower3Data = result?.data?.lower3 ?? [];
-
-              indicatorDataRef.current.VWAP = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.VWAP = {
-                vwap: vwapData[vwapData.length - 1]?.value ?? null,
-                upper1: upper1Data[upper1Data.length - 1]?.value ?? null,
-                lower1: lower1Data[lower1Data.length - 1]?.value ?? null,
-                upper2: upper2Data[upper2Data.length - 1]?.value ?? null,
-                lower2: lower2Data[lower2Data.length - 1]?.value ?? null,
-                upper3: upper3Data[upper3Data.length - 1]?.value ?? null,
-                lower3: lower3Data[lower3Data.length - 1]?.value ?? null,
-              };
-
-              console.log("VWAP RESULT", result);
-
-              break;
-            }
-            case "CKS": {
-              const longData = result?.data?.long ?? [];
-              const shortData = result?.data?.short ?? [];
-
-              indicatorDataRef.current.CKS = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.CKS = {
-                long: longData[longData.length - 1]?.value ?? null,
-                short: shortData[shortData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "HV": {
-              const hvData = result?.data?.hv ?? [];
-
-              indicatorDataRef.current.HV = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.HV = {
-                hvLine: hvData[hvData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-
-            case "CMF": {
-              const cmfData = result?.data?.cmf ?? [];
-
-              indicatorDataRef.current.CMF = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.CMF = {
-                cmfLine: cmfData[cmfData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "SMA": {
-              const smaData = result?.data?.sma ?? [];
-              const smoothingData = result?.data?.smoothingMA ?? [];
-              const bbUpper = result?.data?.bbUpper ?? [];
-              const bbLower = result?.data?.bbLower ?? [];
-
-              indicatorDataRef.current.SMA = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.SMA = {
-                sma: smaData[smaData.length - 1]?.value,
-                smoothingMA: smoothingData[smoothingData.length - 1]?.value,
-                bbUpper: bbUpper[bbUpper.length - 1]?.value,
-                bbLower: bbLower[bbLower.length - 1]?.value,
-              };
-              break;
-            }
-
-            case "ICHIMOKU": {
-              indicatorDataRef.current.ICHIMOKU = {
-                result,
-                rows,
-              };
-              const conversionLine = result?.data?.conversionLine;
-              const baseLine = result?.data?.baseLine;
-              const leadLine1 = result?.data?.leadLine1;
-              const leadLine2 = result?.data?.leadLine2;
-              const laggingSpan = result?.data?.laggingSpan;
-
-              latestIndicatorValuesRef.current.ICHIMOKU = {
-                conversionLine:
-                  conversionLine?.[conversionLine.length - 1]?.value,
-                baseLine: baseLine?.[baseLine.length - 1]?.value,
-                leadLine1: leadLine1?.[leadLine1.length - 1]?.value,
-                leadLine2: leadLine2?.[leadLine2.length - 1]?.value,
-                laggingSpan: laggingSpan?.[laggingSpan.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "EMA": {
-              const emaData = result?.data?.ema ?? [];
-              const smoothingData = result?.data?.smoothingMA ?? [];
-              const bbUpperData = result?.data?.bbUpper ?? [];
-              const bbLowerData = result?.data?.bbLower ?? [];
-
-              indicatorDataRef.current.EMA = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.EMA = {
-                ema: emaData[emaData.length - 1]?.value ?? null,
-                smoothingMA:
-                  smoothingData[smoothingData.length - 1]?.value ?? null,
-                bbUpper: bbUpperData[bbUpperData.length - 1]?.value ?? null,
-                bbLower: bbLowerData[bbLowerData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "WMA": {
-              const wmaData = result?.data?.wma ?? [];
-
-              indicatorDataRef.current.WMA = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.WMA = {
-                wma: wmaData[wmaData.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "HMA": {
-              const hmaData = result?.data?.hma ?? [];
-
-              indicatorDataRef.current.HMA = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.HMA = {
-                hma: hmaData[hmaData.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "DEMA": {
-              const demaData = result?.data?.dema ?? [];
-
-              indicatorDataRef.current.DEMA = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.DEMA = {
-                dema: demaData[demaData.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "TEMA": {
-              const temaData = result?.data?.tema ?? [];
-
-              indicatorDataRef.current.TEMA = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.TEMA = {
-                tema: temaData[temaData.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "KAMA": {
-              const kamaData = result?.data?.kama ?? [];
-
-              indicatorDataRef.current.KAMA = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.KAMA = {
-                kama: kamaData[kamaData.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "SUPERTREND": {
-              const upTrend = result?.data?.upTrend ?? [];
-              const downTrend = result?.data?.downTrend ?? [];
-              const bodyMiddle = result?.data?.bodyMiddle ?? [];
-
-              // store the series reference and rows
-              indicatorDataRef.current.SUPERTREND = {
-                result,
-                rows,
-              };
-
-              // get the last available value for each line
-              const lastUp = upTrend[upTrend.length - 1]?.value ?? null;
-              const lastDown = downTrend[downTrend.length - 1]?.value ?? null;
-              const lastMiddle =
-                bodyMiddle[bodyMiddle.length - 1]?.value ?? null;
-
-              // store latest values
-              latestIndicatorValuesRef.current.SUPERTREND = {
-                upTrend: lastUp,
-                downTrend: lastDown,
-                bodyMiddle: lastMiddle,
-              };
-
-              break;
-            }
-            case "AROON": {
-              const aroonUp = result?.data?.aroonUp ?? [];
-              const aroonDown = result?.data?.aroonDown ?? [];
-
-              indicatorDataRef.current.AROON = {
-                result,
-                rows,
-              };
-              console.log(result, "ressssssssssss");
-
-              latestIndicatorValuesRef.current.AROON = {
-                aroonUp: aroonUp[aroonUp.length - 1]?.value,
-                aroonDown: aroonDown[aroonDown.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "AO": {
-              const osc = result?.data ?? [];
-
-              indicatorDataRef.current.AO = {
-                result,
-                rows,
-              };
-              latestIndicatorValuesRef.current.AO = {
-                oscillator: osc[osc.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "ADX": {
-              indicatorDataRef.current.ADX = {
-                result,
-                rows,
-              };
-
-              const adx = result?.data?.adx ?? [];
-
-              latestIndicatorValuesRef.current.ADX = {
-                adx: adx[adx.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "CCI": {
-              const cciLine = result?.data?.cciLine ?? [];
-              const cciMa = result?.data?.cciMa ?? [];
-              const bbUpper = result?.data?.bbUpper ?? [];
-              const bbLower = result?.data?.bbLower ?? [];
-
-              indicatorDataRef.current.CCI = {
-                result,
-                rows,
-              };
-              latestIndicatorValuesRef.current.CCI = {
-                cci: cciLine[cciLine.length - 1]?.value,
-                cciMa: cciMa[cciMa.length - 1]?.value,
-                bbUpper: bbUpper[bbUpper.length - 1]?.value,
-                bbLower: bbLower[bbLower.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "CMO": {
-              const cmoData = result?.data?.cmo ?? [];
-
-              indicatorDataRef.current.CMO = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.CMO = {
-                cmo: cmoData[cmoData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-
-            case "MOM": {
-              const momentum = result?.data?.MOM ?? [];
-
-              if (!indicatorDataRef.current.MOM) {
-                indicatorDataRef.current.MOM = {
-                  MOM: null,
-                  result: null,
-                  rows: [],
-                };
-              }
-
-              indicatorDataRef.current.MOM.result = result;
-              indicatorDataRef.current.MOM.rows = rows;
-
-              latestIndicatorValuesRef.current.MOM = {
-                MOM: momentum[momentum.length - 1]?.value,
-              };
-
-              break;
-            }
-
-            case "ROC": {
-              indicatorDataRef.current.ROC = {
-                result,
-                rows,
-              };
-
-              const roc = result?.data?.roc ?? [];
-
-              latestIndicatorValuesRef.current.ROC = {
-                roc: roc[roc.length - 1]?.value,
-              };
-
-              break;
-            }
-
-            case "WPR": {
-              indicatorSeriesRef.current["WPR"] = {
-                result,
-                rows,
-              };
-
-              const r = result?.data?.r ?? [];
-
-              latestIndicatorValuesRef.current["WPR"] = {
-                r: r[r.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "TR": {
-              const trData = result?.data?.tr ?? [];
-
-              indicatorSeriesRef.current[indicator] = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current[indicator] = {
-                tr: trData.length > 0 ? trData[trData.length - 1]?.value : null,
-              };
-
-              break;
-            }
-            case "VWMA": {
-              const vwmaData = result?.data?.vwma ?? [];
-
-              indicatorSeriesRef.current[indicator] = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current[indicator] = {
-                vwma:
-                  vwmaData.length > 0
-                    ? vwmaData[vwmaData.length - 1]?.value
-                    : null,
-              };
-
-              break;
-            }
-            case "TMA": {
-              const tmaData = result?.data?.tma ?? [];
-
-              indicatorSeriesRef.current[indicator] = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current[indicator] = {
-                tma:
-                  tmaData.length > 0
-                    ? tmaData[tmaData.length - 1]?.value
-                    : null,
-              };
-
-              break;
-            }
-            case "RMA": {
-              const rmaData = result?.data?.rma ?? [];
-
-              indicatorSeriesRef.current[indicator] = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current[indicator] = {
-                rma:
-                  rmaData.length > 0
-                    ? rmaData[rmaData.length - 1]?.value
-                    : null,
-              };
-
-              break;
-            }
-            case "ATR": {
-              indicatorDataRef.current.ATR = {
-                result,
-                rows,
-              };
-
-              const atr = result?.data?.atr ?? [];
-
-              latestIndicatorValuesRef.current.ATR = {
-                atr: atr[atr.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "MFI": {
-              const mfiData = result?.data?.mfi ?? [];
-
-              indicatorDataRef.current.MFI = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.MFI = {
-                mfi: mfiData[mfiData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "PSAR": {
-              const psar = result;
-
-              indicatorDataRef.current.PSAR = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.PSAR = {
-                psar: psar?.[psar.length - 1]?.value,
-              };
-
-              break;
-            }
-
-            case "EOM": {
-              const eomData = result?.data?.eom ?? [];
-
-              indicatorDataRef.current.EOM = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.EOM = {
-                eom: eomData[eomData.length - 1]?.value,
-              };
-              break;
-            }
-
-            case "KC": {
-              const upperData = result?.data?.upper ?? [];
-              const lowerData = result?.data?.lower ?? [];
-              const middleData = result?.data?.middle ?? [];
-
-              indicatorDataRef.current.KC = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.KC = {
-                upper: upperData[upperData.length - 1]?.value ?? null,
-                lower: lowerData[lowerData.length - 1]?.value ?? null,
-                middle: middleData[middleData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "DC": {
-              const upperData = result?.data?.upper ?? [];
-              const lowerData = result?.data?.lower ?? [];
-              const basisData = result?.data?.basis ?? [];
-
-              indicatorDataRef.current.DC = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.DC = {
-                upper: upperData[upperData.length - 1]?.value ?? null,
-                lower: lowerData[lowerData.length - 1]?.value ?? null,
-                basis: basisData[basisData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-
-            case "PVO": {
-              const pvoData = result?.data?.pvo ?? [];
-              const signalData = result?.data?.signal ?? [];
-              const histData = result?.data?.hist ?? [];
-
-              if (!indicatorDataRef.current.PVO) {
-                indicatorDataRef.current.PVO = {};
-              }
-
-              indicatorDataRef.current.PVO.result = result;
-              indicatorDataRef.current.PVO.rows = rows;
-
-              if (!latestIndicatorValuesRef.current.PVO) {
-                latestIndicatorValuesRef.current.PVO = {};
-              }
-
-              latestIndicatorValuesRef.current.PVO = {
-                pvo: pvoData[pvoData.length - 1]?.value,
-                signal: signalData[signalData.length - 1]?.value,
-                hist: histData[histData.length - 1]?.value,
-              };
-
-              break;
-            }
-            case "UO": {
-              const uoData = result?.data?.uo ?? [];
-
-              indicatorDataRef.current.UO = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.UO = {
-                uo: uoData[uoData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "PVI": {
-              const pviData = result?.data?.pvi ?? [];
-              const pviEmaData = result?.data?.pviEma ?? [];
-
-              indicatorDataRef.current.PVI = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.PVI = {
-                pvi: pviData[pviData.length - 1]?.value ?? null,
-                pviEma: pviEmaData[pviEmaData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "NVI": {
-              const nviData = result?.data?.nvi ?? [];
-              const nviEmaData = result?.data?.pviEma ?? [];
-
-              indicatorDataRef.current.NVI = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.NVI = {
-                nvi: nviData[nviData.length - 1]?.value ?? null,
-                nviEma: nviEmaData[nviEmaData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-
-            case "STOCHRSI": {
-              const kData = result?.data?.kLine ?? [];
-              const dData = result?.data?.dLine ?? [];
-
-              indicatorDataRef.current.STOCHRSI = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.STOCHRSI = {
-                kLine: kData[kData.length - 1]?.value ?? null,
-                dLine: dData[dData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-
-            case "STOCH": {
-              const k = result?.data?.k ?? [];
-              const d = result?.data?.d ?? [];
-
-              indicatorDataRef.current.STOCH = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.STOCH = {
-                k: k.length ? k[k.length - 1].value : null,
-                d: d.length ? d[d.length - 1].value : null,
-              };
-
-              break;
-            }
-
-            case "TRIX": {
-              const trixData = result?.data?.trix ?? [];
-
-              indicatorDataRef.current.TRIX = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.TRIX = {
-                trix: trixData[trixData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "FT": {
-              const rows = result?.data?.candles ?? [];
-
-              indicatorDataRef.current.FT = {
-                result,
-                rows,
-              };
-
-              console.log("result", result);
-
-              latestIndicatorValuesRef.current.FT = {
-                fisherLine: rows[rows.length - 1]?.fish ?? null,
-                triggerLine: rows[rows.length - 1]?.trigger ?? null,
-              };
-
-              break;
-            }
-            case "ZIGZAG": {
-              const lineData = result?.data?.zigzagLine ?? [];
-              const pivots = result?.data?.paneLabels ?? [];
-
-              indicatorDataRef.current.ZIGZAG = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.ZIGZAG = {
-                zigzagLine: lineData[lineData.length - 1]?.value ?? null,
-                lastPivotType: pivots[pivots.length - 1]?.type ?? null,
-              };
-
-              break;
-            }
-
-            case "VP": {
-              const volume = result?.data?.volume ?? [];
-              const volumeMA = result?.data?.volumeMA ?? [];
-
-              indicatorDataRef.current.VP = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.VP = {
-                volume: volume.at(-1)?.value,
-                volumeMA: volumeMA.at(-1)?.value,
-              };
-
-              break;
-            }
-            case "OBV": {
-              const obv = result?.data?.obv ?? [];
-              const ma = result?.data?.smoothingMA ?? [];
-              const bbUpper = result?.data?.bbUpper ?? [];
-              const bbLower = result?.data?.bbLower ?? [];
-
-              indicatorDataRef.current.OBV = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.OBV = {
-                obv: obv.at(-1)?.value ?? null,
-                smoothingMA: ma.at(-1)?.value ?? null,
-                bbUpper: bbUpper.at(-1)?.value ?? null,
-                bbLower: bbLower.at(-1)?.value ?? null,
-              };
-
-              break;
-            }
-            case "VOL": {
-              const volData = result?.data?.volume ?? [];
-              const maData = result?.data?.volumeMA ?? [];
-
-              indicatorDataRef.current.VOL = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.VOL = {
-                volume: volData[volData.length - 1]?.value ?? null,
-                volumeMA: maData[maData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "CHOP": {
-              const chopData = result?.data?.chopLine ?? [];
-
-              indicatorDataRef.current.CHOP = {
-                result,
-                rows,
-              };
-
-              console.log(result, "ressssss");
-              latestIndicatorValuesRef.current.CHOP = {
-                chop: chopData[chopData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "STDDEV": {
-              const stddevData = result?.data ?? [];
-
-              indicatorDataRef.current.STDDEV = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.STDDEV = {
-                value: stddevData.at(-1)?.value,
-              };
-
-              break;
-            }
-            case "BB": {
-              const upperData = result?.data?.upper ?? [];
-              const lowerData = result?.data?.lower ?? [];
-              const basisData = result?.data?.basis ?? [];
-
-              indicatorDataRef.current.BB = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.BB = {
-                upper: upperData[upperData.length - 1]?.value ?? null,
-                lower: lowerData[lowerData.length - 1]?.value ?? null,
-                basis: basisData[basisData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "AD": {
-              const adData = result?.data ?? [];
-
-              indicatorDataRef.current.AD = {
-                result,
-                rows,
-              };
-              console.log(result, "ress");
-
-              latestIndicatorValuesRef.current.AD = {
-                value: adData.at(-1)?.value,
-              };
-
-              break;
-            }
-            case "KVO": {
-              const kvoData = result?.data?.kvo ?? [];
-              const signalData = result?.data?.signal ?? [];
-
-              indicatorDataRef.current.KVO = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.KVO = {
-                kvo: kvoData[kvoData.length - 1]?.value ?? null,
-                signal: signalData[signalData.length - 1]?.value ?? null,
-              };
-
-              break;
-            }
-            case "AWO": {
-              const rows = result?.data?.series ?? [];
-
-              const awoData = rows
-                .filter((d) => d.ao != null && d.time != null)
+      case "RSI": {
+        const rsiData = result?.data?.rsi ?? [];
+        const smoothingData = result?.data?.smoothingMA ?? [];
+        const bbUpperData = result?.data?.bbUpperBand ?? [];
+        const bbLowerData = result?.data?.bbLowerBand ?? [];
+
+        indicatorDataRef.current.RSI = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.RSI = {
+          rsi: rsiData[rsiData.length - 1]?.value,
+          smoothingMA: smoothingData[smoothingData.length - 1]?.value,
+          bbUpperBand:
+            bbUpperData.length > 0
+              ? bbUpperData[bbUpperData.length - 1]?.value
+              : null,
+          bbLowerBand:
+            bbLowerData.length > 0
+              ? bbLowerData[bbLowerData.length - 1]?.value
+              : null,
+        };
+
+        break;
+      }
+      case "BBW": {
+        const bbwData = result?.data?.bbw ?? [];
+        const highestData = result?.data?.highest ?? [];
+        const lowestData = result?.data?.lowest ?? [];
+
+        indicatorDataRef.current.BBW = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.BBW = {
+          bbw: bbwData[bbwData.length - 1]?.value ?? null,
+
+          highest:
+            highestData.length > 0
+              ? highestData[highestData.length - 1]?.value
+              : null,
+
+          lowest:
+            lowestData.length > 0
+              ? lowestData[lowestData.length - 1]?.value
+              : null,
+        };
+
+        break;
+      }
+      case "MACD": {
+        const macdData = result?.data?.macd ?? [];
+        const signalData = result?.data?.signal ?? [];
+        const histogramData = result?.data?.histogram ?? [];
+
+        indicatorDataRef.current.MACD = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.MACD = {
+          macd: macdData[macdData.length - 1]?.value ?? null,
+
+          signal: signalData[signalData.length - 1]?.value ?? null,
+
+          histogram: histogramData[histogramData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "BBPERB": {
+        const percentBData = result?.data?.percentB ?? [];
+
+        indicatorSeriesRef.current[indicator] = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current[indicator] = {
+          percentB:
+            percentBData.length > 0
+              ? percentBData[percentBData.length - 1]?.value
+              : null,
+        };
+
+        break;
+      }
+      case "VWAP": {
+        const vwapData = result?.data?.vwap ?? [];
+        const upper1Data = result?.data?.upper1 ?? [];
+        const lower1Data = result?.data?.lower1 ?? [];
+        const upper2Data = result?.data?.upper2 ?? [];
+        const lower2Data = result?.data?.lower2 ?? [];
+        const upper3Data = result?.data?.upper3 ?? [];
+        const lower3Data = result?.data?.lower3 ?? [];
+
+        indicatorDataRef.current.VWAP = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.VWAP = {
+          vwap: vwapData[vwapData.length - 1]?.value ?? null,
+          upper1: upper1Data[upper1Data.length - 1]?.value ?? null,
+          lower1: lower1Data[lower1Data.length - 1]?.value ?? null,
+          upper2: upper2Data[upper2Data.length - 1]?.value ?? null,
+          lower2: lower2Data[lower2Data.length - 1]?.value ?? null,
+          upper3: upper3Data[upper3Data.length - 1]?.value ?? null,
+          lower3: lower3Data[lower3Data.length - 1]?.value ?? null,
+        };
+
+        console.log("VWAP RESULT", result);
+
+        break;
+      }
+      case "CKS": {
+        const longData = result?.data?.long ?? [];
+        const shortData = result?.data?.short ?? [];
+
+        indicatorDataRef.current.CKS = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.CKS = {
+          long: longData[longData.length - 1]?.value ?? null,
+          short: shortData[shortData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "HV": {
+        const hvData = result?.data?.hv ?? [];
+
+        indicatorDataRef.current.HV = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.HV = {
+          hvLine: hvData[hvData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+
+      case "CMF": {
+        const cmfData = result?.data?.cmf ?? [];
+
+        indicatorDataRef.current.CMF = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.CMF = {
+          cmfLine: cmfData[cmfData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "SMA": {
+        const smaData = result?.data?.sma ?? [];
+        const smoothingData = result?.data?.smoothingMA ?? [];
+        const bbUpper = result?.data?.bbUpper ?? [];
+        const bbLower = result?.data?.bbLower ?? [];
+
+        indicatorDataRef.current.SMA = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.SMA = {
+          sma: smaData[smaData.length - 1]?.value,
+          smoothingMA: smoothingData[smoothingData.length - 1]?.value,
+          bbUpper: bbUpper[bbUpper.length - 1]?.value,
+          bbLower: bbLower[bbLower.length - 1]?.value,
+        };
+        break;
+      }
+
+      case "ICHIMOKU": {
+        indicatorDataRef.current.ICHIMOKU = {
+          result,
+          rows,
+        };
+        const conversionLine = result?.data?.conversionLine;
+        const baseLine = result?.data?.baseLine;
+        const leadLine1 = result?.data?.leadLine1;
+        const leadLine2 = result?.data?.leadLine2;
+        const laggingSpan = result?.data?.laggingSpan;
+
+        latestIndicatorValuesRef.current.ICHIMOKU = {
+          conversionLine: conversionLine?.[conversionLine.length - 1]?.value,
+          baseLine: baseLine?.[baseLine.length - 1]?.value,
+          leadLine1: leadLine1?.[leadLine1.length - 1]?.value,
+          leadLine2: leadLine2?.[leadLine2.length - 1]?.value,
+          laggingSpan: laggingSpan?.[laggingSpan.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "EMA": {
+        const emaData = result?.data?.ema ?? [];
+        const smoothingData = result?.data?.smoothingMA ?? [];
+        const bbUpperData = result?.data?.bbUpper ?? [];
+        const bbLowerData = result?.data?.bbLower ?? [];
+
+        indicatorDataRef.current.EMA = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.EMA = {
+          ema: emaData[emaData.length - 1]?.value ?? null,
+          smoothingMA: smoothingData[smoothingData.length - 1]?.value ?? null,
+          bbUpper: bbUpperData[bbUpperData.length - 1]?.value ?? null,
+          bbLower: bbLowerData[bbLowerData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "WMA": {
+        const wmaData = result?.data?.wma ?? [];
+
+        indicatorDataRef.current.WMA = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.WMA = {
+          wma: wmaData[wmaData.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "HMA": {
+        const hmaData = result?.data?.hma ?? [];
+
+        indicatorDataRef.current.HMA = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.HMA = {
+          hma: hmaData[hmaData.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "DEMA": {
+        const demaData = result?.data?.dema ?? [];
+
+        indicatorDataRef.current.DEMA = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.DEMA = {
+          dema: demaData[demaData.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "TEMA": {
+        const temaData = result?.data?.tema ?? [];
+
+        indicatorDataRef.current.TEMA = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.TEMA = {
+          tema: temaData[temaData.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "KAMA": {
+        const kamaData = result?.data?.kama ?? [];
+
+        indicatorDataRef.current.KAMA = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.KAMA = {
+          kama: kamaData[kamaData.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "SUPERTREND": {
+        const upTrend = result?.data?.upTrend ?? [];
+        const downTrend = result?.data?.downTrend ?? [];
+        const bodyMiddle = result?.data?.bodyMiddle ?? [];
+
+        // store the series reference and rows
+        indicatorDataRef.current.SUPERTREND = {
+          result,
+          rows,
+        };
+
+        // get the last available value for each line
+        const lastUp = upTrend[upTrend.length - 1]?.value ?? null;
+        const lastDown = downTrend[downTrend.length - 1]?.value ?? null;
+        const lastMiddle = bodyMiddle[bodyMiddle.length - 1]?.value ?? null;
+
+        // store latest values
+        latestIndicatorValuesRef.current.SUPERTREND = {
+          upTrend: lastUp,
+          downTrend: lastDown,
+          bodyMiddle: lastMiddle,
+        };
+
+        break;
+      }
+      case "AROON": {
+        const aroonUp = result?.data?.aroonUp ?? [];
+        const aroonDown = result?.data?.aroonDown ?? [];
+
+        indicatorDataRef.current.AROON = {
+          result,
+          rows,
+        };
+        console.log(result, "ressssssssssss");
+
+        latestIndicatorValuesRef.current.AROON = {
+          aroonUp: aroonUp[aroonUp.length - 1]?.value,
+          aroonDown: aroonDown[aroonDown.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "AO": {
+        const osc = result?.data ?? [];
+
+        indicatorDataRef.current.AO = {
+          result,
+          rows,
+        };
+        latestIndicatorValuesRef.current.AO = {
+          oscillator: osc[osc.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "ADX": {
+        indicatorDataRef.current.ADX = {
+          result,
+          rows,
+        };
+
+        const adx = result?.data?.adx ?? [];
+
+        latestIndicatorValuesRef.current.ADX = {
+          adx: adx[adx.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "CCI": {
+        const cciLine = result?.data?.cciLine ?? [];
+        const cciMa = result?.data?.cciMa ?? [];
+        const bbUpper = result?.data?.bbUpper ?? [];
+        const bbLower = result?.data?.bbLower ?? [];
+
+        indicatorDataRef.current.CCI = {
+          result,
+          rows,
+        };
+        latestIndicatorValuesRef.current.CCI = {
+          cci: cciLine[cciLine.length - 1]?.value,
+          cciMa: cciMa[cciMa.length - 1]?.value,
+          bbUpper: bbUpper[bbUpper.length - 1]?.value,
+          bbLower: bbLower[bbLower.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "CMO": {
+        const cmoData = result?.data?.cmo ?? [];
+
+        indicatorDataRef.current.CMO = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.CMO = {
+          cmo: cmoData[cmoData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+
+      case "MOM": {
+        const momentum = result?.data?.MOM ?? [];
+
+        if (!indicatorDataRef.current.MOM) {
+          indicatorDataRef.current.MOM = {
+            MOM: null,
+            result: null,
+            rows: [],
+          };
+        }
+
+        indicatorDataRef.current.MOM.result = result;
+        indicatorDataRef.current.MOM.rows = rows;
+
+        latestIndicatorValuesRef.current.MOM = {
+          MOM: momentum[momentum.length - 1]?.value,
+        };
+
+        break;
+      }
+
+      case "ROC": {
+        indicatorDataRef.current.ROC = {
+          result,
+          rows,
+        };
+
+        const roc = result?.data?.roc ?? [];
+
+        latestIndicatorValuesRef.current.ROC = {
+          roc: roc[roc.length - 1]?.value,
+        };
+
+        break;
+      }
+
+      case "WPR": {
+        indicatorSeriesRef.current["WPR"] = {
+          result,
+          rows,
+        };
+
+        const r = result?.data?.r ?? [];
+
+        latestIndicatorValuesRef.current["WPR"] = {
+          r: r[r.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "TR": {
+        const trData = result?.data?.tr ?? [];
+
+        indicatorSeriesRef.current[indicator] = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current[indicator] = {
+          tr: trData.length > 0 ? trData[trData.length - 1]?.value : null,
+        };
+
+        break;
+      }
+      case "VWMA": {
+        const vwmaData = result?.data?.vwma ?? [];
+
+        indicatorSeriesRef.current[indicator] = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current[indicator] = {
+          vwma:
+            vwmaData.length > 0 ? vwmaData[vwmaData.length - 1]?.value : null,
+        };
+
+        break;
+      }
+      case "TMA": {
+        const tmaData = result?.data?.tma ?? [];
+
+        indicatorSeriesRef.current[indicator] = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current[indicator] = {
+          tma: tmaData.length > 0 ? tmaData[tmaData.length - 1]?.value : null,
+        };
+
+        break;
+      }
+      case "RMA": {
+        const rmaData = result?.data?.rma ?? [];
+
+        indicatorSeriesRef.current[indicator] = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current[indicator] = {
+          rma: rmaData.length > 0 ? rmaData[rmaData.length - 1]?.value : null,
+        };
+
+        break;
+      }
+      case "ATR": {
+        indicatorDataRef.current.ATR = {
+          result,
+          rows,
+        };
+
+        const atr = result?.data?.atr ?? [];
+
+        latestIndicatorValuesRef.current.ATR = {
+          atr: atr[atr.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "MFI": {
+        const mfiData = result?.data?.mfi ?? [];
+
+        indicatorDataRef.current.MFI = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.MFI = {
+          mfi: mfiData[mfiData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "PSAR": {
+        const psar = result;
+
+        indicatorDataRef.current.PSAR = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.PSAR = {
+          psar: psar?.[psar.length - 1]?.value,
+        };
+
+        break;
+      }
+
+      case "EOM": {
+        const eomData = result?.data?.eom ?? [];
+
+        indicatorDataRef.current.EOM = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.EOM = {
+          eom: eomData[eomData.length - 1]?.value,
+        };
+        break;
+      }
+
+      case "KC": {
+        const upperData = result?.data?.upper ?? [];
+        const lowerData = result?.data?.lower ?? [];
+        const middleData = result?.data?.middle ?? [];
+
+        indicatorDataRef.current.KC = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.KC = {
+          upper: upperData[upperData.length - 1]?.value ?? null,
+          lower: lowerData[lowerData.length - 1]?.value ?? null,
+          middle: middleData[middleData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "DC": {
+        const upperData = result?.data?.upper ?? [];
+        const lowerData = result?.data?.lower ?? [];
+        const basisData = result?.data?.basis ?? [];
+
+        indicatorDataRef.current.DC = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.DC = {
+          upper: upperData[upperData.length - 1]?.value ?? null,
+          lower: lowerData[lowerData.length - 1]?.value ?? null,
+          basis: basisData[basisData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+
+      case "PVO": {
+        const pvoData = result?.data?.pvo ?? [];
+        const signalData = result?.data?.signal ?? [];
+        const histData = result?.data?.hist ?? [];
+
+        if (!indicatorDataRef.current.PVO) {
+          indicatorDataRef.current.PVO = {};
+        }
+
+        indicatorDataRef.current.PVO.result = result;
+        indicatorDataRef.current.PVO.rows = rows;
+
+        if (!latestIndicatorValuesRef.current.PVO) {
+          latestIndicatorValuesRef.current.PVO = {};
+        }
+
+        latestIndicatorValuesRef.current.PVO = {
+          pvo: pvoData[pvoData.length - 1]?.value,
+          signal: signalData[signalData.length - 1]?.value,
+          hist: histData[histData.length - 1]?.value,
+        };
+
+        break;
+      }
+      case "UO": {
+        const uoData = result?.data?.uo ?? [];
+
+        indicatorDataRef.current.UO = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.UO = {
+          uo: uoData[uoData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "PVI": {
+        const pviData = result?.data?.pvi ?? [];
+        const pviEmaData = result?.data?.pviEma ?? [];
+
+        indicatorDataRef.current.PVI = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.PVI = {
+          pvi: pviData[pviData.length - 1]?.value ?? null,
+          pviEma: pviEmaData[pviEmaData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "NVI": {
+        const nviData = result?.data?.nvi ?? [];
+        const nviEmaData = result?.data?.pviEma ?? [];
+
+        indicatorDataRef.current.NVI = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.NVI = {
+          nvi: nviData[nviData.length - 1]?.value ?? null,
+          nviEma: nviEmaData[nviEmaData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+
+      case "STOCHRSI": {
+        const kData = result?.data?.kLine ?? [];
+        const dData = result?.data?.dLine ?? [];
+
+        indicatorDataRef.current.STOCHRSI = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.STOCHRSI = {
+          kLine: kData[kData.length - 1]?.value ?? null,
+          dLine: dData[dData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+
+      case "STOCH": {
+        const k = result?.data?.k ?? [];
+        const d = result?.data?.d ?? [];
+
+        indicatorDataRef.current.STOCH = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.STOCH = {
+          k: k.length ? k[k.length - 1].value : null,
+          d: d.length ? d[d.length - 1].value : null,
+        };
+
+        break;
+      }
+
+      case "TRIX": {
+        const trixData = result?.data?.trix ?? [];
+
+        indicatorDataRef.current.TRIX = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.TRIX = {
+          trix: trixData[trixData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "FT": {
+        const rows = result?.data?.candles ?? [];
+
+        indicatorDataRef.current.FT = {
+          result,
+          rows,
+        };
+
+        console.log("result", result);
+
+        latestIndicatorValuesRef.current.FT = {
+          fisherLine: rows[rows.length - 1]?.fish ?? null,
+          triggerLine: rows[rows.length - 1]?.trigger ?? null,
+        };
+
+        break;
+      }
+      case "ZIGZAG": {
+        const lineData = result?.data?.zigzagLine ?? [];
+        const pivots = result?.data?.paneLabels ?? [];
+
+        indicatorDataRef.current.ZIGZAG = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.ZIGZAG = {
+          zigzagLine: lineData[lineData.length - 1]?.value ?? null,
+          lastPivotType: pivots[pivots.length - 1]?.type ?? null,
+        };
+
+        break;
+      }
+
+      case "VP": {
+        const volume = result?.data?.volume ?? [];
+        const volumeMA = result?.data?.volumeMA ?? [];
+
+        indicatorDataRef.current.VP = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.VP = {
+          volume: volume.at(-1)?.value,
+          volumeMA: volumeMA.at(-1)?.value,
+        };
+
+        break;
+      }
+      case "OBV": {
+        const obv = result?.data?.obv ?? [];
+        const ma = result?.data?.smoothingMA ?? [];
+        const bbUpper = result?.data?.bbUpper ?? [];
+        const bbLower = result?.data?.bbLower ?? [];
+
+        indicatorDataRef.current.OBV = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.OBV = {
+          obv: obv.at(-1)?.value ?? null,
+          smoothingMA: ma.at(-1)?.value ?? null,
+          bbUpper: bbUpper.at(-1)?.value ?? null,
+          bbLower: bbLower.at(-1)?.value ?? null,
+        };
+
+        break;
+      }
+      case "VOL": {
+        const volData = result?.data?.volume ?? [];
+        const maData = result?.data?.volumeMA ?? [];
+
+        indicatorDataRef.current.VOL = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.VOL = {
+          volume: volData[volData.length - 1]?.value ?? null,
+          volumeMA: maData[maData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "CHOP": {
+        const chopData = result?.data?.chopLine ?? [];
+
+        indicatorDataRef.current.CHOP = {
+          result,
+          rows,
+        };
+
+        console.log(result, "ressssss");
+        latestIndicatorValuesRef.current.CHOP = {
+          chop: chopData[chopData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "STDDEV": {
+        const stddevData = result?.data ?? [];
+
+        indicatorDataRef.current.STDDEV = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.STDDEV = {
+          value: stddevData.at(-1)?.value,
+        };
+
+        break;
+      }
+      case "BB": {
+        const upperData = result?.data?.upper ?? [];
+        const lowerData = result?.data?.lower ?? [];
+        const basisData = result?.data?.basis ?? [];
+
+        indicatorDataRef.current.BB = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.BB = {
+          upper: upperData[upperData.length - 1]?.value ?? null,
+          lower: lowerData[lowerData.length - 1]?.value ?? null,
+          basis: basisData[basisData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "AD": {
+        const adData = result?.data ?? [];
+
+        indicatorDataRef.current.AD = {
+          result,
+          rows,
+        };
+        console.log(result, "ress");
+
+        latestIndicatorValuesRef.current.AD = {
+          value: adData.at(-1)?.value,
+        };
+
+        break;
+      }
+      case "KVO": {
+        const kvoData = result?.data?.kvo ?? [];
+        const signalData = result?.data?.signal ?? [];
+
+        indicatorDataRef.current.KVO = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.KVO = {
+          kvo: kvoData[kvoData.length - 1]?.value ?? null,
+          signal: signalData[signalData.length - 1]?.value ?? null,
+        };
+
+        break;
+      }
+      case "AWO": {
+        const rows = result?.data?.series ?? [];
+
+        const awoData = rows
+          .filter((d) => d.ao != null && d.time != null)
+          .map((d) => ({
+           time: Number(d.time) + IST_OFFSET,
+            value: Number(d.ao),
+            color: d.color, // optional if backend provides it
+            changeToGreen: d.changeToGreen,
+            changeToRed: d.changeToRed,
+          }));
+
+        indicatorDataRef.current.AWO = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.AWO = {
+          awo: awoData.length ? awoData[awoData.length - 1].value : null,
+        };
+
+        break;
+      }
+      case "VP":
+        return {
+          type: "multi",
+          data: {
+            vp:
+              result?.volumeprofile
+                ?.filter((d) => d.price != null && d.volume != null)
                 .map((d) => ({
-                  time: Number(d.time),
-                  value: Number(d.ao),
-                  color: d.color, // optional if backend provides it
-                  changeToGreen: d.changeToGreen,
-                  changeToRed: d.changeToRed,
-                }));
+                  price: Number(d.price),
+                  volume: Number(d.volume),
+                })) ?? [],
 
-              indicatorDataRef.current.AWO = {
-                result,
-                rows,
-              };
-
-              latestIndicatorValuesRef.current.AWO = {
-                awo: awoData.length ? awoData[awoData.length - 1].value : null,
-              };
-
-              break;
-            }
-            case "VP":
-              return {
-                type: "multi",
-                data: {
-                  vp:
-                    result?.volumeprofile
-                      ?.filter((d) => d.price != null && d.volume != null)
-                      .map((d) => ({
-                        price: Number(d.price),
-                        volume: Number(d.volume),
-                      })) ?? [],
-
-                  poc: result?.volumePoc ?? null,
-                  vah: result?.volumevah ?? null,
-                  val: result?.volumeval ?? null,
-                },
-              };
-
+            poc: result?.volumePoc ?? null,
+            vah: result?.volumevah ?? null,
+            val: result?.volumeval ?? null,
+          },
+        };
     }
   }
 
   return {
-    fetchDataByCurrency,
+    // fetchDataByCurrency,
     fetchIndicatorData,
     processIndicatorResponse,
   };
 }
 async function fetchDataForIndicators(
+  candles,
   selectedCurrency,
   type,
   timeframeValue,
   fromDate,
   toDate,
+  socket,
 ) {
   try {
-    const response = await apiService.post(
-      `/equity/indicatorDetails?symbol=${selectedCurrency?.name}&interval=${timeframeValue}&type=${type}&fromdate=${fromDate} 09:15&todate=${toDate} 15:30`,
-    );
+    const response = await new Promise((resolve, reject) => {
+      if (!socket) return reject(new Error("No socket"));
+
+      socket.emit("getIndicatorDetails", {
+        symbol: selectedCurrency?.name,
+        interval: timeframeValue,
+        type,
+
+        candles, // ✅ MOST IMPORTANT
+      });
+      socket.once("indicatorDetailsResponse", (data) => {
+        console.log(data, "===========================");
+        resolve(data);
+      });
+      socket.once("indicatorDetailsError", (err) => reject(err));
+    });
 
     console.log("Raw indicator data for", type, ":", response);
-    console.log("SMA raw first point:", response?.data?.[0]);
-console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1]);
+    console.log("Raw first point:", response?.data?.[0]);
+    console.log(
+      "Raw last point:",
+      response?.data?.[response?.data?.length - 1],
+    );
 
     const mapLine = (arr, field) =>
       arr
         ?.map((d) => ({
-          time: Number(d.time),
+         time: Number(d.time) + IST_OFFSET,
           value: d[field] != null ? Number(d[field]) : null,
         }))
         .filter((d) => d.value !== null) ?? [];
@@ -1115,49 +1129,49 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             vwap: rows
               .filter((d) => d?.vwap != null && d?.time != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.vwap),
               })),
 
             upper1: rows
               .filter((d) => d?.bands?.band1?.upper != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.bands.band1.upper),
               })),
 
             lower1: rows
               .filter((d) => d?.bands?.band1?.lower != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.bands.band1.lower),
               })),
 
             upper2: rows
               .filter((d) => d?.bands?.band2?.upper != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.bands.band2.upper),
               })),
 
             lower2: rows
               .filter((d) => d?.bands?.band2?.lower != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.bands.band2.lower),
               })),
 
             upper3: rows
               .filter((d) => d?.bands?.band3?.upper != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.bands.band3.upper),
               })),
 
             lower3: rows
               .filter((d) => d?.bands?.band3?.lower != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.bands.band3.lower),
               })),
           },
@@ -1171,7 +1185,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             response.data
               ?.filter((d) => d.sar != null && d.time != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: d.sar,
               })) ?? [],
         };
@@ -1184,7 +1198,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbw != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.bbw),
                 })) ?? [],
 
@@ -1192,7 +1206,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.highestExpansion != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.highestExpansion),
                 })) ?? [],
 
@@ -1200,7 +1214,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.lowestContraction != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.lowestContraction),
                 })) ?? [],
           },
@@ -1247,7 +1261,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.sma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.sma,
                 })) ?? [],
 
@@ -1255,7 +1269,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.smoothingMA != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.smoothingMA,
                 })) ?? [],
 
@@ -1263,7 +1277,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbUpper != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.bbUpper,
                 })) ?? [],
 
@@ -1271,7 +1285,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbLower != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.bbLower,
                 })) ?? [],
           },
@@ -1285,7 +1299,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.pvi != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.pvi,
                 })) ?? [],
 
@@ -1293,7 +1307,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.pviEma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.pviEma,
                 })) ?? [],
           },
@@ -1307,7 +1321,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.historical_Vol != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.historical_Vol),
                 })) ?? [],
           },
@@ -1320,7 +1334,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.nvi != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.nvi,
                 })) ?? [],
 
@@ -1328,7 +1342,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.nviEma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.nviEma,
                 })) ?? [],
           },
@@ -1340,7 +1354,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             response.data
               ?.filter((d) => d.eom != null && d.time != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: d.eom,
               })) ?? [],
         };
@@ -1353,7 +1367,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.cmf != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.cmf,
                 })) ?? [],
           },
@@ -1367,7 +1381,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.ema != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.ema,
                 })) ?? [],
 
@@ -1375,7 +1389,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.smoothingMA != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.smoothingMA,
                 })) ?? [],
 
@@ -1383,7 +1397,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbUpper != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.bbUpper,
                 })) ?? [],
 
@@ -1391,7 +1405,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbLower != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.bbLower,
                 })) ?? [],
           },
@@ -1403,7 +1417,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
         const mapLineCCI = (field) =>
           rows
             .map((d) => ({
-              time: Number(d.time),
+             time: Number(d.time) + IST_OFFSET,
               value: d[field] != null ? Number(d[field]) : null,
             }))
             .filter((d) => d.value !== null);
@@ -1430,7 +1444,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             series: (response?.data || [])
               .filter((d) => d.time != null && (d.uo ?? d.ultimate) != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 uo: Number(d.uo ?? d.ultimate),
               })),
           },
@@ -1443,7 +1457,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             chopLine:
               response.data
                 ?.filter((d) => d.chop != null && d.time != null)
-                .map((d) => ({ time: Number(d.time), value: d.chop })) ?? [],
+                .map((d) => ({time: Number(d.time) + IST_OFFSET, value: d.chop })) ?? [],
           },
         };
 
@@ -1455,7 +1469,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.stopLong != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.stopLong),
                 })) ?? [],
 
@@ -1463,7 +1477,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.stopShort != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.stopShort),
                 })) ?? [],
           },
@@ -1476,7 +1490,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.hma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.hma,
                 })) ?? [],
           },
@@ -1489,7 +1503,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.dema != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.dema,
                 })) ?? [],
           },
@@ -1503,7 +1517,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.tema != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.tema,
                 })) ?? [],
           },
@@ -1516,7 +1530,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.kama != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.kama,
                 })) ?? [],
           },
@@ -1528,7 +1542,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             response.data
               ?.filter((d) => d.aroonOsc != null && d.time != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: d.aroonOsc,
               })) ?? [],
         };
@@ -1539,17 +1553,17 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
           data: {
             upTrend:
               response.data?.map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: d.upTrend ?? null,
               })) ?? [],
             downTrend:
               response.data?.map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: d.downTrend ?? null,
               })) ?? [],
             bodyMiddle:
               response.data?.map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: d.bodyMiddle ?? null,
               })) ?? [],
           },
@@ -1562,7 +1576,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.mom != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.mom,
                 })) ?? [],
           },
@@ -1576,7 +1590,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.upper != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.upper,
                 })) ?? [],
 
@@ -1584,7 +1598,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.lower != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.lower,
                 })) ?? [],
 
@@ -1592,7 +1606,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.basis != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.basis,
                 })) ?? [],
           },
@@ -1605,7 +1619,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.trix != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.trix),
                 })) ?? [],
           },
@@ -1619,7 +1633,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.roc != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.roc,
                 })) ?? [],
           },
@@ -1633,7 +1647,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data?.series
                 ?.filter((d) => d.value != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.value,
                 })) ?? [],
 
@@ -1641,7 +1655,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data?.pivots
                 ?.filter((d) => d.price != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.price,
                   type: d.type,
                 })) ?? [],
@@ -1656,7 +1670,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.ADX != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.ADX,
                 })) ?? [],
           },
@@ -1667,7 +1681,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
           data: {
             volume:
               response?.data?.map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.volume),
                 color: d.color || "#26A69A",
               })) ?? [],
@@ -1676,7 +1690,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.volumeMA != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.volumeMA),
                 })) ?? [],
           },
@@ -1689,7 +1703,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.pvo != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.pvo),
                 })) ?? [],
 
@@ -1697,7 +1711,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.signal != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.signal),
                 })) ?? [],
 
@@ -1705,7 +1719,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.hist != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.hist),
                 })) ?? [],
           },
@@ -1717,7 +1731,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             response.data
               ?.filter((d) => d.value != null && d.time != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.value),
               })) ?? [],
         };
@@ -1730,7 +1744,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.obv != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.obv),
                 })) ?? [],
 
@@ -1738,7 +1752,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.smoothingMA != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.smoothingMA),
                 })) ?? [],
 
@@ -1746,7 +1760,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbUpper != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.bbUpper),
                 })) ?? [],
 
@@ -1754,7 +1768,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbLower != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.bbLower),
                 })) ?? [],
           },
@@ -1766,7 +1780,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
           data: {
             volume:
               response.data?.map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.volume),
                 color:
                   d.close >= d.open
@@ -1776,7 +1790,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
 
             volumeMA:
               response.data?.map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.volumeMA),
               })) ?? [],
           },
@@ -1789,7 +1803,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.value != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.value ?? d.mfi),
                 })) ?? [],
           },
@@ -1802,7 +1816,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
           data: (response.data ?? [])
             .filter((d) => d && d.atr != null && d.time != null)
             .map((d) => ({
-              time: Number(d.time),
+             time: Number(d.time) + IST_OFFSET,
               value: Number(d.atr),
             })),
         };
@@ -1815,7 +1829,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.rsi != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.rsi,
                 })) ?? [],
 
@@ -1823,7 +1837,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.smoothingMA != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.smoothingMA,
                 })) ?? [],
 
@@ -1831,7 +1845,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbUpperBand != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.bbUpperBand,
                 })) ?? [],
 
@@ -1839,7 +1853,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.bbLowerBand != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                  time: Number(d.time) + IST_OFFSET,
                   value: d.bbLowerBand,
                 })) ?? [],
           },
@@ -1861,7 +1875,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.trueRange != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.trueRange),
                 })) ?? [],
           },
@@ -1874,7 +1888,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.percentB != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.percentB),
                 })) ?? [],
           },
@@ -1887,7 +1901,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.vwma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.vwma),
                 })) ?? [],
           },
@@ -1900,7 +1914,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.rma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.rma),
                 })) ?? [],
           },
@@ -1913,7 +1927,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.tma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.tma),
                 })) ?? [],
           },
@@ -1926,7 +1940,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data?.series
                 ?.filter((d) => d.williamPercentR != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.williamPercentR,
                 })) ?? [],
           },
@@ -1939,7 +1953,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.wma != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.wma,
                 })) ?? [],
           },
@@ -2029,7 +2043,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             response.data
               ?.filter((d) => d.ad != null && d.time != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.ad),
               })) ?? [],
         };
@@ -2060,7 +2074,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.longStop != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.longStop,
                 })) ?? [],
 
@@ -2068,7 +2082,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.shortStop != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.shortStop,
                 })) ?? [],
           },
@@ -2082,7 +2096,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.stochastick != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.stochastick),
                 })) ?? [],
 
@@ -2090,7 +2104,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.stochasticd != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.stochasticd),
                 })) ?? [],
           },
@@ -2103,7 +2117,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data.candles
                 ?.filter((d) => d.stochRsiK != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.stochRsiK,
                 })) ?? [],
 
@@ -2111,7 +2125,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data.candles
                 ?.filter((d) => d.stochRsiD != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.stochRsiD,
                 })) ?? [],
           },
@@ -2125,7 +2139,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.macd != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.macd,
                 })) ?? [],
 
@@ -2133,7 +2147,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.signal != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.signal,
                 })) ?? [],
 
@@ -2141,7 +2155,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.hist != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.hist,
                 })) ?? [],
           },
@@ -2155,7 +2169,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.cmo != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.cmo),
                 })) ?? [],
           },
@@ -2169,7 +2183,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.kvo != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.kvo),
                 })) ?? [],
 
@@ -2177,7 +2191,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response?.data
                 ?.filter((d) => d.signal != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.signal),
                 })) ?? [],
           },
@@ -2190,7 +2204,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.upper != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.upper),
                 })) ?? [],
 
@@ -2198,7 +2212,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.lower != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.lower),
                 })) ?? [],
 
@@ -2206,7 +2220,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.basis != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.basis),
                 })) ?? [],
           },
@@ -2220,7 +2234,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.fish != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.fish,
                 })) ?? [],
 
@@ -2228,7 +2242,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.trigger != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: d.trigger,
                 })) ?? [],
           },
@@ -2242,7 +2256,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.upper != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.upper),
                 })) ?? [],
 
@@ -2250,7 +2264,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.lower != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.lower),
                 })) ?? [],
 
@@ -2258,7 +2272,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
               response.data
                 ?.filter((d) => d.middle != null && d.time != null)
                 .map((d) => ({
-                  time: Number(d.time),
+                 time: Number(d.time) + IST_OFFSET,
                   value: Number(d.middle),
                 })) ?? [],
           },
@@ -2271,7 +2285,7 @@ console.log("SMA raw last point:", response?.data?.[response?.data?.length - 1])
             response?.data
               ?.filter((d) => d.ao != null && d.time != null)
               .map((d) => ({
-                time: Number(d.time),
+               time: Number(d.time) + IST_OFFSET,
                 value: Number(d.ao),
               })) ?? [],
         };
