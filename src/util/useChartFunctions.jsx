@@ -3,19 +3,6 @@ import { getRowsByIndicator } from "./common";
 
 const IST_OFFSET = 19800;
 
-function shiftTimeToIST(obj) {
-  if (Array.isArray(obj)) {
-    obj.forEach(shiftTimeToIST);
-  } else if (obj !== null && typeof obj === "object") {
-    if ("time" in obj && typeof obj.time === "number") {
-      obj.time += IST_OFFSET;
-    }
-    for (const key in obj) {
-      shiftTimeToIST(obj[key]);
-    }
-  }
-}
-
 export default function useChartFunctions({
   indicatorSeriesRef,
   indicatorDataRef,
@@ -26,85 +13,9 @@ export default function useChartFunctions({
   socketRef,
   candlesRef,
 }) {
-  /* ================= FETCH INDICATOR API ================= */
 
-  // async function fetchDataByCurrency(
-  //   selectedCurrency,
-  //   timeframeValue,
-  //   fromDate,
-  //   toDate,
-  // ) {
-  //   if (!selectedCurrency) return;
-
-  //   const symbol = selectedCurrency?.name || "TCS";
-  //   const interval = timeframeValue || "5m";
-  //   const segment = selectedCurrency?.segment || "NSE";
-
-  //   const from = `${fromDate} 09:15`;
-  //   const to = `${toDate} 15:30`;
-
-  //   let url = "";
-
-  //   // 🔥 SWITCH BASED ON TYPE
-  //   switch (selectedCurrency?.type) {
-  //     case "OPTIONS":
-  //       url = `options/historical?symbol=${symbol}&strike=${selectedCurrency?.strike}&type=${selectedCurrency?.optionType}&interval=${interval}&fromdate=${fromDate}&todate=${toDate}`;
-  //       break;
-
-  //     case "FUTURES":
-  //       url = `futures/historical?symbol=${symbol}&interval=${interval}&fromdate=${fromDate}&todate=${toDate}`;
-  //       break;
-
-  //     case "EQUITY":
-  //     default:
-  //       url = `equity/historical-v2?symbol=${symbol}&interval=${interval}&segment=${segment}&fromDate=${from}&toDate=${to}`;
-  //       break;
-  //   }
-
-  //   console.log("🚀 API HIT:", url);
-
-  //   const response = await apiService.get(url);
-
-  //   // if (response) shiftTimeToIST(response);
-
-  //   return response;
-  // }
-
-  // async function fetchDataByCurrency(
-  //   selectedCurrency,
-  //   timeframeValue,
-  //   fromDate,
-  //   toDate,
-  // ) {
-  //   if (!selectedCurrency) return;
-
-  //   const interval = timeframeValue || "1d";
-
-  //   // fallback defaults
-  //   const from = "2026-04-01";
-  //   const to = "2026-05-06";
-
-  //   // dynamic symbol path (VERY IMPORTANT)
-  //   // const symbolPath = selectedCurrency?.apiPath || "equity/commodity/gold";
-
-  //   const url = `equity/commodity/gold/live?interval=${interval}&fromDate=${from}&toDate=${to}`;
-
-  //   console.log("🚀 API HIT:", url);
-
-  //   try {
-  //     const response = await apiService.get(url);
-
-  //     if (response) shiftTimeToIST(response);
-
-  //     return response;
-  //   } catch (err) {
-  //     console.error("API Error:", err);
-  //     return null;
-  //   }
-  // }
 
   /* ================= FETCH INDICATORS ================= */
-
   async function fetchIndicatorData(
     selectedIndicator,
     selectedCurrency,
@@ -135,9 +46,6 @@ export default function useChartFunctions({
   function processIndicatorResponse(indicator, result) {
     if (!result) return;
 
-    // Apply IST offset to data (matching REST/Socket behavior)
-    // shiftTimeToIST(result);
-
     const config = indicatorConfigs?.[indicator] || {};
     const { maType } = config;
     const rows = getRowsByIndicator(indicator, maType, indicatorConfigs);
@@ -145,26 +53,27 @@ export default function useChartFunctions({
     switch (indicator) {
       case "RSI": {
         const rsiData = result?.data?.rsi ?? [];
-        const smoothingData = result?.data?.smoothingMA ?? [];
-        const bbUpperData = result?.data?.bbUpperBand ?? [];
-        const bbLowerData = result?.data?.bbLowerBand ?? [];
+        const smoothingMA = result?.data?.smoothingMA ?? [];
+        const bbUpperData = result?.data?.bbUpperBand ?? result?.data?.bbUpper ?? [];
+        const bbLowerData = result?.data?.bbLowerBand ?? result?.data?.bbLower ?? [];
 
         indicatorDataRef.current.RSI = {
-          result,
+          result: {
+            ...result,
+            data: {
+              ...result.data,
+              bbUpper: bbUpperData,
+              bbLower: bbLowerData,
+            }
+          },
           rows,
         };
 
         latestIndicatorValuesRef.current.RSI = {
           rsi: rsiData[rsiData.length - 1]?.value,
-          smoothingMA: smoothingData[smoothingData.length - 1]?.value,
-          bbUpperBand:
-            bbUpperData.length > 0
-              ? bbUpperData[bbUpperData.length - 1]?.value
-              : null,
-          bbLowerBand:
-            bbLowerData.length > 0
-              ? bbLowerData[bbLowerData.length - 1]?.value
-              : null,
+          smoothingMA: smoothingMA[smoothingMA.length - 1]?.value,
+          bbUpper: bbUpperData[bbUpperData.length - 1]?.value,
+          bbLower: bbLowerData[bbLowerData.length - 1]?.value,
         };
 
         break;

@@ -941,6 +941,9 @@ export default function Candlestick() {
 
       if (!Number.isFinite(tickTime)) return;
 
+      // ✅ Synchronize with historical data IST offset
+      tickTime += IST_OFFSET;
+
       /* NORMALIZE CANDLE TIME */
       const normalizedTime = Math.floor(tickTime / intervalSec) * intervalSec;
       if (!Number.isFinite(normalizedTime) || normalizedTime <= 0) return;
@@ -1034,8 +1037,9 @@ export default function Candlestick() {
                       : "ONE_MINUTE",
 
             token: selectedCurrency?.token,
+            from: fromDate,
+            to: toDate,
             type: ind,
-
             candles: candlesRef.current, // ✅ FULL SOURCE OF TRUTH
           });
         });
@@ -1043,6 +1047,8 @@ export default function Candlestick() {
     });
     socket.on("liveIndicatorResponse", (payload) => {
       if (!payload?.success || !payload?.type) return;
+      console.log(payload, "payload from liveIndicatorResponse");
+
       const indicatorType = payload.type;
       const seriesGroup = indicatorSeriesRef.current?.[indicatorType];
       if (!seriesGroup) return;
@@ -1057,6 +1063,7 @@ export default function Candlestick() {
         if (!series || typeof series.update !== "function") return;
         const value =
           lastPoint[lineName] ??
+          lastPoint[lineName + "Band"] ?? // handle bbUpper vs bbUpperBand
           lastPoint.value ??
           lastPoint[indicatorType.toLowerCase()];
         if (value == null || !Number.isFinite(Number(value))) return;
@@ -1089,7 +1096,6 @@ export default function Candlestick() {
       socket.off("liveIndicatorResponse");
       socket.off("disconnect");
       socket.off("connect_error");
-      // Do NOT disconnect the global socket instance here
       socketRef.current = null;
     };
   }, [selectedCurrency?.name, timeframeValue, chartType, fromDate, toDate]); // ✅ chartType added

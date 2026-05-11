@@ -1,11 +1,11 @@
-module.exports = {
+const SocketEvents = {
   // --- INPUT EVENTS (Client to Server) ---
-  GET_HISTORICAL_DATA: "getManualHistoricalData", // Fetch historical candles
-  GET_INDICATOR_DETAILS: "getIndicatorDetails", // Fetch full indicator series
-  GET_LIVE_INDICATOR: "getLiveIndicatorUpdate", // Fetch single tick indicator value
-  GET_RSI_SCANNER: "getRsiScanner", // Trigger manual RSI scan
-  SET_RSI_ALERT: "setRsiAlert", // Set background monitoring threshold
-  GET_ALL_STOCKS: "getAllStocks", // Request initial stock list
+  GET_HISTORICAL_DATA: "getManualHistoricalData",
+  GET_INDICATOR_DETAILS: "getIndicatorDetails",
+  GET_LIVE_INDICATOR: "getLiveIndicatorUpdate",
+  GET_RSI_SCANNER: "getRsiScanner",
+  SET_RSI_ALERT: "setRsiAlert",
+  GET_ALL_STOCKS: "getAllStocks",
 
   // --- OUTPUT EVENTS (Server to Client) ---
   HISTORICAL_DATA_RESPONSE: "historicalDataResponse",
@@ -25,3 +25,5 @@ module.exports = {
 
   GOLD_UPDATE: "goldUpdate",
 };
+
+export default SocketEvents;
