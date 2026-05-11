@@ -241,7 +241,7 @@ const GoldChart = () => {
         window.addEventListener('resize', handleResize);
 
         return () => {
-            socket.disconnect();
+            // socket.disconnect();
             window.removeEventListener('resize', handleResize);
 
             if (chartRef.current) chartRef.current.remove();

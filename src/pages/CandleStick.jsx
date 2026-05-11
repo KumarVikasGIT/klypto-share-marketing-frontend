@@ -48,6 +48,7 @@ import IndicatorBar from "../components/indicator/IndicatorBar";
 import LeftDetail from "../components/layout/LeftDetail";
 import Overview from "../components/tradingModals/Overview";
 import OptionChain from "../components/tradingModals/OptionChain";
+import LeftAlertListing from "../components/layout/LeftAlertListing";
 import {
   indicatorConfigDefault,
   resolvePaneKey,
@@ -134,6 +135,12 @@ export default function Candlestick() {
   useEffect(() => {
     selectedIndicatorRef.current = selectedIndicator;
   }, [selectedIndicator]);
+
+  useEffect(() => {
+    if (activeTab === "Alerts") {
+      setIsWatchlistOpen(true);
+    }
+  }, [activeTab]);
 
   const [indicatorConfigs, setIndicatorConfigs] = useState(
     indicatorConfigDefault,
@@ -1077,6 +1084,26 @@ export default function Candlestick() {
         }
       });
     });
+    
+    socket.on("rsiScannerResponse", (data) => {
+      console.log("📡 RAW RSI SCANNER DATA:", data);
+      let results = data?.data || data;
+      
+      // If it's an object (symbol as key), convert to array
+      if (results && typeof results === "object" && !Array.isArray(results)) {
+        results = Object.entries(results).map(([symbol, details]) => ({
+          symbol,
+          ...details
+        }));
+      }
+
+      if (Array.isArray(results) && results.length > 0) {
+        console.log(`✅ RSI SCANNER: Found ${results.length} matches:`, results.map(s => s.symbol).join(", "));
+      } else {
+        console.log("📡 RSI SCANNER: No matches or invalid data received:", results);
+      }
+      setAlertResult(Array.isArray(results) ? results : []);
+    });
 
     socket.on("disconnect", () => console.log("❌ SOCKET DISCONNECTED"));
     socket.on("connect_error", (err) =>
@@ -1094,6 +1121,7 @@ export default function Candlestick() {
       socket.off("historicalDataError");
       socket.off("liveTick");
       socket.off("liveIndicatorResponse");
+      socket.off("rsiScannerResponse");
       socket.off("disconnect");
       socket.off("connect_error");
       socketRef.current = null;
@@ -1308,14 +1336,23 @@ export default function Candlestick() {
               }}
             >
               <div style={{ width: "300px", height: "100%" }}>
-                {isWatchlistOpen && (
+                {activeTab === "Alerts" && (
+                  <LeftAlertListing
+                    onClose={() => setIsWatchlistOpen(false)}
+                    alertResult={alertResult}
+                    setAlertResult={setAlertResult}
+                    setSelectedCurrency={setSelectedCurrency}
+                    setActiveTab={setActiveTab}
+                  />
+                )}
+                {activeTab !== "Alerts" && isWatchlistOpen && (
                   <LeftWatchlist
                     onClose={() => setIsWatchlistOpen(false)}
                     setSelectedCurrency={setSelectedCurrency}
                     alertResult={alertResult}
                   />
                 )}
-                {isDetailsOpen && (
+                {activeTab !== "Alerts" && isDetailsOpen && (
                   <LeftDetail
                     onClose={() => setIsDetailsOpen(false)}
                     selectedCurrency={selectedCurrency}
@@ -1349,7 +1386,10 @@ export default function Candlestick() {
               <div
                 style={{
                   flex: 1,
-                  display: activeTab === "Chart" ? "flex" : "none",
+                  display:
+                    activeTab === "Chart" || activeTab === "Alerts"
+                      ? "flex"
+                      : "none",
                   flexDirection: "column",
                   overflow: "hidden",
                 }}
@@ -1805,15 +1845,29 @@ export default function Candlestick() {
             {/* Right Sidebar */}
             <div style={{ width: "70px", height: "100%", flexShrink: 0 }}>
               <RightSidebar
-                isWatchlistOpen={isWatchlistOpen}
+                isWatchlistOpen={activeTab !== "Alerts" && isWatchlistOpen}
                 toggleWatchlist={() => {
-                  setIsWatchlistOpen(!isWatchlistOpen);
+                  if (activeTab === "Alerts") {
+                    setActiveTab("Chart");
+                    setIsWatchlistOpen(true);
+                  } else {
+                    setIsWatchlistOpen(!isWatchlistOpen);
+                  }
                   setIsDetailsOpen(false);
                 }}
                 isDetailsOpen={isDetailsOpen}
                 toggleDetails={() => {
                   setIsDetailsOpen(!isDetailsOpen);
                   setIsWatchlistOpen(false);
+                  if (activeTab === "Alerts") setActiveTab("Chart");
+                }}
+                isAlertsOpen={activeTab === "Alerts"}
+                toggleAlerts={() => {
+                  if (activeTab === "Alerts") {
+                    setActiveTab("Chart");
+                  } else {
+                    setActiveTab("Alerts");
+                  }
                 }}
               />
             </div>

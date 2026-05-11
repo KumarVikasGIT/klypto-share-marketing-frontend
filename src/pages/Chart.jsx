@@ -152,7 +152,7 @@ const GoldChart = () => {
         rsiSeriesRef.current.createPriceLine({ price: 50, color: 'rgba(148, 163, 184, 0.1)', lineWidth: 1, lineStyle: 1, title: '50' });
         rsiSeriesRef.current.createPriceLine({ price: 30, color: 'rgba(16, 185, 129, 0.4)', lineWidth: 1, lineStyle: 2, title: '30' });
 
-        const socket = io("http://localhost:7000");
+        const socket = io("http://192.168.1.6:7000");
         socketRef.current = socket;
 
         socket.on("connect", () => {

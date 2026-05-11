@@ -73,7 +73,7 @@ const ChartTabs = ({ activeTab, setActiveTab }) => {
     }
   };
 
-  const tabs = ["Chart", "Overview", "Option Chain"];
+  const tabs = ["Chart", "Overview", "Option Chain", "Alerts"];
 
   return (
     <div style={styles.container}>

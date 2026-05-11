@@ -60,10 +60,13 @@ useEffect(() => {
     );
   });
 
-  return () => {
-    socket.disconnect();
-  };
-}, []);
+    return () => {
+      // socket.disconnect(); // 🔥 Do NOT disconnect singleton socket
+      socket.off("stocks");
+      socket.off("stockUpdate");
+      socket.off("liveTick");
+    };
+  }, []);
 
   const styles = {
     container: {

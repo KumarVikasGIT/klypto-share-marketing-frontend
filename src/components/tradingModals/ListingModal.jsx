@@ -10,6 +10,8 @@ import { useDebounce } from "../../util/common";
 import { getStockLogo } from "../../util/stockSymbol/helper";
 import NSE from "../../assets/NSE.svg";
 import BSE from "../../assets/BSE.svg";
+import socket from "../../services/socket";
+import SocketEvents from "../../services/socketEvent";
 
 export const ListingModal = ({
   isOpen,
@@ -50,40 +52,33 @@ export const ListingModal = ({
 
     setAlertLoading(true);
     setAlertError(null);
-    setAlertResult(null);
+    setAlertResult([]);
 
     // clear old interval if any
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
 
-    const fetchRSI = async () => {
-      try {
-        const res = await apiService.post(
-          `equity/rsi-scanner?interval=1d&fromDate=2026-04-01&toDate=2026-05-06`,
-          {
-            rsi_threshold: Number(rsiValue.value),
-            condition: rsiValue.condition, // Sending condition to backend
-          }
-        );
+    if (!socket.connected) {
+      console.warn("⚠️ Cannot start scanner: Socket is DISCONNECTED");
+      setAlertError("Socket disconnected. Trying to reconnect...");
+      socket.connect();
+      return;
+    }
 
-        const data = res?.data || res;
-
-        // ✅ just update data (NO STOP, NO CLOSE)
-        setAlertResult(data);
-      } catch (err) {
-        console.error(err);
-        setAlertError("Failed to fetch RSI data");
-      } finally {
-        setAlertLoading(false); // only first time matters
-      }
+    // 🔁 Emit via socket
+    const scanParams = {
+      rsi_threshold: Number(rsiValue.value),
+      condition: rsiValue.condition,
+      interval: "1d",
+      fromDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      toDate: new Date().toISOString().split('T')[0]
     };
+    
+    console.log("🚀 STARTING RSI SCANNER VIA SOCKET:", scanParams);
+    socket.emit(SocketEvents.GET_RSI_SCANNER, scanParams);
 
-    // 🔥 first instant call
-    fetchRSI();
-
-    // 🔁 keep hitting every 2 sec
-    intervalRef.current = setInterval(fetchRSI, 200000);
+    setAlertLoading(false); // Socket is instant
   };
   const debouncedIndicator = useDebounce(searchIndicator, 500);
 
@@ -395,12 +390,12 @@ export const ListingModal = ({
                         onClick={() => {
                           if (!renderActions) {
                             setSelectedCurrency({
-                                symbol: item.symbol,
-                                name: item.name,
-                                token: item.token,
-                                segment: item.segment,
-                                type: item.type,
-                                userCode: item.userCode,
+                              symbol: item.symbol,
+                              name: item.name,
+                              token: item.token,
+                              segment: item.segment,
+                              type: item.type,
+                              userCode: item.userCode,
                             });
                             onClose();
                           }
@@ -439,10 +434,14 @@ export const ListingModal = ({
                             renderActions(item)
                           ) : (
                             <>
-                              <small className="text-muted">{item.segment}</small>
+                              <small className="text-muted">
+                                {item.segment}
+                              </small>
                               <img
                                 src={
-                                  item.segment?.toLowerCase() === "nse" ? NSE : BSE
+                                  item.segment?.toLowerCase() === "nse"
+                                    ? NSE
+                                    : BSE
                                 }
                                 className="rounded-full"
                                 alt={item.segment}
