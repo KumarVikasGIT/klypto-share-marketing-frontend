@@ -35,11 +35,12 @@ export const ListingModal = ({
   const [searchIndicator, setSearchIndicator] = useState("");
   const [searchCurrency, setSearchCurrency] = useState("");
 
-  const TABS = ["ALL", "EQUITY", "FUTURES", "OPTIONS"];
+  const TABS = ["ALL", "EQUITY", "FUTURES", "OPTIONS", "INDICES"];
   const [activeTab, setActiveTab] = useState("ALL");
   const [equity, setEquity] = useState([]);
   const [futures, setFutures] = useState([]);
   const [options, setOptions] = useState([]);
+  const [indices, setIndices] = useState([]);
 
   const [rsiValue, setRsiValue] = useState({
     condition: "crossesAbove",
@@ -125,6 +126,19 @@ export const ListingModal = ({
     }
   }
 
+  async function fetchIndices() {
+    try {
+      setLoading(true);
+      const res = await apiService.get("equity/indices");
+      console.log("INDICES:", res);
+      setIndices(res?.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (title === "Indicators") {
       fetchIndicators();
@@ -147,6 +161,9 @@ export const ListingModal = ({
 
       if (activeTab === "OPTIONS" && options.length === 0) {
         fetchOptions();
+      }
+      if (activeTab === "INDICES" && indices.length === 0) {
+        fetchIndices();
       }
     }
   }, [title, activeTab]);
@@ -228,6 +245,7 @@ export const ListingModal = ({
         ltp: item?.ltp,
       };
     }
+    
 
     // EQUITY / OPTIONS
     return {
@@ -246,6 +264,7 @@ export const ListingModal = ({
     ...equity.map((e) => normalize(e, "EQUITY")),
     ...futures.map((f) => normalize(f, "FUTURES")),
     ...options.map((o) => normalize(o, "OPTIONS")),
+    ...indices.map((i) => normalize(i, "INDICES")),
   ];
 
   // 🔥 Active List
@@ -256,6 +275,8 @@ export const ListingModal = ({
       return futures.map((f) => normalize(f, "FUTURES"));
     if (activeTab === "OPTIONS")
       return options.map((o) => normalize(o, "OPTIONS"));
+    if (activeTab === "INDICES")
+      return indices.map((o) => normalize(o, "INDICES"));
     return mergedList;
   };
 
@@ -383,7 +404,7 @@ export const ListingModal = ({
                       >
                         <div className="d-flex align-items-center gap-2">
                           <img
-                            src={getStockLogo(item?.userCode)}
+                            src={getStockLogo(item?.code)}
                             width={24}
                             height={24}
                             style={{ borderRadius: "50%" }}
@@ -392,7 +413,7 @@ export const ListingModal = ({
                             }}
                           />
                           <div className="text-uppercase fw-medium small">
-                            {item?.name} ({item?.symbol})
+                            {item?.name} ({item?.symbol}) {item?.code}
                             {item?.type === "FUTURES" && (
                               <span
                                 style={{

@@ -14,7 +14,7 @@ useEffect(() => {
     INITIAL STOCKS
   */
   const handleStocks = (data) => {
-    // console.log("stocks event", data);
+    console.log("stocks event", data);
     const stocksArray = Array.isArray(data) ? data : data?.stocks || [];
     setStocksData(stocksArray);
   };
@@ -24,7 +24,7 @@ useEffect(() => {
     SINGLE STOCK UPDATE
   */
   const handleStockUpdate = (updatedStock) => {
-    console.log("stockUpdate", updatedStock);
+    // console.log("stockUpdate", updatedStock);
     if (!updatedStock?.token) return;
 
     setStocksData((prev) =>
@@ -271,18 +271,20 @@ useEffect(() => {
               >
                 <div style={styles.stockLeft}>
                   <div style={styles.stockName}>
-                    {stock.symbol}
+                    {stock?.symbol}
+                    {stock?.name}
+
                     {/* {stock.symbol} {stock.rsi} */}
                     {/* <span className="text-xs text-gray-500">{stock.userCode}</span> */}
-                    <span style={styles.segment}>{stock.segment}</span>
+                    <span style={styles.segment}>{stock?.segment}</span>
                   </div>
                 </div>
                 <div style={styles.stockRight}>
                   <div style={{ ...styles.ltp, color }}>
-                    {stock.ltp} <span> {Arrow} </span>
+                    {stock?.ltp} <span> {Arrow} </span>
                   </div>
                   <div style={{ ...styles.changeData, color }}>
-                    {stock.change} (
+                    {stock?.change} (
                     {isPositive && stock.percent_change > 0 ? "+" : ""}
                     {stock.percent_change}%)
                   </div>

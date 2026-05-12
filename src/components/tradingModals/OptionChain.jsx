@@ -142,3 +142,229 @@ const OptionChain = ({ selectedCurrency }) => {
 };
 
 export default OptionChain;
+
+// import React, { useEffect, useState, useRef } from "react";
+// import socket from "../../services/socket"; // ✅ adjust path if needed
+
+// const OptionChain = ({ selectedCurrency }) => {
+//   const [spotPrice, setSpotPrice]   = useState(null);
+//   const [spotChange, setSpotChange] = useState(null);
+//   const [atmStrike, setAtmStrike]   = useState(null);
+//   const [strikes, setStrikes]       = useState([]);
+//   const [pcr, setPcr]               = useState(null);
+
+//   const prevSpotRef    = useRef(null);
+//   const autoRefreshRef = useRef(true);
+
+//   const stock  = selectedCurrency?.name;
+//   const expiry = selectedCurrency?.expiry || null;
+
+//   const subscribe = () => {
+//     if (!stock) return;
+//     const payload = { stock };
+//     if (expiry) payload.expiry = expiry;
+//     console.log("[OptionChain] Emitting subscribeOptionChain:", payload);
+//     socket.emit("subscribeOptionChain", payload);
+//   };
+
+//   useEffect(() => {
+//     if (!stock) return;
+
+//     const handleUpdate = (data) => {
+//       if (!autoRefreshRef.current) return;
+//       console.log("[OptionChain] optionChainUpdate received:", data);
+
+//       if (data.spotPrice != null && data.spotPrice !== "") {
+//         const newSpot = Number(data.spotPrice);
+//         if (!isNaN(newSpot)) {
+//           if (prevSpotRef.current != null) {
+//             setSpotChange(newSpot - Number(prevSpotRef.current));
+//           }
+//           prevSpotRef.current = newSpot;
+//           setSpotPrice(newSpot);
+//         }
+//       }
+
+//       if (data.atmStrike != null) setAtmStrike(data.atmStrike);
+
+//       if (data.chain?.length > 0) {
+//         setStrikes(data.chain);
+//         const totalCallOI = data.chain.reduce((sum, row) => sum + (Number(row.ce?.oi) || 0), 0);
+//         const totalPutOI  = data.chain.reduce((sum, row) => sum + (Number(row.pe?.oi) || 0), 0);
+//         setPcr(totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : null);
+//       }
+//     };
+
+//     socket.on("optionChainUpdate", handleUpdate);
+
+//     if (socket.connected) {
+//       subscribe();
+//     } else {
+//       socket.once("connect", subscribe);
+//     }
+
+//     return () => {
+//       socket.off("optionChainUpdate", handleUpdate);
+//       socket.off("connect", subscribe);
+//       socket.emit("unsubscribeOptionChain", { stock });
+//     };
+//   }, [stock, expiry]);
+
+//   // ── Helpers ──
+//   const getStyle = (val) => {
+//     const n = Number(val);
+//     if (n > 0) return { color: "#089981" };
+//     if (n < 0) return { color: "#f23645" };
+//     return { color: "#d1d4dc" };
+//   };
+
+//   const fmtLtp = (val) => {
+//     if (val == null || val === "") return "—";
+//     const n = Number(val);
+//     return isNaN(n) ? val : `₹${n.toFixed(2)}`;
+//   };
+
+//   const fmtOI = (val) => {
+//     if (val == null || val === "") return "—";
+//     const n = Number(val);
+//     if (isNaN(n)) return val;
+//     if (n >= 10000000) return (n / 10000000).toFixed(2) + " Cr";
+//     if (n >= 100000)   return (n / 100000).toFixed(2) + " L";
+//     if (n >= 1000)     return (n / 1000).toFixed(1) + "K";
+//     return n.toString();
+//   };
+
+//   const fmtNum = (val) => {
+//     if (val == null) return "—";
+//     const n = Number(val);
+//     return isNaN(n) ? "—" : n.toFixed(2);
+//   };
+
+//   const spot = spotPrice ?? atmStrike ?? null;
+
+//   return (
+//     <div className="w-100 h-100 p-3" style={{ background: "#131722", color: "#d1d4dc", overflowY: "auto" }}>
+//       <h5 className="mb-3">
+//         {selectedCurrency?.name || "NIFTY"} Option Chain
+//         {spotPrice != null && (
+//           <span style={{ fontSize: 13, fontWeight: 400, marginLeft: 12, color: spotChange == null ? "#d1d4dc" : spotChange >= 0 ? "#089981" : "#f23645" }}>
+//             ₹{Number(spotPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+//             {spotChange != null && ` (${spotChange >= 0 ? "+" : ""}${spotChange.toFixed(2)})`}
+//             {pcr != null && <span style={{ color: "#787b86", marginLeft: 10 }}>PCR: {pcr}</span>}
+//           </span>
+//         )}
+//       </h5>
+
+//       <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid #2a2e39" }}>
+//         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "center" }}>
+//           <thead>
+//             <tr style={{ background: "#1e222d", borderBottom: "1px solid #2a2e39" }}>
+//               <th colSpan="4" style={{ padding: "12px", borderRight: "1px solid #2a2e39", color: "#d1d4dc" }}>CALL</th>
+//               <th style={{ padding: "12px", borderRight: "1px solid #2a2e39", color: "#d1d4dc" }}>LTP & OI</th>
+//               <th colSpan="4" style={{ padding: "12px", color: "#d1d4dc" }}>PUT</th>
+//             </tr>
+//             <tr style={{ background: "#1e222d", borderBottom: "1px solid #2a2e39", color: "#787b86", fontSize: "12px" }}>
+//               <th style={{ padding: "10px" }}>Volume</th>
+//               <th style={{ padding: "10px" }}>OI Chng.(Chng%)</th>
+//               <th style={{ padding: "10px" }}>OI</th>
+//               <th style={{ padding: "10px", borderRight: "1px solid #2a2e39" }}>LTP (LTP Chng%)</th>
+//               <th style={{ padding: "10px", borderRight: "1px solid #2a2e39" }}>Strike</th>
+//               <th style={{ padding: "10px" }}>LTP (LTP Chng%)</th>
+//               <th style={{ padding: "10px" }}>OI</th>
+//               <th style={{ padding: "10px" }}>OI Chng.(Chng%)</th>
+//               <th style={{ padding: "10px" }}>Volume</th>
+//             </tr>
+//           </thead>
+//           <tbody>
+//             {strikes.length === 0 ? (
+//               <tr>
+//                 <td colSpan={9} style={{ padding: 32, color: "#787b86", fontSize: 13 }}>
+//                   Waiting for option chain data…
+//                 </td>
+//               </tr>
+//             ) : (
+//               strikes.map((row, i) => {
+//                 const strike      = Number(row.strike);
+//                 const isATM       = strike === Number(atmStrike);
+//                 const isCallItm   = spot != null && strike < spot;
+//                 const isPutItm    = spot != null && strike > spot;
+//                 const callBg      = isCallItm ? "rgba(255,235,59,0.05)" : "transparent";
+//                 const putBg       = isPutItm  ? "rgba(255,235,59,0.05)" : "transparent";
+
+//                 const ceLtp = Number(row.ce?.ltp);
+//                 const peLtp = Number(row.pe?.ltp);
+
+//                 // ATM row — highlight like spot row in mock
+//                 if (isATM) {
+//                   return (
+//                     <React.Fragment key={`atm-${strike}`}>
+//                       {/* ATM spot indicator row */}
+//                       <tr style={{ background: "rgba(8,153,129,0.1)", borderTop: "2px solid #089981", borderBottom: "2px solid #089981" }}>
+//                         <td colSpan="4" style={{ borderRight: "1px solid #2a2e39" }}></td>
+//                         <td style={{ padding: "6px", fontWeight: "bold", borderRight: "1px solid #2a2e39", color: "#089981" }}>
+//                           <span style={{ background: "#089981", color: "#fff", padding: "2px 6px", borderRadius: "4px" }}>
+//                             {spot != null ? Number(spot).toFixed(2) : strike}
+//                           </span>
+//                         </td>
+//                         <td colSpan="4"></td>
+//                       </tr>
+//                       {/* ATM strike data row */}
+//                       <tr style={{ borderBottom: "1px solid #2a2e39" }}>
+//                         <td style={{ padding: "12px" }}>—</td>
+//                         <td style={{ padding: "12px" }}>—</td>
+//                         <td style={{ padding: "12px", color: "#f23645" }}>{fmtOI(row.ce?.oi)}</td>
+//                         <td style={{ padding: "12px", borderRight: "1px solid #2a2e39" }}>
+//                           <span style={getStyle(0)}>{fmtLtp(row.ce?.ltp)}</span>
+//                         </td>
+//                         <td style={{ padding: "12px", fontWeight: "bold", borderRight: "1px solid #2a2e39", background: "#1e222d" }}>
+//                           {strike}
+//                         </td>
+//                         <td style={{ padding: "12px" }}>
+//                           <span style={getStyle(0)}>{fmtLtp(row.pe?.ltp)}</span>
+//                         </td>
+//                         <td style={{ padding: "12px", color: "#089981" }}>{fmtOI(row.pe?.oi)}</td>
+//                         <td style={{ padding: "12px" }}>—</td>
+//                         <td style={{ padding: "12px" }}>—</td>
+//                       </tr>
+//                     </React.Fragment>
+//                   );
+//                 }
+
+//                 return (
+//                   <tr key={strike} style={{ borderBottom: "1px solid #2a2e39" }}>
+//                     {/* CALL SIDE */}
+//                     <td style={{ padding: "12px", background: callBg }}>—</td>
+//                     <td style={{ padding: "12px", background: callBg }}>—</td>
+//                     <td style={{ padding: "12px", background: callBg, color: "#f23645" }}>
+//                       {fmtOI(row.ce?.oi)}
+//                     </td>
+//                     <td style={{ padding: "12px", background: callBg, borderRight: "1px solid #2a2e39" }}>
+//                       <span style={getStyle(0)}>{fmtLtp(row.ce?.ltp)}</span>
+//                     </td>
+
+//                     {/* STRIKE */}
+//                     <td style={{ padding: "12px", fontWeight: "bold", borderRight: "1px solid #2a2e39", background: "#1e222d" }}>
+//                       {strike.toLocaleString("en-IN")}
+//                     </td>
+
+//                     {/* PUT SIDE */}
+//                     <td style={{ padding: "12px", background: putBg }}>
+//                       <span style={getStyle(0)}>{fmtLtp(row.pe?.ltp)}</span>
+//                     </td>
+//                     <td style={{ padding: "12px", background: putBg, color: "#089981" }}>
+//                       {fmtOI(row.pe?.oi)}
+//                     </td>
+//                     <td style={{ padding: "12px", background: putBg }}>—</td>
+//                     <td style={{ padding: "12px", background: putBg }}>—</td>
+//                   </tr>
+//                 );
+//               })
+//             )}
+//           </tbody>
+//         </table>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default OptionChain;
