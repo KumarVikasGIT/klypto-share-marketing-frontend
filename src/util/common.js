@@ -1839,6 +1839,61 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
         },
       ];
 
+    case "SSL_HYBRID": {
+      return [
+        {
+          key: "baseline",
+          label: "Baseline",
+          type: "line",
+        },
+        {
+          key: "upperChannel",
+          label: "Upper Channel",
+          type: "line",
+        },
+        {
+          key: "lowerChannel",
+          label: "Lower Channel",
+          type: "line",
+        },
+        {
+          key: "ssl1",
+          label: "SSL1",
+          type: "line",
+        },
+        {
+          key: "ssl2",
+          label: "SSL2",
+          type: "line",
+        },
+        {
+          key: "plusAtr",
+          label: "+ATR",
+          type: "line",
+        },
+        {
+          key: "minusAtr",
+          label: "-ATR",
+          type: "line",
+        },
+        {
+          key: "exitArrows",
+          label: "Exit Arrows",
+          type: "marker",
+        },
+        {
+          key: "signalDiamonds",
+          label: "Signal Diamonds",
+          type: "marker",
+        },
+        {
+          key: "baselineFill",
+          label: "Baseline Background",
+          type: "fill",
+        },
+      ];
+    }
+
     default:
       return [];
   }

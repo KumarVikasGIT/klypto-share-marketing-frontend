@@ -328,6 +328,24 @@ export let indicatorConfigDefault = {
     deviation: 5,
     depth: 10,
   },
+  SSL_HYBRID: {
+    type: "SSL_HYBRID",
+    maType: "HMA",
+    baseLen: 60,
+    ssl2Type: "JMA",
+    ssl2Len: 5,
+    ssl3Type: "HMA",
+    ssl3Len: 15,
+    atrLen: 14,
+    atrMult: 1.0,
+    atrSmoothing: "WMA",
+    src: "close",
+    multy: 0.2,
+    useTrueRange: true,
+    atrCrit: 0.9,
+    riskLookback: 100,
+    riskSensitivity: 2.0,
+  },
 };
 
 export let indicatorStyleDefault = {
@@ -1510,6 +1528,74 @@ export let indicatorStyleDefault = {
       lineStyle: 2,
       visible: true,
       value: -1.5,
+    },
+  },
+  SSL_HYBRID: {
+    baseline: {
+      visible: true,
+      color: "rgba(0, 140, 255, 1)",
+      width: 2,
+      lineStyle: 0,
+    },
+
+    upperChannel: {
+      visible: true,
+      color: "rgba(38,166,154,1)",
+      width: 1,
+      lineStyle: 2,
+    },
+
+    lowerChannel: {
+      visible: true,
+      color: "rgba(239,83,80,1)",
+      width: 1,
+      lineStyle: 2,
+    },
+
+    ssl1: {
+      visible: true,
+      color: "rgba(76,175,80,1)",
+      width: 2,
+      lineStyle: 0,
+    },
+
+    ssl2: {
+      visible: true,
+      color: "rgba(244,67,54,1)",
+      width: 2,
+      lineStyle: 0,
+    },
+
+    plusAtr: {
+      visible: true,
+      color: "rgba(0,200,83,1)",
+      width: 1,
+      lineStyle: 1,
+    },
+
+    minusAtr: {
+      visible: true,
+      color: "rgba(213,0,0,1)",
+      width: 1,
+      lineStyle: 1,
+    },
+
+    exitArrows: {
+      visible: true,
+      upColor: "rgba(76,175,80,1)",
+      downColor: "rgba(244,67,54,1)",
+    },
+
+    signalDiamonds: {
+      visible: true,
+      bullishColor: "rgba(0,200,83,1)",
+      bearishColor: "rgba(213,0,0,1)",
+    },
+
+    baselineFill: {
+      visible: true,
+      topFillColor1: "rgba(33,150,243,0.15)",
+      bottomFillColor1: "rgba(33,150,243,0.03)",
     },
   },
 };

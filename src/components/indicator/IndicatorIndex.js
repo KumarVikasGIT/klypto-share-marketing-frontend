@@ -105,6 +105,7 @@ import VWMAInput from "./VWMA/VWMAInput";
 import VWMAPlot from "./VWMA/VWMAPlot";
 import TMAPlot from "./TMA/TMAPlot";
 import TMAInput from "./TMA/TMAInput";
+import SSLPlot from "./SSL/SSLPlot";
 
 export const indicatorComponents = {
   VWAP: VWAPPlot,
@@ -163,6 +164,7 @@ export const indicatorComponents = {
   TR: TRPlot,
   VWMA: VWMAPlot,
   TMA: TMAPlot,
+  SSL_HYBRID: SSLPlot,
 };
 
 export const indicatorInputs = {

@@ -13,8 +13,6 @@ export default function useChartFunctions({
   socketRef,
   candlesRef,
 }) {
-
-
   /* ================= FETCH INDICATORS ================= */
   async function fetchIndicatorData(
     selectedIndicator,
@@ -54,8 +52,10 @@ export default function useChartFunctions({
       case "RSI": {
         const rsiData = result?.data?.rsi ?? [];
         const smoothingMA = result?.data?.smoothingMA ?? [];
-        const bbUpperData = result?.data?.bbUpperBand ?? result?.data?.bbUpper ?? [];
-        const bbLowerData = result?.data?.bbLowerBand ?? result?.data?.bbLower ?? [];
+        const bbUpperData =
+          result?.data?.bbUpperBand ?? result?.data?.bbUpper ?? [];
+        const bbLowerData =
+          result?.data?.bbLowerBand ?? result?.data?.bbLower ?? [];
 
         indicatorDataRef.current.RSI = {
           result: {
@@ -64,7 +64,7 @@ export default function useChartFunctions({
               ...result.data,
               bbUpper: bbUpperData,
               bbLower: bbLowerData,
-            }
+            },
           },
           rows,
         };
@@ -233,7 +233,34 @@ export default function useChartFunctions({
         };
         break;
       }
+      case "SSL_HYBRID": {
+        const baseline = result?.data?.baseline ?? [];
+        const upperChannel = result?.data?.upperChannel ?? [];
+        const lowerChannel = result?.data?.lowerChannel ?? [];
+        const ssl1 = result?.data?.ssl1 ?? [];
+        const ssl2 = result?.data?.ssl2 ?? [];
+        const atrUpper = result?.data?.atrUpper ?? [];
+        const atrLower = result?.data?.atrLower ?? [];
+        const sslExit = result?.data?.sslExit ?? [];
 
+        indicatorDataRef.current.SSL_HYBRID = {
+          result,
+          rows,
+        };
+
+        latestIndicatorValuesRef.current.SSL_HYBRID = {
+          baseline: baseline[baseline.length - 1]?.value,
+          upperChannel: upperChannel[upperChannel.length - 1]?.value,
+          lowerChannel: lowerChannel[lowerChannel.length - 1]?.value,
+          ssl1: ssl1[ssl1.length - 1]?.value,
+          ssl2: ssl2[ssl2.length - 1]?.value,
+          atrUpper: atrUpper[atrUpper.length - 1]?.value,
+          atrLower: atrLower[atrLower.length - 1]?.value,
+          sslExit: sslExit[sslExit.length - 1]?.value,
+        };
+
+        break;
+      }
       case "ICHIMOKU": {
         indicatorDataRef.current.ICHIMOKU = {
           result,
@@ -1001,7 +1028,6 @@ async function fetchDataForIndicators(
         fromdate: fromDate,
         todate: toDate,
         type,
-
         candles, // ✅ MOST IMPORTANT
       });
       socketRef.current?.once("indicatorDetailsResponse", (data) => {
@@ -1202,6 +1228,75 @@ async function fetchDataForIndicators(
           },
         };
 
+      case "SSL_HYBRID":
+        return {
+          type: "multi",
+          data: {
+            baseline:
+              response.data
+                ?.filter((d) => d.baseline != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.baseline,
+                })) ?? [],
+
+            upperChannel:
+              response.data
+                ?.filter((d) => d.upperChannel != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.upperChannel,
+                })) ?? [],
+
+            lowerChannel:
+              response.data
+                ?.filter((d) => d.lowerChannel != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.lowerChannel,
+                })) ?? [],
+
+            ssl1:
+              response.data
+                ?.filter((d) => d.ssl1 != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.ssl1,
+                })) ?? [],
+
+            ssl2:
+              response.data
+                ?.filter((d) => d.ssl2 != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.ssl2,
+                })) ?? [],
+
+            atrUpper:
+              response.data
+                ?.filter((d) => d.atrUpper != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.atrUpper,
+                })) ?? [],
+
+            atrLower:
+              response.data
+                ?.filter((d) => d.atrLower != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.atrLower,
+                })) ?? [],
+
+            sslExit:
+              response.data
+                ?.filter((d) => d.sslExit != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.sslExit,
+                })) ?? [],
+          },
+        };
       case "PVI":
         return {
           type: "multi",
