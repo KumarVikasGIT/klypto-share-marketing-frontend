@@ -57,6 +57,7 @@ import {
 } from "../util/indicatorFunctions";
 import { io } from "socket.io-client";
 import { toast } from "react-toastify";
+import useAlerts from "../util/useAlerts";
 
 export default function Candlestick() {
   const chartRef = useRef();
@@ -71,7 +72,8 @@ export default function Candlestick() {
   const syncingRef = useRef(false);
   const fetchedIndicatorsRef = useRef(new Set());
   const socketRef = useRef(null);
-  const [alertResult, setAlertResult] = useState([]);
+
+  const { matchedCoins, addAlert, clearAllCoins } = useAlerts();
 
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -145,6 +147,7 @@ export default function Candlestick() {
   const [indicatorConfigs, setIndicatorConfigs] = useState(
     indicatorConfigDefault,
   );
+
   const [indicatorStyle, setIndicatorStyle] = useState(indicatorStyleDefault);
   const isUp = liveOhlcv?.close >= liveOhlcv?.open;
   const valueColor = isUp ? "text-green-500" : "text-red-500";
@@ -929,7 +932,7 @@ export default function Candlestick() {
       if (isMounted) setMainChartLoading(false);
     });
 
-    socket.on("liveTick", (tick) => {
+    const handleChartLiveTick = (tick) => {
       if (tick.symbol !== selectedCurrency?.name) return;
       if (!seriesRef.current) return;
 
@@ -1051,8 +1054,10 @@ export default function Candlestick() {
           });
         });
       }
-    });
-    socket.on("liveIndicatorResponse", (payload) => {
+    };
+    socket.on("liveTick", handleChartLiveTick);
+
+    const handleChartLiveIndicator = (payload) => {
       if (!payload?.success || !payload?.type) return;
       console.log(payload, "payload from liveIndicatorResponse");
 
@@ -1083,28 +1088,9 @@ export default function Candlestick() {
           );
         }
       });
-    });
+    };
+    socket.on("liveIndicatorResponse", handleChartLiveIndicator);
     
-    socket.on("rsiScannerResponse", (data) => {
-      console.log("📡 RAW RSI SCANNER DATA:", data);
-      let results = data?.data || data;
-      
-      // If it's an object (symbol as key), convert to array
-      if (results && typeof results === "object" && !Array.isArray(results)) {
-        results = Object.entries(results).map(([symbol, details]) => ({
-          symbol,
-          ...details
-        }));
-      }
-
-      if (Array.isArray(results) && results.length > 0) {
-        console.log(`✅ RSI SCANNER: Found ${results.length} matches:`, results.map(s => s.symbol).join(", "));
-      } else {
-        console.log("📡 RSI SCANNER: No matches or invalid data received:", results);
-      }
-      setAlertResult(Array.isArray(results) ? results : []);
-    });
-
     socket.on("disconnect", () => console.log("❌ SOCKET DISCONNECTED"));
     socket.on("connect_error", (err) =>
       console.log("❌ SOCKET ERROR:", err.message),
@@ -1119,9 +1105,8 @@ export default function Candlestick() {
       socket.off("connect");
       socket.off("historicalDataResponse");
       socket.off("historicalDataError");
-      socket.off("liveTick");
-      socket.off("liveIndicatorResponse");
-      socket.off("rsiScannerResponse");
+      socket.off("liveTick", handleChartLiveTick);
+      socket.off("liveIndicatorResponse", handleChartLiveIndicator);
       socket.off("disconnect");
       socket.off("connect_error");
       socketRef.current = null;
@@ -1339,8 +1324,8 @@ export default function Candlestick() {
                 {activeTab === "Alerts" && (
                   <LeftAlertListing
                     onClose={() => setIsWatchlistOpen(false)}
-                    alertResult={alertResult}
-                    setAlertResult={setAlertResult}
+                    alertResult={matchedCoins}
+                    setAlertResult={clearAllCoins}
                     setSelectedCurrency={setSelectedCurrency}
                     setActiveTab={setActiveTab}
                   />
@@ -1349,7 +1334,7 @@ export default function Candlestick() {
                   <LeftWatchlist
                     onClose={() => setIsWatchlistOpen(false)}
                     setSelectedCurrency={setSelectedCurrency}
-                    alertResult={alertResult}
+                    alertResult={matchedCoins}
                   />
                 )}
                 {activeTab !== "Alerts" && isDetailsOpen && (
@@ -1414,8 +1399,8 @@ export default function Candlestick() {
                     toDate={toDate}
                     setFromDate={setFromDate}
                     setToDate={setToDate}
-                    setAlertResult={setAlertResult}
-                    alertResult={alertResult}
+                    alertResult={matchedCoins}
+                    addAlert={addAlert}
                   />
                 </div>
 

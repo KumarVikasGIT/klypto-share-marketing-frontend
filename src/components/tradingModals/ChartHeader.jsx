@@ -108,6 +108,7 @@ export default function ChartHeader({
   setToDate,
   setAlertResult,
   alertResult,
+  addAlert,
 }) {
   const navigate = useNavigate();
   const [timeframe, setTimeframe] = useState(60);
@@ -265,6 +266,11 @@ export default function ChartHeader({
         toggleIndicator={toggleIndicator}
         setAlertResult={setAlertResult}
         alertResult={alertResult}
+        timeframeValue={timeframeValue}
+        onSubmit={(data) => {
+          if (addAlert) addAlert(data);
+          closeModal();
+        }}
       />
     </div>
   );

@@ -25,6 +25,8 @@ export const ListingModal = ({
   setAlertResult,
   alertResult,
   renderActions,
+  timeframeValue,
+  onSubmit,
 }) => {
   const [indicators, setIndicators] = useState([]);
   const [currencies, setCurrencies] = useState([]);
@@ -50,35 +52,11 @@ export const ListingModal = ({
   const handleSubmitAlert = () => {
     if (!rsiValue.value) return;
 
-    setAlertLoading(true);
-    setAlertError(null);
-    setAlertResult([]);
-
-    // clear old interval if any
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
+    if (onSubmit) {
+      onSubmit(rsiValue);
     }
-
-    if (!socket.connected) {
-      console.warn("⚠️ Cannot start scanner: Socket is DISCONNECTED");
-      setAlertError("Socket disconnected. Trying to reconnect...");
-      socket.connect();
-      return;
-    }
-
-    // 🔁 Emit via socket
-    const scanParams = {
-      rsi_threshold: Number(rsiValue.value),
-      condition: rsiValue.condition,
-      interval: "1d",
-      fromDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      toDate: new Date().toISOString().split('T')[0]
-    };
     
-    console.log("🚀 STARTING RSI SCANNER VIA SOCKET:", scanParams);
-    socket.emit(SocketEvents.GET_RSI_SCANNER, scanParams);
-
-    setAlertLoading(false); // Socket is instant
+    // Close modal if needed or let parent handle it
   };
   const debouncedIndicator = useDebounce(searchIndicator, 500);
 
