@@ -5,29 +5,27 @@ export default function useAlerts() {
   const [scanner, setScanner] = useState(null);
   const scannerRef = useRef(null);
 
-  // Sidebar Listing
   const [matchedCoins, setMatchedCoins] = useState([]);
-
-  // Alert Feed
   const [alertsFeed, setAlertsFeed] = useState([]);
 
-  // Previous RSI Tracking
   const previousRsiRef = useRef({});
-
-  // Prevent Multiple Alerts
   const triggeredRef = useRef({});
+  const rsiMapRef = useRef({});
+
+  const resetRefs = () => {
+    triggeredRef.current = {};
+    previousRsiRef.current = {};
+    rsiMapRef.current = {};
+  };
 
   const addAlert = (data) => {
     setScanner(data);
     scannerRef.current = data;
-
-    // Start a fresh scan whenever a new condition is added
     setMatchedCoins([]);
     setAlertsFeed([]);
-    triggeredRef.current = {};
+    resetRefs();
   };
 
-  // Delete Coin From Listing
   const removeCoin = (symbol) => {
     setMatchedCoins((prev) => prev.filter((item) => item.symbol !== symbol));
   };
@@ -35,15 +33,16 @@ export default function useAlerts() {
   const clearAllCoins = () => {
     setMatchedCoins([]);
     setAlertsFeed([]);
-    triggeredRef.current = {};
+    resetRefs();
+    setScanner(null);
+    scannerRef.current = null;
   };
 
-  const rsiMapRef = useRef({});
-
-  // Function to check a single stock's RSI against the scanner
   const checkAlert = (symbol, currentRSI) => {
     try {
       const currentScanner = scannerRef.current;
+
+      // ✅ Always update previousRsi even if no scanner active
       if (!currentScanner || typeof currentRSI !== "number") {
         previousRsiRef.current[symbol] = currentRSI;
         return;
@@ -53,29 +52,31 @@ export default function useAlerts() {
       let matched = false;
 
       if (currentScanner.condition === "crossesAbove") {
+        // Need: prev < threshold AND current >= threshold
         matched =
           typeof previousRSI === "number" &&
           previousRSI < Number(currentScanner.value) &&
           currentRSI >= Number(currentScanner.value);
       }
+
       if (currentScanner.condition === "crossesBelow") {
+        // Need: prev > threshold AND current <= threshold
         matched =
           typeof previousRSI === "number" &&
           previousRSI > Number(currentScanner.value) &&
           currentRSI <= Number(currentScanner.value);
       }
-      if (
-        currentScanner.condition === "greaterThan" ||
-        currentScanner.condition === ">"
-      ) {
+
+      if (currentScanner.condition === "greaterThan" || currentScanner.condition === ">") {
         matched = currentRSI > Number(currentScanner.value);
       }
-      if (
-        currentScanner.condition === "lessThan" ||
-        currentScanner.condition === "<"
-      ) {
+
+      if (currentScanner.condition === "lessThan" || currentScanner.condition === "<") {
         matched = currentRSI < Number(currentScanner.value);
       }
+
+      // ✅ CRITICAL: always update previousRsi AFTER comparison, BEFORE firing alert
+      previousRsiRef.current[symbol] = currentRSI;
 
       if (matched && !triggeredRef.current[symbol]) {
         const payload = {
@@ -139,25 +140,21 @@ export default function useAlerts() {
     };
 
     const handleLiveTick = (tick) => {
-      // Shape 1: { symbol, type: "RSI", data: [{rsi: 37.16, ...}] }
-      if (
-        tick?.type === "RSI" &&
-        Array.isArray(tick?.data) &&
-        tick.data.length > 0
-      ) {
+      // Shape 1: { symbol, type: "RSI", data: [{rsi, RSI, value}] }
+      if (tick?.type === "RSI" && Array.isArray(tick?.data) && tick.data.length > 0) {
         const sym = tick.symbol || tick.name;
         const rsiVal = Number(
-          tick.data[0].rsi ?? tick.data[0].RSI ?? tick.data[0].value,
+          tick.data[0].rsi ?? tick.data[0].RSI ?? tick.data[0].value
         );
         if (sym && Number.isFinite(rsiVal)) {
-          console.log(`[RSI Live Tick] Symbol: ${sym}, RSI: ${rsiVal}`);
+          console.log(`[RSI Live Tick] Symbol: ${sym}, RSI: ${rsiVal}, Prev: ${previousRsiRef.current[sym]}`);
           rsiMapRef.current[sym] = rsiVal;
           checkAlert(sym, rsiVal);
         }
         return;
       }
 
-      // Shape 2: flat tick { symbol, rsi } (original fallback)
+      // Shape 2: flat { symbol, rsi }
       const sym = tick?.symbol || tick?.name;
       if (sym && tick.rsi != null) {
         const rsiVal = Number(tick.rsi);
@@ -166,23 +163,20 @@ export default function useAlerts() {
       }
     };
 
-    // In the useEffect inside useAlerts, add:
     const handleIndicatorTick = (tick) => {
       if (!tick?.success || tick?.type !== "RSI") return;
       const sym = tick.symbol || tick.name;
       const rsiVal = Number(
-        tick.data?.[0]?.rsi ?? tick.data?.[0]?.RSI ?? tick.data?.[0]?.value,
+        tick.data?.[0]?.rsi ?? tick.data?.[0]?.RSI ?? tick.data?.[0]?.value
       );
       if (sym && Number.isFinite(rsiVal)) {
+        console.log(`[Indicator RSI] Symbol: ${sym}, RSI: ${rsiVal}, Prev: ${previousRsiRef.current[sym]}`);
         rsiMapRef.current[sym] = rsiVal;
         checkAlert(sym, rsiVal);
       }
     };
 
     socket.on("liveIndicatorResponse", handleIndicatorTick);
-
-    // cleanup:
-
     socket.on("stocks", handleStocks);
     socket.on("stockUpdate", handleStockUpdate);
     socket.on("liveTick", handleLiveTick);

@@ -8,30 +8,27 @@ export default function SearchSelect({ stocks, stock, setStock, style }) {
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
-//   console.log("📦 stocks:", stocks);
-// console.log("🎯 selected stock value:", stock);
+  //   console.log("📦 stocks:", stocks);
+  // console.log("🎯 selected stock value:", stock);
 
-const selected = stocks.find((s) => s.userCode === stock);  const displayValue = selected ? `${selected.name} (${selected.actualSymbol})` : "";
+  const selected = stocks.find((s) => s.userCode === stock);
+  const displayValue = selected
+    ? `${selected.name} (${selected.actualSymbol})`
+    : "";
 
+  const normalizedQuery = query.toLowerCase().trim();
 
-const normalizedQuery = query.toLowerCase().trim();
+  const filtered = normalizedQuery
+    ? stocks.filter((s) => {
+        const name = s.name?.toLowerCase() || "";
+        const symbol = s.actualSymbol?.toLowerCase() || "";
 
-const filtered = normalizedQuery
-  ? stocks.filter((s) => {
-      const name = s.name?.toLowerCase() || "";
-      const symbol = s.actualSymbol?.toLowerCase() || "";
+        const match =
+          name.includes(normalizedQuery) || symbol.includes(normalizedQuery);
 
-      const match =
-        name.includes(normalizedQuery) ||
-        symbol.includes(normalizedQuery);
-
-      if (match) {
-        console.log("✅ MATCH:", s);
-      }
-
-      return match;
-    })
-  : stocks;
+        return match;
+      })
+    : stocks;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -44,18 +41,18 @@ const filtered = normalizedQuery
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-const handleOpen = () => {
-  setOpen(true);
-  setQuery(""); // ✅ show full list
-  setHighlighted(0);
-  setTimeout(() => inputRef.current?.focus(), 0);
-};
-const handleSelect = (symbol) => {
-  console.log("✅ selected:", symbol);
-  setStock(symbol);
-  setOpen(false);
-  setQuery("");
-};
+  const handleOpen = () => {
+    setOpen(true);
+    setQuery(""); // ✅ show full list
+    setHighlighted(0);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+  const handleSelect = (symbol) => {
+    console.log("✅ selected:", symbol);
+    setStock(symbol);
+    setOpen(false);
+    setQuery("");
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === "ArrowDown") {
@@ -66,7 +63,8 @@ const handleSelect = (symbol) => {
       setHighlighted((h) => Math.max(h - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (filtered[highlighted]) handleSelect(filtered[highlighted].actualSymbol);
+      if (filtered[highlighted])
+        handleSelect(filtered[highlighted].actualSymbol);
     } else if (e.key === "Escape") {
       setOpen(false);
       setQuery("");
@@ -76,7 +74,14 @@ const handleSelect = (symbol) => {
   const selectStyle = { ...style, cursor: "pointer", userSelect: "none" };
 
   return (
-    <div ref={containerRef} style={{ position: "relative", display: "inline-block", width: style?.width || "100%" }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: "relative",
+        display: "inline-block",
+        width: style?.width || "100%",
+      }}
+    >
       {/* Trigger — looks exactly like the original <select> */}
       {!open ? (
         <div
@@ -98,12 +103,12 @@ const handleSelect = (symbol) => {
           ref={inputRef}
           type="text"
           value={query}
-onChange={(e) => {
-  const val = e.target.value;
-  console.log("🔍 typing query:", val);
-  setQuery(val);
-  setHighlighted(0);
-}}          onKeyDown={handleKeyDown}
+          onChange={(e) => {
+            const val = e.target.value;
+            setQuery(val);
+            setHighlighted(0);
+          }}
+          onKeyDown={handleKeyDown}
           placeholder="Search stock…"
           style={{
             ...selectStyle,
@@ -132,7 +137,13 @@ onChange={(e) => {
           }}
         >
           {filtered.length === 0 ? (
-            <div style={{ padding: "8px 12px", fontSize: "0.85rem", color: "#999" }}>
+            <div
+              style={{
+                padding: "8px 12px",
+                fontSize: "0.85rem",
+                color: "#999",
+              }}
+            >
               No results
             </div>
           ) : (
@@ -150,7 +161,7 @@ onChange={(e) => {
                   color: "#000",
                 }}
               >
-                {s.name} ({s.userCode})
+                {s.name} ({s.userCode})<span className="text-muted"> {s.segment}</span> 
               </div>
             ))
           )}

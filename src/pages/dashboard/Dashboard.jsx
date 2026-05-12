@@ -65,7 +65,7 @@ const Dashboard = () => {
       {/* Order Panel */}
       <div className="main-grid">
         <OrderPanel {...orderState} />
-        <SidePanel stock={stock} />
+        <SidePanel stock={stock} expiry={expiry} />
       </div>
       
       <style>{`

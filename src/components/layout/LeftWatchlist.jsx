@@ -24,7 +24,7 @@ useEffect(() => {
     SINGLE STOCK UPDATE
   */
   const handleStockUpdate = (updatedStock) => {
-    // console.log("stockUpdate", updatedStock);
+    console.log("stockUpdate", updatedStock);
     if (!updatedStock?.token) return;
 
     setStocksData((prev) =>
