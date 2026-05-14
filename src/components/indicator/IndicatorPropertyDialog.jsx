@@ -4,6 +4,7 @@ import apiService from "../../services/apiServices";
 import useChartFunctions from "../../util/useChartFunctions";
 import { updateIndicatorFromInput } from "./IndicatorIndex";
 import React, { useEffect, useState } from "react";
+import socket from "../../services/socket";
 
 /* =========================
    BASE SETTINGS COMPONENT
@@ -239,19 +240,32 @@ export default function IndicatorPropertyDialog({
       ...config,
     };
 
-    console.log(payload, "payloadddddddddd");
-    console.log(config, "configggggg");
+    console.log("[IndicatorProperty] Emitting updateIndicator:", payload);
 
     setIndicatorProperty(false);
     setIndicatorLoading(true); // START LOADER
-    try {
 
-      const response = await apiService.post(
-        `/equity/updateIndicator?symbol=${selectedCurrency?.name}&interval=${timeframeValue}&fromdate=${fromDate} 09:15&todate=${toDate} 15:30`,
-        payload,
-      );
+    // Build the socket request
+    const socketPayload = {
+      symbol: selectedCurrency?.name,
+      interval: timeframeValue,
+      fromDate: fromDate,
+      toDate: toDate,
+      exchange: selectedCurrency?.segment || "NSE",
+      body: payload,
+    };
 
-      console.log("Indicator updated:", response);
+    // Remove any previous one-shot listener to avoid accumulation
+    socket.off("updateIndicatorResponse");
+
+    socket.once("updateIndicatorResponse", (response) => {
+      console.log("[IndicatorProperty] updateIndicatorResponse:", response);
+      setIndicatorLoading(false); // STOP LOADER
+
+      if (!response?.success) {
+        console.error("Indicator update failed:", response?.message || "Unknown error");
+        return;
+      }
 
       updateIndicatorFromInput(
         activeBarIndicator,
@@ -260,20 +274,20 @@ export default function IndicatorPropertyDialog({
         latestIndicatorValuesRef,
         maType,
       );
-    } catch (error) {
-      if (error.response) {
-        console.error("Server responded with error:");
-        console.error("Status:", error.response.status);
-        console.error("Data:", error.response.data);
-      } else if (error.request) {
-        console.error("No response received from server");
-        console.error(error.request);
-      } else {
-        console.error("Request setup error:", error.message);
-      }
-    } finally {
-      setIndicatorLoading(false); // STOP LOADER
-    }
+    });
+
+    socket.emit("updateIndicator", socketPayload);
+
+    // Safety fallback: if no response in 10s, stop the loader
+    setTimeout(() => {
+      setIndicatorLoading((loading) => {
+        if (loading) {
+          console.warn("[IndicatorProperty] updateIndicatorResponse timed out");
+          socket.off("updateIndicatorResponse");
+        }
+        return false;
+      });
+    }, 10000);
   };
 
   const handleCancel = () => {
@@ -309,6 +323,30 @@ export default function IndicatorPropertyDialog({
       case "SSL_HYBRID":
         return (
           <>
+            {/* =========================
+    DISPLAY CONTROLS
+========================= */}
+            <h6 className="mb-3 fw-bold">Display Controls</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Display Mode</label>
+
+              <select
+                className="form-select"
+                value={currentConfig.displayMode}
+                onChange={(e) => updateProperty("displayMode", e.target.value)}
+              >
+                <option value="FULL_DISPLAY">Full Display</option>
+
+                <option value="BASELINE_ONLY">Baseline Only</option>
+
+                <option value="SSL_ONLY">SSL Only</option>
+
+                <option value="BASELINE_SSL">Baseline + SSL</option>
+
+                <option value="ENTRY_EXIT_ONLY">Entry/Exit Only</option>
+              </select>
+            </div>
             {/* =========================
           SSL SETTINGS
       ========================= */}
@@ -729,6 +767,7 @@ export default function IndicatorPropertyDialog({
             </div>
           </>
         );
+
       case "WMA":
         return (
           <BaseSettings
@@ -2238,7 +2277,14 @@ export default function IndicatorPropertyDialog({
               </span>
             }
           >
-            <div className="custom-scrollbar" style={{ maxHeight: "350px", overflowY: "auto", overflowX: "hidden" }}>
+            <div
+              className="custom-scrollbar"
+              style={{
+                maxHeight: "350px",
+                overflowY: "auto",
+                overflowX: "hidden",
+              }}
+            >
               <div className="px-4 py-3">{renderIndicatorSetting()}</div>
             </div>
           </Tab>
@@ -2251,7 +2297,14 @@ export default function IndicatorPropertyDialog({
               </span>
             }
           >
-            <div className="custom-scrollbar" style={{ maxHeight: "350px", overflowY: "auto", overflowX: "hidden" }}>
+            <div
+              className="custom-scrollbar"
+              style={{
+                maxHeight: "350px",
+                overflowY: "auto",
+                overflowX: "hidden",
+              }}
+            >
               <div className="px-4 py-3">
                 <IndicatorStyle
                   indicatorStyle={indicatorStyle}

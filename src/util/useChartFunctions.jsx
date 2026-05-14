@@ -241,7 +241,7 @@ export default function useChartFunctions({
         const ssl2 = result?.data?.ssl2 ?? [];
         const atrUpper = result?.data?.atrUpper ?? [];
         const atrLower = result?.data?.atrLower ?? [];
-        const sslExit = result?.data?.sslExit ?? [];
+        // const sslExit = result?.data?.sslExit ?? [];
 
         indicatorDataRef.current.SSL_HYBRID = {
           result,
@@ -256,7 +256,7 @@ export default function useChartFunctions({
           ssl2: ssl2[ssl2.length - 1]?.value,
           atrUpper: atrUpper[atrUpper.length - 1]?.value,
           atrLower: atrLower[atrLower.length - 1]?.value,
-          sslExit: sslExit[sslExit.length - 1]?.value,
+          // sslExit: sslExit[sslExit.length - 1]?.value,
         };
 
         break;
@@ -1233,7 +1233,7 @@ async function fetchDataForIndicators(
           type: "multi",
           data: {
             baseline:
-              response.data
+              response?.data
                 ?.filter((d) => d.baseline != null && d.time != null)
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
@@ -1288,15 +1288,16 @@ async function fetchDataForIndicators(
                   value: d.atrLower,
                 })) ?? [],
 
-            sslExit:
-              response.data
-                ?.filter((d) => d.sslExit != null && d.time != null)
-                .map((d) => ({
-                  time: Number(d.time) + IST_OFFSET,
-                  value: d.sslExit,
-                })) ?? [],
+            // sslExit:
+            //   response.data
+            //     ?.filter((d) => d.sslExit != null && d.time != null)
+            //     .map((d) => ({
+            //       time: Number(d.time) + IST_OFFSET,
+            //       value: d.sslExit,
+            //     })) ?? [],
           },
         };
+
       case "PVI":
         return {
           type: "multi",

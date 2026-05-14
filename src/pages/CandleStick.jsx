@@ -1105,39 +1105,24 @@ export default function Candlestick() {
           if (c) c.textContent = Number(updatedBar.close).toFixed(2);
           if (c) c.style.color = color;
         }
+
+        /* ✅ LIVE INDICATORS — emit on every qualifying tick */
+        const activeIndicators = selectedIndicatorRef.current;
+        if (activeIndicators?.length > 0) {
+          activeIndicators.forEach((ind) => {
+            const indicatorPayload = {
+              symbol: selectedCurrency?.name,
+              interval: timeframeValue,
+              type: ind,
+              exchange: selectedCurrency?.segment,
+            };
+            console.log("📤 [Tick] getLiveIndicatorUpdate:", indicatorPayload);
+            socket.emit("getLiveIndicatorUpdate", indicatorPayload);
+          });
+        }
       });
     };
 
-      /* LIVE INDICATORS */
-      const activeIndicators = selectedIndicatorRef.current;
-      if (activeIndicators?.length > 0) {
-        activeIndicators.forEach((ind) => {
-          const indicatorPayload = {
-            symbol: selectedCurrency?.name,
-            interval: timeframeValue,
-            //   TIMEFRAME_TO_SECONDS[timeframeValue] === 86400
-            //     ? "ONE_DAY"
-            //     : TIMEFRAME_TO_SECONDS[timeframeValue] === 3600
-            //       ? "ONE_HOUR"
-            //       : TIMEFRAME_TO_SECONDS[timeframeValue] === 900
-            //         ? "FIFTEEN_MINUTE"
-            //         : TIMEFRAME_TO_SECONDS[timeframeValue] === 300
-            //           ? "FIVE_MINUTE"
-            //           : "ONE_MINUTE",
-
-            // token: selectedCurrency?.token,
-            // from: fromDate,
-            // to: toDate,
-            type: ind,
-            exchange: selectedCurrency?.segment,
-            // candles: candlesRef.current,
-          };
-
-          console.log("📤 getLiveIndicatorUpdate response:", indicatorPayload);
-
-          socket.emit("getLiveIndicatorUpdate", indicatorPayload);
-        });
-      }
     socket.on("liveTick", handleChartLiveTick);
     socket.on("liveticks", handleChartLiveTick);
 

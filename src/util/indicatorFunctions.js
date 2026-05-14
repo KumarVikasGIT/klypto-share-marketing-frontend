@@ -332,19 +332,31 @@ export let indicatorConfigDefault = {
     type: "SSL_HYBRID",
     maType: "HMA",
     baseLen: 60,
+    src: "close",
+    multy: 0.2,
+    useTrueRange: true,
     ssl2Type: "JMA",
     ssl2Len: 5,
+    atrCrit: 0.9,
     ssl3Type: "HMA",
     ssl3Len: 15,
     atrLen: 14,
     atrMult: 1.0,
     atrSmoothing: "WMA",
-    src: "close",
-    multy: 0.2,
-    useTrueRange: true,
-    atrCrit: 0.9,
+    showAtrBands: true,
     riskLookback: 100,
     riskSensitivity: 2.0,
+    enableRiskGradient: true,
+    phase: 3,
+    power: 1,
+    kijunDivider: 1,
+    volatilityLookback: 10,
+    beta: 0.8,
+    feedback: false,
+    feedbackWeighting: 0.5,
+    superSmootherLength: 20,
+    superSmootherPoles: 2,
+    displayMode: "FULL_DISPLAY",
   },
 };
 
@@ -1513,7 +1525,6 @@ export let indicatorStyleDefault = {
       visible: true,
       value: 0,
     },
-
     level_minus0_75: {
       color: "rgba(129,199,132,1)",
       width: 1,
@@ -1521,7 +1532,6 @@ export let indicatorStyleDefault = {
       visible: true,
       value: -0.75,
     },
-
     level_minus1_5: {
       color: "rgba(38,166,154,1)",
       width: 1,
@@ -1537,61 +1547,52 @@ export let indicatorStyleDefault = {
       width: 2,
       lineStyle: 0,
     },
-
     upperChannel: {
       visible: true,
       color: "rgba(38,166,154,1)",
       width: 1,
       lineStyle: 2,
     },
-
     lowerChannel: {
       visible: true,
       color: "rgba(239,83,80,1)",
       width: 1,
       lineStyle: 2,
     },
-
     ssl1: {
       visible: true,
       color: "rgba(76,175,80,1)",
       width: 2,
       lineStyle: 0,
     },
-
     ssl2: {
       visible: true,
       color: "rgba(244,67,54,1)",
       width: 2,
       lineStyle: 0,
     },
-
     plusAtr: {
       visible: true,
       color: "rgba(0,200,83,1)",
       width: 1,
       lineStyle: 1,
     },
-
     minusAtr: {
       visible: true,
       color: "rgba(213,0,0,1)",
       width: 1,
       lineStyle: 1,
     },
-
     exitArrows: {
       visible: true,
       upColor: "rgba(76,175,80,1)",
       downColor: "rgba(244,67,54,1)",
     },
-
     signalDiamonds: {
       visible: true,
       bullishColor: "rgba(0,200,83,1)",
       bearishColor: "rgba(213,0,0,1)",
     },
-
     baselineFill: {
       visible: true,
       topFillColor1: "rgba(33,150,243,0.15)",

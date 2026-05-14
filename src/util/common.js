@@ -1867,12 +1867,12 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           type: "line",
         },
         {
-          key: "plusAtr",
+          key: "atrUpper",
           label: "+ATR",
           type: "line",
         },
         {
-          key: "minusAtr",
+          key: "atrLower",
           label: "-ATR",
           type: "line",
         },

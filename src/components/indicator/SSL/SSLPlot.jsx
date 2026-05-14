@@ -12,6 +12,39 @@ export default function SSLPlot({
 }) {
   const canvasRef = useRef(null);
 
+  /* ================= DISPLAY MODE ================= */
+
+  const getDisplayVisibility = (lineName) => {
+    const displayMode =
+      indicatorStyle?.SSL_HYBRID?.displayMode || "FULL_DISPLAY";
+
+    switch (displayMode) {
+      case "BASELINE_ONLY":
+        return ["baseline", "upperChannel", "lowerChannel"].includes(
+          lineName,
+        );
+
+      case "BASELINE_SSL":
+        return [
+          "baseline",
+          "upperChannel",
+          "lowerChannel",
+          "ssl1",
+          "ssl2",
+        ].includes(lineName);
+
+      case "SSL_ONLY":
+        return ["ssl1", "ssl2"].includes(lineName);
+
+      case "ENTRY_EXIT_ONLY":
+        return ["ssl2"].includes(lineName);
+
+      case "FULL_DISPLAY":
+      default:
+        return true;
+    }
+  };
+
   /* ================= CREATE SSL ================= */
 
   useEffect(() => {
@@ -36,25 +69,70 @@ export default function SSLPlot({
 
     Object.entries(result?.data || {}).forEach(([lineName, lineData]) => {
       const rowConfig = rows?.find((r) => r.key === lineName);
+
       const styleConfig = indicatorStyle?.SSL_HYBRID?.[lineName];
 
+      const shouldShow = getDisplayVisibility(lineName);
+
       const series = addSeries("SSL_HYBRID", LineSeries, {
-        color: styleConfig?.color || rowConfig?.color || "#26a69a",
+        color: styleConfig?.color || rowConfig?.color,
         lineWidth: styleConfig?.width || 2,
         lineStyle: styleConfig?.lineStyle || 0,
-        visible: styleConfig?.visible ?? true,
+
+        visible: (styleConfig?.visible ?? true) && shouldShow,
+
         priceLineVisible: false,
 
         lastValueVisible: [
           "baseline",
           "ssl1",
           "ssl2",
+          "atrUpper",
+          "atrLower",
         ].includes(lineName),
       });
 
       if (!series) return;
 
-      series.setData(lineData);
+      /* ================= DYNAMIC BASELINE COLORS ================= */
+
+      if (lineName === "baseline") {
+        const coloredBaseline = lineData.map((point, index) => {
+          const upper = result?.data?.upperChannel?.[index];
+          const lower = result?.data?.lowerChannel?.[index];
+
+          const close =
+            result?.candles?.[index]?.close ??
+            result?.ohlc?.[index]?.close ??
+            result?.close?.[index];
+
+          let color = "#666666";
+
+          if (
+            close != null &&
+            upper?.value != null &&
+            close > upper.value
+          ) {
+            color = "#00c3ff";
+          } else if (
+            close != null &&
+            lower?.value != null &&
+            close < lower.value
+          ) {
+            color = "#ff0062";
+          }
+
+          return {
+            time: point.time,
+            value: point.value,
+            color,
+          };
+        });
+
+        series.setData(coloredBaseline);
+      } else {
+        series.setData(lineData);
+      }
 
       groupedSeries[lineName] = series;
 
@@ -102,6 +180,18 @@ export default function SSLPlot({
     if (!upper.length || !lower.length) return;
     if (!canvasRef.current || !chart) return;
 
+    const fill = indicatorStyle?.SSL_HYBRID?.baselineFill;
+
+    const upperVisible =
+      indicatorStyle?.SSL_HYBRID?.upperChannel?.visible ?? true;
+
+    const lowerVisible =
+      indicatorStyle?.SSL_HYBRID?.lowerChannel?.visible ?? true;
+
+    if (!fill?.visible) return;
+
+    if (!upperVisible || !lowerVisible) return;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
@@ -112,10 +202,6 @@ export default function SSLPlot({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const fill = indicatorStyle?.SSL_HYBRID?.baselineFill;
-
-    if (!fill?.visible) return;
-
     ctx.beginPath();
 
     /* ================= UPPER PATH ================= */
@@ -125,8 +211,7 @@ export default function SSLPlot({
 
       const x = chart.timeScale().timeToCoordinate(p.time);
 
-      const y =
-        sslGroup.upperChannel?.priceToCoordinate(p.value);
+      const y = sslGroup.upperChannel?.priceToCoordinate(p.value);
 
       if (x == null || y == null) continue;
 
@@ -141,8 +226,7 @@ export default function SSLPlot({
 
       const x = chart.timeScale().timeToCoordinate(p.time);
 
-      const y =
-        sslGroup.lowerChannel?.priceToCoordinate(p.value);
+      const y = sslGroup.lowerChannel?.priceToCoordinate(p.value);
 
       if (x == null || y == null) continue;
 
@@ -152,8 +236,7 @@ export default function SSLPlot({
     ctx.closePath();
 
     ctx.fillStyle =
-      fill?.topFillColor1 ||
-      "rgba(33,150,243,0.15)";
+      fill?.topFillColor1 || "rgba(33,150,243,0.15)";
 
     ctx.fill();
   };
@@ -165,29 +248,23 @@ export default function SSLPlot({
 
     const redraw = () => drawBaselineCloud();
 
-    const unsubscribeTime =
-      chart.timeScale().subscribeVisibleLogicalRangeChange
-        ? chart
-            .timeScale()
-            .subscribeVisibleLogicalRangeChange(redraw)
-        : null;
+    chart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
 
-    const unsubscribeCrosshair =
-      chart.subscribeCrosshairMove
-        ? chart.subscribeCrosshairMove(redraw)
-        : null;
+    chart.subscribeCrosshairMove(redraw);
 
     return () => {
-      if (unsubscribeTime) unsubscribeTime();
-      if (unsubscribeCrosshair) unsubscribeCrosshair();
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(
+        redraw,
+      );
+
+      chart.unsubscribeCrosshairMove(redraw);
     };
   }, [chart, indicatorStyle]);
 
   /* ================= STYLE UPDATE ================= */
 
   useEffect(() => {
-    const sslGroup =
-      indicatorSeriesRef.current?.SSL_HYBRID;
+    const sslGroup = indicatorSeriesRef.current?.SSL_HYBRID;
 
     if (!sslGroup) return;
 
@@ -199,11 +276,15 @@ export default function SSLPlot({
 
       if (!style) return;
 
+      const shouldShow = getDisplayVisibility(key);
+
       series.applyOptions({
         color: style.color,
         lineWidth: style.width,
         lineStyle: style.lineStyle,
-        visible: style.visible,
+
+        visible:
+          (style.visible ?? true) && shouldShow,
       });
     });
 
