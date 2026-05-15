@@ -1,4 +1,4 @@
-﻿// import "bootstrap/dist/css/bootstrap.min.css"; //this is for temp
+// import "bootstrap/dist/css/bootstrap.min.css"; //this is for temp
 import {
   createChart,
   CandlestickSeries,
@@ -351,6 +351,32 @@ export default function Candlestick() {
       paneIndex,
     );
 
+    // âœ… Populate panesRef for sub-pane indicators using instanceId as key
+    if (paneIndex !== 0) {
+      const tryPopulate = () => {
+        if (!chartRef.current) return;
+        const panes = chartRef.current.panes();
+        const paneObj = panes[paneIndex];
+        if (paneObj) {
+          const div = paneObj.getHTMLElement();
+          if (div) {
+            console.log("💎 Populating panesRef for", indicator, "at index", paneIndex);
+            panesRef.current[indicator] = {
+              chart: chartRef.current,
+              pane: paneObj,
+              div: div,
+            };
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (!tryPopulate()) {
+        setTimeout(tryPopulate, 100);
+      }
+    }
+
     return series;
   };
 
@@ -642,6 +668,7 @@ export default function Candlestick() {
       return (
         <Component
           key={id}
+          id={id}
           result={data?.result}
           rows={data?.rows}
           indicatorStyle={scopedIndicatorStyle}

@@ -179,7 +179,7 @@ export default function BBPlot({
     drawBBCloud();
   }, [indicatorStyle, result]);
 
-    useEffect(() => {
+  useEffect(() => {
     return () => {
       const canvas = canvasRef.current;
 
