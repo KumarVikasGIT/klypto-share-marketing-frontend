@@ -186,12 +186,18 @@ export default function IndicatorPropertyDialog({
   };
 
   // activeBarIndicator is now {id, type} — fall back to string for legacy compat
-  const instanceId = typeof activeBarIndicator === "object" ? activeBarIndicator.id   : activeBarIndicator;
-  const activeType  = typeof activeBarIndicator === "object" ? activeBarIndicator.type : activeBarIndicator;
+  const instanceId =
+    typeof activeBarIndicator === "object"
+      ? activeBarIndicator.id
+      : activeBarIndicator;
+  const activeType =
+    typeof activeBarIndicator === "object"
+      ? activeBarIndicator.type
+      : activeBarIndicator;
 
   const currentConfig = {
     ...(indicatorConfigDefault[activeType] || {}),
-    ...(indicatorConfigs[instanceId] || indicatorConfigs[activeType] || {})
+    ...(indicatorConfigs[instanceId] || indicatorConfigs[activeType] || {}),
   };
 
   const updateProperty = (key, value) => {
@@ -205,7 +211,8 @@ export default function IndicatorPropertyDialog({
   };
 
   const handleBlur = (key, value) => {
-    const defaults = indicatorConfigDefault[activeType] || indicatorConfigs[activeType] || {};
+    const defaults =
+      indicatorConfigDefault[activeType] || indicatorConfigs[activeType] || {};
     const defaultValue = defaults[key];
     let val = value;
     if (val === "" || val === undefined || isNaN(val)) {
@@ -251,14 +258,26 @@ export default function IndicatorPropertyDialog({
     setIndicatorLoading(true); // START LOADER
 
     // Build the socket request
+    const longInterval =
+      timeframeValue === "1d"
+        ? "ONE_DAY"
+        : timeframeValue === "1h"
+          ? "ONE_HOUR"
+          : timeframeValue === "15m"
+            ? "FIFTEEN_MINUTE"
+            : timeframeValue === "5m"
+              ? "FIVE_MINUTE"
+              : "ONE_MINUTE";
+
     const socketPayload = {
+      ...payload,
+      type: activeType,
       symbol: selectedCurrency?.name,
       interval: timeframeValue,
       fromDate: fromDate,
       toDate: toDate,
-      exchange: selectedCurrency?.segment || "NSE",
-      body: payload,
     };
+    console.log("[IndicatorProperty] Final socketPayload:", socketPayload);
 
     // Remove any previous one-shot listener to avoid accumulation
     socket.off("updateIndicatorResponse");
@@ -268,11 +287,15 @@ export default function IndicatorPropertyDialog({
       setIndicatorLoading(false); // STOP LOADER
 
       if (!response?.success) {
-        console.error("Indicator update failed:", response?.message || "Unknown error");
+        console.error(
+          "Indicator update failed:",
+          response?.message || response?.error || "Unknown error",
+        );
         return;
       }
 
       updateIndicatorFromInput(
+        instanceId,
         activeType,
         response,
         indicatorSeriesRef,
@@ -283,16 +306,18 @@ export default function IndicatorPropertyDialog({
 
     socket.emit("updateIndicator", socketPayload);
 
-    // Safety fallback: if no response in 10s, stop the loader
+    // Safety fallback: if no response in 30s, stop the loader
     setTimeout(() => {
       setIndicatorLoading((loading) => {
         if (loading) {
-          console.warn("[IndicatorProperty] updateIndicatorResponse timed out");
+          console.warn(
+            "[IndicatorProperty] updateIndicatorResponse timed out (30s)",
+          );
           socket.off("updateIndicatorResponse");
         }
         return false;
       });
-    }, 10000);
+    }, 300000);
   };
 
   const handleCancel = () => {
@@ -910,46 +935,46 @@ export default function IndicatorPropertyDialog({
           </>
         );
 
-      case "PSAR":
-        return (
-          <>
-            <div className="mb-3">
-              <label className="form-label">Start</label>
-              <input
-                type="number"
-                className="form-control"
-                value={currentConfig?.start}
-                onChange={(e) =>
-                  updateProperty("start", Number(e.target.value))
-                }
-              />
-            </div>
+      // case "PSAR":
+      //   return (
+      //     <>
+      //       <div className="mb-3">
+      //         <label className="form-label">Start</label>
+      //         <input
+      //           type="number"
+      //           className="form-control"
+      //           value={currentConfig?.start}
+      //           onChange={(e) =>
+      //             updateProperty("start", Number(e.target.value))
+      //           }
+      //         />
+      //       </div>
 
-            <div className="mb-3">
-              <label className="form-label">Increment</label>
-              <input
-                type="number"
-                className="form-control"
-                value={currentConfig?.increment}
-                onChange={(e) =>
-                  updateProperty("increment", Number(e.target.value))
-                }
-              />
-            </div>
+      //       <div className="mb-3">
+      //         <label className="form-label">Increment</label>
+      //         <input
+      //           type="number"
+      //           className="form-control"
+      //           value={currentConfig?.increment}
+      //           onChange={(e) =>
+      //             updateProperty("increment", Number(e.target.value))
+      //           }
+      //         />
+      //       </div>
 
-            <div className="mb-3">
-              <label className="form-label">Max Value</label>
-              <input
-                type="number"
-                className="form-control"
-                value={currentConfig?.maxValue}
-                onChange={(e) =>
-                  updateProperty("maxValue", Number(e.target.value))
-                }
-              />
-            </div>
-          </>
-        );
+      //       <div className="mb-3">
+      //         <label className="form-label">Max Value</label>
+      //         <input
+      //           type="number"
+      //           className="form-control"
+      //           value={currentConfig?.maxValue}
+      //           onChange={(e) =>
+      //             updateProperty("maxValue", Number(e.target.value))
+      //           }
+      //         />
+      //       </div>
+      //     </>
+      //   );
 
       case "SUPERTREND":
         return (

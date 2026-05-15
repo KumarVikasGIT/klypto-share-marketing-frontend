@@ -226,6 +226,7 @@ export const indicatorInputs = {
 };
 
 export function updateIndicatorFromInput(
+  instanceId,
   indicatorType,
   response,
   indicatorSeriesRef,
@@ -244,5 +245,11 @@ export function updateIndicatorFromInput(
 
   // console.log("✅ Found handler for:", indicatorType);
 
-  handler(response, indicatorSeriesRef, latestIndicatorValuesRef, maType);
+  handler(
+    response,
+    indicatorSeriesRef,
+    latestIndicatorValuesRef,
+    maType,
+    instanceId,
+  );
 }

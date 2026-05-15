@@ -578,8 +578,8 @@ async function fetchDataForIndicators(
       socketRef.current?.emit("getIndicatorDetails", {
         symbol: selectedCurrency?.name,
         interval: timeframeValue,
-        fromdate: fromDate,
-        todate: toDate,
+        fromDate: fromDate,
+        toDate: toDate,
         type,
         candles, 
       });

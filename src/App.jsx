@@ -8,6 +8,7 @@ import Signup from "./pages/auth/signup";
 import Login from "./pages/auth/login";
 import { ProtectedRoute } from "./pages/auth/ProtectedRoute";
 import Testing from "./pages/Testing";
+import "./indicatorLogger";
 
 function App() {
   return (

@@ -180,7 +180,7 @@ const OptionChain = ({ selectedCurrency }) => {
       exchange: selectedCurrency?.segment ?? "NSE",
     };
     if (expiry) payload.expiry = expiry;
-    console.log("[OptionChain] Emitting subscribeOptionChain:", payload);
+    // console.log("[OptionChain] Emitting subscribeOptionChain:", payload);
     socket.emit(SocketEvents.SUBSCRIBE_OPTION_CHAIN, payload);
   };
 
@@ -189,7 +189,7 @@ const OptionChain = ({ selectedCurrency }) => {
 
     const handleUpdate = (data) => {
       if (!autoRefreshRef.current) return;
-      console.log("[OptionChain] optionChainUpdate received:", data);
+      // console.log("[OptionChain] optionChainUpdate received:", data);
 
       if (data.spotPrice != null && data.spotPrice !== "") {
         const newSpot = Number(data.spotPrice);

@@ -2,9 +2,8 @@ export default function SMAInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
-  maType
+  maType,
 ) {
-
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   const smaData = rows
