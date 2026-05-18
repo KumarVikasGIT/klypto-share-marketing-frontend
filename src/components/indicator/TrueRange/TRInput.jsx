@@ -2,8 +2,8 @@ export default function TRInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
-  const group = indicatorSeriesRef.current?.TR;
+, instanceId) {
+  const group = indicatorSeriesRef.current?.[instanceId || "TR"];
   if (!group) return;
 
   const trData =
@@ -16,7 +16,7 @@ export default function TRInput(
 
   group.trLine?.setData(trData);
 
-  latestIndicatorValuesRef.current.TR = {
+  latestIndicatorValuesRef.current[instanceId || "TR"] = {
     tr: trData[trData.length - 1]?.value ?? null,
   };
 }

@@ -2,8 +2,8 @@ export default function BBPERBInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
-  const group = indicatorSeriesRef.current?.BBPERB;
+, instanceId) {
+  const group = indicatorSeriesRef.current?.[instanceId || "BBPERB"];
   if (!group) return;
 
   const percentBData =
@@ -16,7 +16,7 @@ export default function BBPERBInput(
 
   group.percentB?.setData(percentBData);
 
-  latestIndicatorValuesRef.current.BBPERB = {
+  latestIndicatorValuesRef.current[instanceId || "BBPERB"] = {
     percentB: percentBData[percentBData.length - 1]?.value ?? null,
   };
 }

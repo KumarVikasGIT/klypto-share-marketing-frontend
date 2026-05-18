@@ -2,6 +2,7 @@ export default function AroonInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
+  instanceId
 ) {
   const upSeries = response?.data?.aroonUpSeries ?? [];
   const downSeries = response?.data?.aroonDownSeries ?? [];
@@ -10,11 +11,11 @@ export default function AroonInput(
 
   /* ---------- SAFETY CHECK ---------- */
 
-  if (!indicatorSeriesRef.current.AROON) {
-    indicatorSeriesRef.current.AROON = {};
+  if (!indicatorSeriesRef.current[instanceId || "AROON"]) {
+    indicatorSeriesRef.current[instanceId || "AROON"] = {};
   }
 
-  const series = indicatorSeriesRef.current.AROON;
+  const series = indicatorSeriesRef.current[instanceId || "AROON"];
 
   /* ---------- UPDATE SERIES ---------- */
 
@@ -23,7 +24,7 @@ export default function AroonInput(
 
   /* ---------- UPDATE LATEST VALUE ---------- */
 
-  latestIndicatorValuesRef.current.AROON = {
+  latestIndicatorValuesRef.current[instanceId || "AROON"] = {
     aroonUp: upSeries[upSeries.length - 1]?.value,
     aroonDown: downSeries[downSeries.length - 1]?.value,
   };

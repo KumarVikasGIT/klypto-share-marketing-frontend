@@ -2,6 +2,7 @@ export default function EOMInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
+  instanceId
 ) {
   /* :fire: SAFE DATA */
   const rows = Array.isArray(response?.data) ? response.data : [];
@@ -11,7 +12,7 @@ export default function EOMInput(
     return;
   }
 
-  const group = indicatorSeriesRef.current?.EOM;
+  const group = indicatorSeriesRef.current?.[instanceId || "EOM"];
 
   if (!group || !group.eom) {
     console.log(":x: EOM series not ready");
@@ -33,7 +34,7 @@ export default function EOMInput(
   group.eom.setData([...eomData]); // clone = force refresh
   /* :fire: UPDATE LAST VALUE */
 
-  latestIndicatorValuesRef.current.EOM = {
+  latestIndicatorValuesRef.current[instanceId || "EOM"] = {
     eom: eomData[eomData.length - 1]?.value ?? null,
   };
 

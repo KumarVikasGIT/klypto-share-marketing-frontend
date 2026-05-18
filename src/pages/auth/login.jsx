@@ -11,7 +11,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated()) {
-      navigate("/candleStick", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [navigate]);
 
@@ -71,7 +71,7 @@ export default function Login() {
         timer: 1500,
         showConfirmButton: false,
       });
-      navigate("/candleStick");
+      navigate("/");
     } catch (error) {
       const message =
         error?.response?.data?.message || error.message || "Login failed";

@@ -2,7 +2,7 @@ export default function KAMAInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   /* ================= FORMAT DATA ================= */
@@ -15,7 +15,7 @@ export default function KAMAInput(
     }))
     .sort((a, b) => a.time - b.time);
 
-  const series = indicatorSeriesRef.current?.KAMA;
+  const series = indicatorSeriesRef.current?.[instanceId || "KAMA"];
 
   if (!series?.kama) return;
 
@@ -25,7 +25,7 @@ export default function KAMAInput(
 
   /* ================= HOVER VALUE ================= */
 
-  latestIndicatorValuesRef.current.KAMA = {
+  latestIndicatorValuesRef.current[instanceId || "KAMA"] = {
     kama: kamaData[kamaData.length - 1]?.value,
   };
 }

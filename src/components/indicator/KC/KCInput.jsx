@@ -2,9 +2,9 @@ export default function DCInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
 
-  const group = indicatorSeriesRef.current?.DC;
+  const group = indicatorSeriesRef.current?.[instanceId || "DC"];
   if (!group) return;
 
   const upper =
@@ -44,7 +44,7 @@ export default function DCInput(
 
   /* ================= CROSSHAIR VALUES ================= */
 
-  latestIndicatorValuesRef.current.DC = {
+  latestIndicatorValuesRef.current[instanceId || "DC"] = {
     upper: upper[upper.length - 1]?.value ?? null,
     lower: lower[lower.length - 1]?.value ?? null,
     basis: basis[basis.length - 1]?.value ?? null,

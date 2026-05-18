@@ -3,7 +3,7 @@ export default function VPInput(
   indicatorSeriesRef,
   latestIndicatorValuesRef,
   maType
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   const volumeData = rows
@@ -27,7 +27,7 @@ export default function VPInput(
     }))
     .sort((a, b) => a.time - b.time);
 
-  const series = indicatorSeriesRef.current?.VP;
+  const series = indicatorSeriesRef.current?.[instanceId || "VP"];
   if (!series) return;
 
   /* 🔥 HISTOGRAM */
@@ -41,13 +41,13 @@ export default function VPInput(
   }
 
   /* 🔥 VALUES */
-  latestIndicatorValuesRef.current.VP = {
+  latestIndicatorValuesRef.current[instanceId || "VP"] = {
     volume: volumeData.at(-1)?.value,
     volumeMA: maType !== "none" ? maData.at(-1)?.value : null,
   };
 
   /* 🔥 STORE */
-  indicatorSeriesRef.current.VP.result = {
+  indicatorSeriesRef.current[instanceId || "VP"].result = {
     data: {
       volume: volumeData,
       volumeMA: maType !== "none" ? maData : [],

@@ -2,7 +2,7 @@ export default function ADInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   /* :fire: SAFE DATA */
   const rows = Array.isArray(response?.data) ? response.data : [];
 
@@ -11,7 +11,7 @@ export default function ADInput(
     return;
   }
 
-  const group = indicatorSeriesRef.current?.AD;
+  const group = indicatorSeriesRef.current?.[instanceId || "AD"];
 
   if (!group || !group.ad) {
     console.log(":x: AD series not ready");
@@ -35,7 +35,7 @@ export default function ADInput(
   group.ad.setData([...adData]); // clone = force refresh
 
   /* :fire: UPDATE LAST VALUE */
-  latestIndicatorValuesRef.current.AD = {
+  latestIndicatorValuesRef.current[instanceId || "AD"] = {
     value: adData[adData.length - 1]?.value ?? null,
   };
 

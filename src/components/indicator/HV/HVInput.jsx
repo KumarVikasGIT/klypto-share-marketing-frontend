@@ -2,7 +2,7 @@ export default function HVInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   // Ensure data exists
   const rows = Array.isArray(response?.data) ? response.data : [];
 
@@ -15,14 +15,14 @@ export default function HVInput(
     }));
 
   // Store the processed data in indicatorSeriesRef for plotting
-  indicatorSeriesRef.current.HV = {
+  indicatorSeriesRef.current[instanceId || "HV"] = {
     result: response,
     rows,
     hvData, // save the computed HV data for easy access
   };
 
   // Store the latest HV value for reference or overlays
-  latestIndicatorValuesRef.current.HV = {
+  latestIndicatorValuesRef.current[instanceId || "HV"] = {
     hvLine: hvData.length ? hvData[hvData.length - 1].value : null,
   };
 

@@ -2,7 +2,7 @@ export default function STDDEVInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   const STDDEVData = rows
@@ -13,19 +13,19 @@ export default function STDDEVInput(
     }))
     .sort((a, b) => a.time - b.time);
 
-  const series = indicatorSeriesRef.current?.STDDEV;
+  const series = indicatorSeriesRef.current?.[instanceId || "STDDEV"];
   if (!series) return;
 
   /* 🔥 UPDATE */
   series.STDDEV?.setData(STDDEVData);
 
   /* 🔥 VALUES */
-  latestIndicatorValuesRef.current.STDDEV = {
+  latestIndicatorValuesRef.current[instanceId || "STDDEV"] = {
     value: STDDEVData.at(-1)?.value,
   };
 
   /* 🔥 STORE */
-  indicatorSeriesRef.current.STDDEV.result = {
+  indicatorSeriesRef.current[instanceId || "STDDEV"].result = {
     data: STDDEVData,
   };
 }

@@ -2,7 +2,7 @@ export default function MomentumInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   /* ================= MOMENTUM ================= */
@@ -14,27 +14,27 @@ export default function MomentumInput(
     }))
     .sort((a, b) => a.time - b.time);
 
-  if (!indicatorSeriesRef.current.MOM) {
+  if (!indicatorSeriesRef.current[instanceId || "MOM"]) {
     // If series not created yet, just store result for plotting later
-    indicatorSeriesRef.current.MOM = {
+    indicatorSeriesRef.current[instanceId || "MOM"] = {
       result: null,
       MOM: null, // placeholder for LineSeries
     };
   }
 
-  const series = indicatorSeriesRef.current.MOM.MOM;
+  const series = indicatorSeriesRef.current[instanceId || "MOM"].MOM;
 
   if (series) {
     series.setData(momentumData); // update existing line
   }
 
   /* ================= UPDATE HOVER VALUES ================= */
-  latestIndicatorValuesRef.current.MOM = {
+  latestIndicatorValuesRef.current[instanceId || "MOM"] = {
     MOM: momentumData[momentumData.length - 1]?.value,
   };
 
   /* ================= STORE RESULT ================= */
-  indicatorSeriesRef.current.MOM.result = {
+  indicatorSeriesRef.current[instanceId || "MOM"].result = {
     data: {
       momentum: momentumData,
     },

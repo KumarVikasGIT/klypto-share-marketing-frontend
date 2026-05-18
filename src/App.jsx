@@ -29,7 +29,7 @@ function App() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/goldchart" element={<Chart />} />
-            <Route path="/candleStick" element={<Candlestick />} />
+            <Route path="/" element={<Candlestick />} />
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
         </Routes>

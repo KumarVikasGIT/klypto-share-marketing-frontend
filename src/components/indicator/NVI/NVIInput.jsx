@@ -2,11 +2,12 @@ export default function NVIInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
+  instanceId
 ) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
-  const nviSeries = indicatorSeriesRef.current?.NVI?.nvi;
-  const emaSeries = indicatorSeriesRef.current?.NVI?.nviEma;
+  const nviSeries = indicatorSeriesRef.current?.[instanceId || "NVI"]?.nvi;
+  const emaSeries = indicatorSeriesRef.current?.[instanceId || "NVI"]?.nviEma;
 
   if (!nviSeries && !emaSeries) return;
 
@@ -27,7 +28,7 @@ export default function NVIInput(
   if (nviSeries) nviSeries.setData(nviData);
   if (emaSeries) emaSeries.setData(emaData);
 
-  latestIndicatorValuesRef.current.NVI = {
+  latestIndicatorValuesRef.current[instanceId || "NVI"] = {
     nvi: nviData[nviData.length - 1]?.value ?? null,
     nviEma: emaData[emaData.length - 1]?.value ?? null,
   };

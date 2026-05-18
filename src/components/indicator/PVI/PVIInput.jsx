@@ -2,11 +2,11 @@ export default function PVIInput(
 response,
 indicatorSeriesRef,
 latestIndicatorValuesRef
-) {
+, instanceId) {
 const rows = Array.isArray(response?.data) ? response.data : [];
 
-const pviSeries = indicatorSeriesRef.current?.PVI?.pvi;
-const emaSeries = indicatorSeriesRef.current?.PVI?.pviEma;
+const pviSeries = indicatorSeriesRef.current?.[instanceId || "PVI"]?.pvi;
+const emaSeries = indicatorSeriesRef.current?.[instanceId || "PVI"]?.pviEma;
 
 if (!pviSeries && !emaSeries) return;
 
@@ -27,7 +27,7 @@ value: Number(d.pviEma),
 if (pviSeries) pviSeries.setData(pviData);
 if (emaSeries) emaSeries.setData(emaData);
 
-latestIndicatorValuesRef.current.PVI = {
+latestIndicatorValuesRef.current[instanceId || "PVI"] = {
 pvi: pviData[pviData.length - 1]?.value ?? null,
 pviEma: emaData[emaData.length - 1]?.value ?? null,
 };

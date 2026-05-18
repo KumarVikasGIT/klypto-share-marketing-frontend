@@ -2,7 +2,7 @@ export default function STOCHInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   const kData = rows
@@ -22,14 +22,14 @@ export default function STOCHInput(
 
   // Update latest indicator values
   if (kData.length) {
-    latestIndicatorValuesRef.current.STOCH = {
+    latestIndicatorValuesRef.current[instanceId || "STOCH"] = {
       k: kData[kData.length - 1].value,
       d: dData[dData.length - 1]?.value ?? null,
     };
   }
 
   // Push updated data to existing series only
-  const series = indicatorSeriesRef.current?.STOCH;
+  const series = indicatorSeriesRef.current?.[instanceId || "STOCH"];
   if (series) {
     if (series.k) series.k.setData(kData);
     if (series.d) series.d.setData(dData);

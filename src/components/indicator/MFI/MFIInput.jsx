@@ -2,10 +2,11 @@ export default function MFIInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
+  instanceId
 ) {
   const rows = response?.data ?? [];
 
-  const group = indicatorSeriesRef.current?.MFI;
+  const group = indicatorSeriesRef.current?.[instanceId || "MFI"];
   if (!group) return;
 
   const mfiData = rows
@@ -17,7 +18,7 @@ export default function MFIInput(
 
   group.mfiLine?.setData([...mfiData]);
 
-  latestIndicatorValuesRef.current.MFI = {
+  latestIndicatorValuesRef.current[instanceId || "MFI"] = {
     mfi: mfiData[mfiData.length - 1]?.value ?? null,
   };
 }
