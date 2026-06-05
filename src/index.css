@@ -58,3 +58,8 @@ body {
 ::-ms-input-placeholder {
   color: var(--text-secondary);
 }
+
+
+body.listing-modal-open #main-chart-loader {
+  display: none !important;
+}

@@ -13,6 +13,36 @@ import BSE from "../../assets/BSE.svg";
 import socket from "../../services/socket";
 import SocketEvents from "../../services/socketEvent";
 
+const SymbolAvatar = ({ code, symbol }) => {
+  const [error, setError] = useState(false);
+  
+  if (error) {
+    const initial = (symbol || code || "S").charAt(0).toUpperCase();
+    return (
+      <div 
+        style={{
+          width: 24, height: 24, borderRadius: "50%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--accent-color)", color: "#fff",
+          fontSize: "12px", fontWeight: "bold", flexShrink: 0
+        }}
+      >
+        {initial}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={getStockLogo(code)}
+      width={24}
+      height={24}
+      style={{ borderRadius: "50%", flexShrink: 0, objectFit: "cover" }}
+      onError={() => setError(true)}
+    />
+  );
+};
+
 export const ListingModal = ({
   isOpen,
   onClose,
@@ -39,6 +69,16 @@ export const ListingModal = ({
   const [activeTab, setActiveTab] = useState("ALL");
   const [equity, setEquity] = useState([]);
   const [futures, setFutures] = useState([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("listing-modal-open");
+    } else {
+      document.body.classList.remove("listing-modal-open");
+    }
+    return () => document.body.classList.remove("listing-modal-open");
+  }, [isOpen]);
+
   // const [options, setOptions] = useState([]);
   const [indices, setIndices] = useState([]);
 
@@ -404,15 +444,7 @@ export const ListingModal = ({
                         style={{ cursor: "pointer", background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
                       >
                         <div className="d-flex align-items-center gap-2">
-                          <img
-                            src={getStockLogo(item?.code)}
-                            width={24}
-                            height={24}
-                            style={{ borderRadius: "50%" }}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                            }}
-                          />
+                          <SymbolAvatar code={item?.code} symbol={item?.symbol || item?.name} />
                           <div className="text-uppercase fw-medium small">
                             {item?.name} ({item?.symbol}) {item?.code}
                             {item?.type === "FUTURES" && (

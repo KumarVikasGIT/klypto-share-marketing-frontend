@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import { IoCloseSharp } from "react-icons/io5";
 import { FaPlay, FaTrash } from "react-icons/fa";
+import { Spinner } from "../tradingModals/Spinner";
 
 const CodeEditorPanel = ({
   onClose,
@@ -66,13 +67,14 @@ const CodeEditorPanel = ({
           onClick={onClose}
         />
       </div>
-      <div style={{ flex: 1, overflow: "hidden" }}>
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <Editor
           height="100%"
           defaultLanguage="python"
           theme={theme === "light" ? "light" : "vs-dark"}
           value={editorCode}
           onChange={handleChange}
+          loading={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><Spinner /></div>}
           options={{
             minimap: { enabled: false },
             fontSize: 14,

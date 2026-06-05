@@ -83,9 +83,10 @@ const Dashboard = () => {
         <SidePanel stock={stock} expiry={expiry} />
       </div>
 
+      </div>
       <style>{`
         .x-small { font-size: 0.65rem; }
-        select.input-dark {
+      `}</style>
     </>
   );
 };
