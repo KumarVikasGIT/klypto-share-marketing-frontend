@@ -7,6 +7,7 @@ import {
   AreaSeries,
   HistogramSeries,
   BaselineSeries,
+  createSeriesMarkers,
 } from "lightweight-charts";
 import React from "react";
 // import IndicatorRuleBuilder from "../components/scanner/IndicatorRuleBuilder";
@@ -79,6 +80,7 @@ export default function Candlestick() {
   const socketRef = useRef(null);
   const chartIndicatorHandlerRef = useRef(null);
   const customScriptSeriesRef = useRef(null);
+  const customScriptMarkersRef = useRef(null);
   const pyodideRef = useRef(null);
   const [isDeployed, setIsDeployed] = useState(false);
   const [isPyodideReady, setIsPyodideReady] = useState(false);
@@ -88,10 +90,10 @@ export default function Candlestick() {
     if (window.loadPyodide) {
       if (!pyodideRef.current) {
         window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/" })
-          .then((pyodide) => {
+          .then(async (pyodide) => {
+            try { await pyodide.loadPackage("pandas"); } catch(e) { console.error(e); }
             pyodideRef.current = pyodide;
             setIsPyodideReady(true);
-            pyodide.loadPackage("pandas").catch(() => {});
           });
       }
     } else {
@@ -99,10 +101,10 @@ export default function Candlestick() {
       script.src = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js";
       script.onload = () => {
         window.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/" })
-          .then((pyodide) => {
+          .then(async (pyodide) => {
+            try { await pyodide.loadPackage("pandas"); } catch(e) { console.error(e); }
             pyodideRef.current = pyodide;
             setIsPyodideReady(true);
-            pyodide.loadPackage("pandas").catch(() => {});
           });
       };
       document.head.appendChild(script);
@@ -119,6 +121,9 @@ export default function Candlestick() {
            try { chartRef.current.removeSeries(customScriptSeriesRef.current); } catch(e){}
        }
        customScriptSeriesRef.current = null;
+    }
+    if (customScriptMarkersRef.current) {
+       try { customScriptMarkersRef.current.setMarkers([]); } catch(e){}
     }
     setIsDeployed(false);
   }, []);
@@ -163,6 +168,9 @@ export default function Candlestick() {
 
       const pyodide = pyodideRef.current;
       
+      // Ensure required packages are fully loaded before execution
+      await pyodide.loadPackagesFromImports(code);
+
       // Inject close prices as a global Javascript array into Python
       pyodide.globals.set("close", closes);
 
@@ -170,6 +178,7 @@ export default function Candlestick() {
       const pythonSetup = `
 import js
 _plotted_series = []
+_plotted_markers = []
 
 def plot(name, data):
     import builtins
@@ -181,6 +190,10 @@ def plot(name, data):
             _plotted_series.append({"name": name, "data": data.tolist()})
         except:
             pass
+
+def plot_markers(markers):
+    if isinstance(markers, list):
+        _plotted_markers.extend(markers)
 `;
       await pyodide.runPythonAsync(pythonSetup);
       
@@ -191,8 +204,11 @@ def plot(name, data):
       const plottedSeriesProxy = pyodide.globals.get("_plotted_series");
       const plottedSeries = plottedSeriesProxy ? plottedSeriesProxy.toJs() : [];
 
-      if (!plottedSeries || plottedSeries.length === 0) {
-         Swal.fire({ icon: 'warning', title: 'No Plot Data', text: 'Script executed successfully but did not call plot(). Make sure you end your script with plot("Name", data)', background: '#1e222d', color: '#d1d4dc' });
+      const plottedMarkersProxy = pyodide.globals.get("_plotted_markers");
+      const plottedMarkers = plottedMarkersProxy ? plottedMarkersProxy.toJs() : [];
+
+      if ((!plottedSeries || plottedSeries.length === 0) && (!plottedMarkers || plottedMarkers.length === 0)) {
+         Swal.fire({ icon: 'warning', title: 'No Plot Data', text: 'Script executed successfully but did not call plot(). Make sure you end your script with plot("Name", data) or plot_markers(data)', background: '#1e222d', color: '#d1d4dc' });
          return;
       }
 
@@ -200,33 +216,63 @@ def plot(name, data):
       customScriptSeriesRef.current = [];
       const colors = ["#2962ff", "#f23645", "#22ab94", "#ff9800", "#9c27b0", "#e91e63"];
 
-      plottedSeries.forEach((seriesMap, seriesIndex) => {
-          const seriesName = seriesMap.get("name") || `Indicator ${seriesIndex + 1}`;
-          const seriesDataArray = seriesMap.get("data");
+      if (plottedSeries && plottedSeries.length > 0) {
+        plottedSeries.forEach((seriesMap, seriesIndex) => {
+            const seriesName = seriesMap.get("name") || `Indicator ${seriesIndex + 1}`;
+            const seriesDataArray = seriesMap.get("data");
 
-          const indicatorData = candlesRef.current
-            .map((candle, index) => {
-               const val = seriesDataArray[index];
-               return {
-                 time: candle.time,
-                 value: typeof val === "number" ? val : null,
-               };
-            })
-            .filter((x) => x.value !== null && !isNaN(x.value));
+            const indicatorData = candlesRef.current
+              .map((candle, index) => {
+                 const val = seriesDataArray[index];
+                 return {
+                   time: candle.time,
+                   value: typeof val === "number" ? val : null,
+                 };
+              })
+              .filter((x) => x.value !== null && !isNaN(x.value));
 
-          if (indicatorData.length > 0) {
-            const lineSeries = chartRef.current.addSeries(LineSeries, {
-              title: seriesName,
-              color: colors[seriesIndex % colors.length],
-              lineWidth: 2,
-            });
-            
-            lineSeries.setData(indicatorData);
-            customScriptSeriesRef.current.push(lineSeries);
+            if (indicatorData.length > 0) {
+              const lineSeries = chartRef.current.addSeries(LineSeries, {
+                title: seriesName,
+                color: colors[seriesIndex % colors.length],
+                lineWidth: 2,
+              });
+              
+              lineSeries.setData(indicatorData);
+              customScriptSeriesRef.current.push(lineSeries);
+            }
+        });
+      }
+
+      if (plottedMarkers && plottedMarkers.length > 0) {
+          const markersToSet = [];
+          plottedMarkers.forEach(markerMap => {
+              const idx = markerMap.get("index");
+              const type = markerMap.get("type");
+              const candle = candlesRef.current[idx];
+              if (candle && type) {
+                  const isBuy = type.toUpperCase() === "BUY";
+                  markersToSet.push({
+                      time: candle.time,
+                      position: isBuy ? "belowBar" : "aboveBar",
+                      color: isBuy ? "#22ab94" : "#f23645",
+                      shape: isBuy ? "arrowUp" : "arrowDown",
+                      text: isBuy ? "BUY" : "SELL",
+                      size: 1
+                  });
+              }
+          });
+
+          if (markersToSet.length > 0 && seriesRef.current) {
+              if (!customScriptMarkersRef.current) {
+                  customScriptMarkersRef.current = createSeriesMarkers(seriesRef.current, markersToSet);
+              } else {
+                  customScriptMarkersRef.current.setMarkers(markersToSet);
+              }
           }
-      });
+      }
 
-      if (customScriptSeriesRef.current.length > 0) {
+      if (customScriptSeriesRef.current.length > 0 || (plottedMarkers && plottedMarkers.length > 0)) {
         setIsDeployed(true);
         toast.success("Python compiled and plotted successfully!", { toastId: "script-success" });
       } else {

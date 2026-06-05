@@ -136,7 +136,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
         try {
           // Using direct axios call for port 3000
           const res = await axios.get(
-            "http://192.168.1.13:3000/api/historical-data",
+            "http://192.168.1.11:3000/api/historical-data",
             {
               params: { symbol: currentSymbol },
             },
@@ -324,7 +324,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
     },
     metricsGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(7, 1fr)",
+      gridTemplateColumns: "repeat(5, 1fr)",
       gap: "12px",
       marginBottom: "24px",
     },
@@ -376,7 +376,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
     }),
     bottomGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, 1fr)",
+      gridTemplateColumns: "repeat(2, 1fr)",
       gap: "16px",
     },
     bottomCard: {
