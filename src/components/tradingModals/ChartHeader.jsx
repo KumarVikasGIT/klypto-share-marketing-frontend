@@ -17,16 +17,16 @@ const d = {
   bar: {
     display: "flex", alignItems: "center", gap: 12,
     padding: "4px 16px",
-    background: "#0d1117",
-    borderBottom: "1px solid #1f2937",
+    background: "var(--bg-primary)",
+    borderBottom: "1px solid var(--bg-secondary)",
     flexWrap: "wrap",
   },
   btn: {
     display: "flex", alignItems: "center", gap: 6,
-    background: "#1f2937",
-    border: "1px solid #374151",
+    background: "var(--bg-secondary)",
+    border: "1px solid var(--border-color)",
     borderRadius: 6,
-    color: "#d1d5db",
+    color: "var(--text-primary)",
     padding: "6px 14px",
     fontSize: "0.8rem",
     fontWeight: 600,
@@ -36,10 +36,10 @@ const d = {
   },
   btnPrimary: {
     display: "flex", alignItems: "center", gap: 6,
-    background: "#4f46e5",
-    border: "1px solid #4338ca",
+    background: "var(--accent-color)",
+    border: "1px solid var(--accent-color)",
     borderRadius: 6,
-    color: "#fff",
+    color: "var(--text-primary)",
     padding: "6px 14px",
     fontSize: "0.8rem",
     fontWeight: 600,
@@ -47,10 +47,10 @@ const d = {
     height: 36,
   },
   select: {
-    background: "#1f2937",
-    border: "1px solid #374151",
+    background: "var(--bg-secondary)",
+    border: "1px solid var(--border-color)",
     borderRadius: 6,
-    color: "#d1d5db",
+    color: "var(--text-primary)",
     padding: "6px 10px",
     fontSize: "0.8rem",
     height: 36,
@@ -58,21 +58,20 @@ const d = {
     cursor: "pointer",
   },
   dateInput: {
-    background: "#1f2937",
-    border: "1px solid #374151",
+    background: "var(--bg-secondary)",
+    border: "1px solid var(--border-color)",
     borderRadius: 6,
-    color: "#d1d5db",
+    color: "var(--text-primary)",
     height: 36,
     fontSize: "0.78rem",
     padding: "0 8px",
-    colorScheme: "dark",
   },
   divider: {
-    width: 1, height: 24, background: "#1f2937", flexShrink: 0,
+    width: 1, height: 24, background: "var(--bg-secondary)", flexShrink: 0,
   },
   dropdownContent: {
-    background: "#111827",
-    border: "1px solid #1f2937",
+    background: "var(--bg-primary)",
+    border: "1px solid var(--bg-secondary)",
     borderRadius: 8,
     boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
     padding: 6,
@@ -83,7 +82,7 @@ const d = {
     display: "flex", alignItems: "center", gap: 8,
     padding: "8px 12px",
     borderRadius: 6,
-    color: "#d1d5db",
+    color: "var(--text-primary)",
     fontSize: "0.8rem",
     cursor: "pointer",
     background: "transparent",
@@ -164,9 +163,9 @@ export default function ChartHeader({
             {!timeframe && <option value="1m">1 Minute</option>}
             {timeframe && Object.keys(timeframe).length === 0 && <option value="1m">1 Minute</option>}
             {timeframe && Object.entries(timeframe)?.map(([group, items]) => (
-              <optgroup key={group} label={group?.toUpperCase()} style={{ background: "#1f2937" }}>
+              <optgroup key={group} label={group?.toUpperCase()} style={{ background: "var(--bg-secondary)" }}>
                 {items?.map((item) => (
-                  <option key={item?.seconds} value={item?.value} style={{ background: "#1f2937" }}>
+                  <option key={item?.seconds} value={item?.value} style={{ background: "var(--bg-secondary)" }}>
                     {item?.label}
                   </option>
                 ))}
@@ -194,15 +193,15 @@ export default function ChartHeader({
                     onClick={() => setChartType(item.value)}
                     style={{
                       ...d.dropdownItem,
-                      background: chartType === item.value ? "#1f2937" : "transparent",
-                      color: chartType === item.value ? "#a78bfa" : "#d1d5db",
+                      background: chartType === item.value ? "var(--bg-secondary)" : "transparent",
+                      color: chartType === item.value ? "var(--accent-color)" : "var(--text-primary)",
                     }}
-                    onMouseEnter={(e) => { if (chartType !== item.value) e.currentTarget.style.background = "#1f2937"; }}
+                    onMouseEnter={(e) => { if (chartType !== item.value) e.currentTarget.style.background = "var(--bg-secondary)"; }}
                     onMouseLeave={(e) => { if (chartType !== item.value) e.currentTarget.style.background = "transparent"; }}
                   >
                     <item.icon size={15} />
                     <span style={{ flex: 1 }}>{item.label}</span>
-                    {chartType === item.value && <span style={{ color: "#8b5cf6", fontSize: "0.7rem" }}>✓</span>}
+                    {chartType === item.value && <span style={{ color: "var(--accent-color)", fontSize: "0.7rem" }}>✓</span>}
                   </button>
                 </DropdownMenu.Item>
               ))}

@@ -1,12 +1,12 @@
  :root {
-  --bg-dark: #090e16;
-  --card-bg: #111827;
-  --border-color: #1f2937;
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
+  --bg-dark: var(--bg-primary);
+  --card-bg: var(--bg-primary);
+  --border-color: var(--bg-secondary);
+  --text-main: var(--text-primary);
+  --text-muted: var(--text-secondary);
   --accent-green: #10b981;
   --accent-red: #ef4444;
-  --accent-purple: #8b5cf6;
+  --accent-purple: var(--accent-color);
   --accent-orange: #f59e0b;
 } 
 
@@ -67,7 +67,7 @@ body {
   display: flex;
   align-items: center;
   padding: 10px;
-  background: rgba(31, 41, 55, 0.5);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 0.8rem;
@@ -126,9 +126,9 @@ body {
   border: none;
 }
 
-.btn-buy-call { background-color: var(--accent-green); color: white; }
-.btn-buy-put { background-color: var(--accent-red); color: white; }
-.btn-square-off { background-color: #374151; color: #f3f4f6; }
+.btn-buy-call { background-color: var(--accent-green); color: var(--text-primary); }
+.btn-buy-put { background-color: var(--accent-red); color: var(--text-primary); }
+.btn-square-off { background-color: var(--border-color); color: var(--text-primary); }
 
 /* Grid Layout */
 .main-grid {
@@ -162,9 +162,9 @@ body {
 }
 
 .input-dark {
-  background-color: #1f2937;
-  border: 1px solid #374151;
-  color: white;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   border-radius: 4px;
   padding: 5px 10px;
   width: 100%;

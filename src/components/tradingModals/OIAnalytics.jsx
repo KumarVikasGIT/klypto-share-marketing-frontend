@@ -88,6 +88,21 @@ const spotPriceLinePlugin = {
 };
 
 const OIAnalytics = ({ selectedCurrency }) => {
+  const [theme, setTheme] = useState(document.documentElement.getAttribute("data-theme") || "dark");
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        if (m.attributeName === "data-theme") {
+          setTheme(document.documentElement.getAttribute("data-theme") || "dark");
+        }
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
+
+  const gridColor = theme === "light" ? "#e2e8f0" : "#2e3347";
+
   const [data, setData] = useState([
   ]);
   const [metrics, setMetrics] = useState({});
@@ -293,8 +308,8 @@ const OIAnalytics = ({ selectedCurrency }) => {
       display: "flex",
       flexDirection: "column",
       height: "100%",
-      backgroundColor: "#131722",
-      color: "#d1d4dc",
+      backgroundColor: "var(--bg-primary)",
+      color: "var(--text-primary)",
       padding: "20px",
       fontFamily:
         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -309,7 +324,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
     title: {
       fontSize: "1.2rem",
       fontWeight: 600,
-      color: "#ffffff",
+      color: "var(--text-primary)",
       textTransform: "uppercase",
       letterSpacing: "0.5px",
     },
@@ -317,10 +332,10 @@ const OIAnalytics = ({ selectedCurrency }) => {
       display: "flex",
       gap: "20px",
       alignItems: "center",
-      backgroundColor: "#1e222d",
+      backgroundColor: "var(--bg-secondary)",
       padding: "8px 16px",
       borderRadius: "6px",
-      border: "1px solid #2a2e39",
+      border: "1px solid var(--border-color)",
     },
     metricsGrid: {
       display: "grid",
@@ -329,8 +344,8 @@ const OIAnalytics = ({ selectedCurrency }) => {
       marginBottom: "24px",
     },
     metricCard: {
-      backgroundColor: "#1e222d",
-      border: "1px solid #2a2e39",
+      backgroundColor: "var(--bg-secondary)",
+      border: "1px solid var(--border-color)",
       borderRadius: "8px",
       padding: "16px 12px",
       display: "flex",
@@ -341,19 +356,19 @@ const OIAnalytics = ({ selectedCurrency }) => {
     },
     metricLabel: {
       fontSize: "0.8rem",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       fontWeight: 500,
     },
     metricValue: {
       fontSize: "1.1rem",
       fontWeight: 600,
-      color: "#ffffff",
+      color: "var(--text-primary)",
     },
     chartContainer: {
       width: "100%",
       minHeight: "500px",
-      backgroundColor: "#181a25",
-      border: "1px solid #2a2e39",
+      backgroundColor: "var(--bg-secondary)",
+      border: "1px solid var(--border-color)",
       borderRadius: "8px",
       padding: "20px",
       marginBottom: "24px",
@@ -368,8 +383,8 @@ const OIAnalytics = ({ selectedCurrency }) => {
     dominantBadge: (type) => ({
       padding: "6px 12px",
       borderRadius: "4px",
-      border: `1px solid ${type === "CALL" ? "#22ab94" : "#f23645"}`,
-      color: type === "CALL" ? "#22ab94" : "#f23645",
+      border: `1px solid ${type === "CALL" ? "#ef4444" : "#22ab94"}`,
+      color: type === "CALL" ? "#ef4444" : "#22ab94",
       fontSize: "0.75rem",
       fontWeight: 600,
       letterSpacing: "0.5px",
@@ -380,8 +395,8 @@ const OIAnalytics = ({ selectedCurrency }) => {
       gap: "16px",
     },
     bottomCard: {
-      backgroundColor: "#1e222d",
-      border: "1px solid #2a2e39",
+      backgroundColor: "var(--bg-secondary)",
+      border: "1px solid var(--border-color)",
       borderRadius: "8px",
       padding: "20px",
       display: "flex",
@@ -397,13 +412,13 @@ const OIAnalytics = ({ selectedCurrency }) => {
       return (
         <div
           style={{
-            backgroundColor: "#1e222d",
-            border: "1px solid #2a2e39",
+            backgroundColor: "var(--bg-secondary)",
+            border: "1px solid var(--border-color)",
             padding: "12px",
             borderRadius: "6px",
           }}
         >
-          <p style={{ margin: "0 0 8px 0", fontWeight: 600, color: "#fff" }}>
+          <p style={{ margin: "0 0 8px 0", fontWeight: 600, color: "var(--text-primary)" }}>
             Strike: {label}
           </p>
           {payload.map((entry, index) => (
@@ -431,7 +446,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
         <div style={styles.title}>Option Chain - Bar Graph View</div>
         <div style={styles.rightInfo}>
           <span style={{ fontWeight: 600 }}>NIFTY 50</span>
-          <span style={{ color: "#22ab94", fontWeight: 600 }}>
+          <span style={{ color: "#ef4444", fontWeight: 600 }}>
             {metrics?.spotPrice || "-"}
           </span>
         </div>
@@ -441,14 +456,14 @@ const OIAnalytics = ({ selectedCurrency }) => {
       <div style={styles.metricsGrid}>
         <div style={styles.metricCard}>
           <span style={styles.metricLabel}>Spot Price</span>
-          <span style={{ ...styles.metricValue, color: "#22ab94" }}>
+          <span style={{ ...styles.metricValue, color: "#ef4444" }}>
             {metrics?.spotPrice || "-"}
           </span>
         </div>
        
         <div style={styles.metricCard}>
           <span style={styles.metricLabel}>PCR (OI)</span>
-          <span style={{ ...styles.metricValue, color: "#22ab94" }}>
+          <span style={{ ...styles.metricValue, color: "#ef4444" }}>
             {metrics?.pcrOI || "-"}
           </span>
         </div>
@@ -458,13 +473,13 @@ const OIAnalytics = ({ selectedCurrency }) => {
         </div> */}
         <div style={styles.metricCard}>
           <span style={styles.metricLabel}>Total OI (CE)</span>
-          <span style={{ ...styles.metricValue, color: "#22ab94" }}>
+          <span style={{ ...styles.metricValue, color: "#ef4444" }}>
             {metrics?.totalOICE || "-"}
           </span>
         </div>
         <div style={styles.metricCard}>
           <span style={styles.metricLabel}>Total OI (PE)</span>
-          <span style={{ ...styles.metricValue, color: "#f23645" }}>
+          <span style={{ ...styles.metricValue, color: "#22ab94" }}>
             {metrics?.totalOIPE || "-"}
           </span>
         </div>
@@ -497,7 +512,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
                     type: "bar",
                     label: "Call OI",
                     data: data.map((d) => d.callOI),
-                    backgroundColor: "#22ab94",
+                    backgroundColor: "#ef4444",
                     borderRadius: 2,
                     maxBarThickness: 20,
                     yAxisID: "y",
@@ -506,7 +521,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
                     type: "bar",
                     label: "Put OI",
                     data: data.map((d) => d.putOI),
-                    backgroundColor: "#f23645",
+                    backgroundColor: "#22ab94",
                     borderRadius: 2,
                     maxBarThickness: 20,
                     yAxisID: "y",
@@ -531,7 +546,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
                 maintainAspectRatio: false,
                 plugins: {
                   legend: {
-                    labels: { color: "#d1d4dc" },
+                    labels: { color: "var(--text-primary)" },
                   },
                   tooltip: {
                     callbacks: {
@@ -545,39 +560,39 @@ const OIAnalytics = ({ selectedCurrency }) => {
                 },
                 scales: {
                   x: {
-                    ticks: { color: "#d1d4dc", fontSize: 12 },
-                    grid: { color: "#2a2e39" },
+                    ticks: { color: "var(--text-primary)", fontSize: 12 },
+                    grid: { color: gridColor },
                     title: {
                       display: true,
                       text: "Strike Price",
-                      color: "#d1d4dc",
+                      color: "var(--text-primary)",
                     },
                   },
                   y: {
                     type: "linear",
                     position: "left",
                     ticks: { 
-                      color: "#d1d4dc",
+                      color: "var(--text-primary)",
                       callback: function(value) {
                         return (value / 100000).toFixed(0) + 'L';
                       }
                     },
-                    grid: { color: "#2a2e39" },
+                    grid: { color: gridColor },
                     title: {
                       display: true,
                       text: "Open Interest (OI)",
-                      color: "#d1d4dc",
+                      color: "var(--text-primary)",
                     },
                   },
                   y1: {
                     type: "linear",
                     position: "right",
-                    ticks: { color: "#d1d4dc" },
+                    ticks: { color: "var(--text-primary)" },
                     grid: { drawOnChartArea: false },
                     title: {
                       display: true,
                       text: "PCR (OI)",
-                      color: "#d1d4dc",
+                      color: "var(--text-primary)",
                     },
                   },
                 },
@@ -591,29 +606,29 @@ const OIAnalytics = ({ selectedCurrency }) => {
       <div style={styles.bottomGrid}>
         <div style={styles.bottomCard}>
           <span
-            style={{ color: "#22ab94", fontWeight: 600, fontSize: "0.85rem" }}
+            style={{ color: "#ef4444", fontWeight: 600, fontSize: "0.85rem" }}
           >
             HIGHEST OI (CALL)
           </span>
-          <span style={{ fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>
+          <span style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)" }}>
             {metrics?.highestCallOI?.strike || "-"}
           </span>
-          <span style={{ color: "#22ab94", fontWeight: 600 }}>
+          <span style={{ color: "#ef4444", fontWeight: 600 }}>
             {metrics?.highestCallOI?.value || "-"}
           </span>
         </div>
         <div style={styles.bottomCard}>
           <span
-            style={{ color: "#f23645", fontWeight: 600, fontSize: "0.85rem" }}
+            style={{ color: "#22ab94", fontWeight: 600, fontSize: "0.85rem" }}
           >
             HIGHEST OI (PUT)
           </span>
           <span
-            style={{ fontSize: "1.2rem", fontWeight: 700, color: "#f23645" }}
+            style={{ fontSize: "1.2rem", fontWeight: 700, color: "#22ab94" }}
           >
             {metrics?.highestPutOI?.strike || "-"}
           </span>
-          <span style={{ color: "#f23645", fontWeight: 600 }}>
+          <span style={{ color: "#22ab94", fontWeight: 600 }}>
             {metrics?.highestPutOI?.value || "-"}
           </span>
         </div>
@@ -636,7 +651,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
         </div> */}
       </div>
 
-      <div style={{ marginTop: "20px", fontSize: "0.75rem", color: "#787b86" }}>
+      <div style={{ marginTop: "20px", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
         Note: OI = Open Interest | PCR = Put Call Ratio
       </div>
     </div>

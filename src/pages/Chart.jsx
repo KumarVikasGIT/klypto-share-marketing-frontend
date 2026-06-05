@@ -136,7 +136,7 @@ const GoldChart = () => {
         });
 
         rsiSeriesRef.current = chartRef.current.addSeries(LineSeries, {
-            color: '#8b5cf6',
+            color: 'var(--accent-color)',
             lineWidth: 2,
             priceScaleId: 'rsi',
             title: 'RSI (14)',
@@ -605,7 +605,7 @@ export default GoldChart;
 //         });
 
 //         rsiSeriesRef.current = chartRef.current.addSeries(LineSeries, {
-//             color: '#8b5cf6',
+//             color: 'var(--accent-color)',
 //             lineWidth: 2,
 //             priceScaleId: 'rsi',
 //             title: 'RSI (14)',

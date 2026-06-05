@@ -140,8 +140,8 @@ export default function Candlestick() {
           icon: 'warning',
           title: 'Not Ready',
           text: 'The Python compiler is downloading in the background. Please wait a few seconds and try again.',
-          background: '#1e222d',
-          color: '#d1d4dc'
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)'
        });
        return;
     }
@@ -151,8 +151,8 @@ export default function Candlestick() {
           icon: 'warning',
           title: 'Empty Code',
           text: 'Please write some code before deploying.',
-          background: '#1e222d',
-          color: '#d1d4dc'
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)'
        });
        return;
     }
@@ -162,7 +162,7 @@ export default function Candlestick() {
     try {
       const closes = candlesRef?.current?.map(c => c.close) || [];
       if (closes.length < 4) {
-         Swal.fire({ icon: 'warning', title: 'Insufficient Data', text: 'Not enough candle data to plot indicator.', background: '#1e222d', color: '#d1d4dc' });
+         Swal.fire({ icon: 'warning', title: 'Insufficient Data', text: 'Not enough candle data to plot indicator.', background: 'var(--bg-secondary)', color: 'var(--text-primary)' });
          return;
       }
       
@@ -210,13 +210,13 @@ def plot_markers(markers):
       const plottedMarkers = plottedMarkersProxy ? plottedMarkersProxy.toJs() : [];
 
       if ((!plottedSeries || plottedSeries.length === 0) && (!plottedMarkers || plottedMarkers.length === 0)) {
-         Swal.fire({ icon: 'warning', title: 'No Plot Data', text: 'Script executed successfully but did not call plot(). Make sure you end your script with plot("Name", data) or plot_markers(data)', background: '#1e222d', color: '#d1d4dc' });
+         Swal.fire({ icon: 'warning', title: 'No Plot Data', text: 'Script executed successfully but did not call plot(). Make sure you end your script with plot("Name", data) or plot_markers(data)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' });
          return;
       }
 
       // Map Python list values back to Unix timestamps and plot each series
       customScriptSeriesRef.current = [];
-      const colors = ["#2962ff", "#f23645", "#22ab94", "#ff9800", "#9c27b0", "#e91e63"];
+      const colors = ["var(--accent-color)", "var(--danger-color)", "#22ab94", "#ff9800", "#9c27b0", "#e91e63"];
 
       if (plottedSeries && plottedSeries.length > 0) {
         plottedSeries.forEach((seriesMap, seriesIndex) => {
@@ -258,7 +258,7 @@ def plot_markers(markers):
                   markersToSet.push({
                       time: candle.time,
                       position: isBuy ? "belowBar" : "aboveBar",
-                      color: isBuy ? "#22ab94" : "#f23645",
+                      color: isBuy ? "#22ab94" : "var(--danger-color)",
                       shape: isBuy ? "arrowUp" : "arrowDown",
                       text: isBuy ? "BUY" : "SELL",
                       size: 1
@@ -310,8 +310,8 @@ def plot_markers(markers):
           icon: 'error',
           title: 'Python Execution Error',
           text: err.message,
-          background: '#1e222d',
-          color: '#d1d4dc'
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)'
       });
     } finally {
       setIsDeploying(false);
@@ -1549,7 +1549,7 @@ def plot_markers(markers):
       <section
         className="trading-view-wrapper overflow-hidden"
         style={{
-          background: "#131722",
+          background: "var(--bg-primary)",
           height: "calc(100vh - 60px)",
           display: "flex",
         }}
@@ -1614,9 +1614,9 @@ def plot_markers(markers):
                 minWidth: 0, // important to prevent flex items from overflowing
                 borderLeft:
                   isWatchlistOpen || isDetailsOpen
-                    ? "1px solid #2a2e39"
+                    ? "1px solid var(--border-color)"
                     : "none",
-                borderRight: "1px solid #2a2e39",
+                borderRight: "1px solid var(--border-color)",
                 display: "flex",
                 flexDirection: "column",
                 height: "100%",
@@ -1736,7 +1736,7 @@ def plot_markers(markers):
                       <span
                         style={{
                           fontSize: 13,
-                          color: "#94a3b8",
+                          color: "var(--text-secondary)",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -1784,7 +1784,7 @@ def plot_markers(markers):
                             style={{
                               fontSize: 13,
                               fontWeight: 500,
-                              color: "#60a5fa",
+                              color: "var(--text-primary)",
                               padding: "2px 6px",
                             }}
                           >
@@ -1800,7 +1800,7 @@ def plot_markers(markers):
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <span style={{ color: "#64748b" }}>O: </span>
+                              <span style={{ color: "var(--text-secondary)" }}>O: </span>
                               <span
                                 data-o=""
                                 data-val=""
@@ -1817,7 +1817,7 @@ def plot_markers(markers):
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <span style={{ color: "#64748b" }}>H: </span>
+                              <span style={{ color: "var(--text-secondary)" }}>H: </span>
                               <span
                                 data-h=""
                                 data-val=""
@@ -1834,7 +1834,7 @@ def plot_markers(markers):
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <span style={{ color: "#64748b" }}>L: </span>
+                              <span style={{ color: "var(--text-secondary)" }}>L: </span>
                               <span
                                 data-l=""
                                 data-val=""
@@ -1851,7 +1851,7 @@ def plot_markers(markers):
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <span style={{ color: "#64748b" }}>C: </span>
+                              <span style={{ color: "var(--text-secondary)" }}>C: </span>
                               <span
                                 data-c=""
                                 data-val=""
@@ -1920,12 +1920,12 @@ def plot_markers(markers):
       border: none;
       padding: 2px;
       cursor: pointer;
-      color: #64748b;
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
       transition: color 0.15s;
     }
-    .ind-btn:hover { color: #e2e8f0; }
+    .ind-btn:hover { color: var(--text-primary); }
   `}</style>
 
                       {selectedIndicator &&
@@ -1940,8 +1940,9 @@ def plot_markers(markers):
                                 alignItems: "center",
                                 justifyContent: "space-between",
                                 gap: 12,
-                                background: "#1e2330a4",
-                                border: "1px solid #2e3347",
+                                background: "var(--bg-secondary)",
+                                border: "1px solid var(--border-color)",
+                                color: "var(--text-primary)",
                                 borderRadius: 6,
                                 padding: "0 10px",
                                 height: 32,
@@ -1952,7 +1953,7 @@ def plot_markers(markers):
                               {/* Label + value */}
                               <span
                                 style={{
-                                  color: "#94a3b8",
+                                  color: "var(--text-secondary)",
                                   display: "flex",
                                   alignItems: "center",
                                   gap: 6,
@@ -1960,7 +1961,7 @@ def plot_markers(markers):
                               >
                                 <span
                                   style={{
-                                    color: "#cbd5e1",
+                                    color: "var(--text-primary)",
                                     fontWeight: 500,
                                   }}
                                 >
@@ -2111,10 +2112,10 @@ def plot_markers(markers):
                        align-items: center;
                        gap: 8px;
                        padding: 6px 10px;
-                       background: rgba(19, 23, 34, 0.7);
+                       background: var(--bg-secondary); opacity: 0.9;
                        backdrop-filter: blur(4px);
                        border-radius: 8px;
-                       border: 1px solid #2a2e39;
+                       border: 1px solid var(--border-color);
                     }
                     .chart-zoom-overlay .zoom-btn {
                       display: flex;
@@ -2125,13 +2126,13 @@ def plot_markers(markers):
                       border-radius: 6px;
                       border: none;
                       background: transparent;
-                      color: #d1d4dc;
+                      color: var(--text-primary);
                       cursor: pointer;
                       transition: all 0.15s ease;
                     }
                     .chart-zoom-overlay .zoom-btn:hover {
-                      background: #2a2e39;
-                      color: #ffffff;
+                      background: var(--border-color);
+                      color: var(--text-primary);
                     }
                     .chart-zoom-overlay .zoom-btn:active {
                       transform: scale(0.95);
@@ -2139,7 +2140,7 @@ def plot_markers(markers):
                     .chart-zoom-overlay .zoom-divider {
                       width: 1px;
                       height: 18px;
-                      background: #2a2e39;
+                      background: var(--border-color);
                     }
                   `}</style>
                   <button onClick={zoomOut} title="Zoom out" className="zoom-btn">
@@ -2177,8 +2178,8 @@ def plot_markers(markers):
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  borderLeft: isWatchlistOpen ? "1px solid #2a2e39" : "none",
-                  borderRight: "1px solid #2a2e39",
+                  borderLeft: isWatchlistOpen ? "1px solid var(--border-color)" : "none",
+                  borderRight: "1px solid var(--border-color)",
                   display: activeTab === "Overview" ? "flex" : "none",
                   flexDirection: "column",
                   height: "100%",
@@ -2194,8 +2195,8 @@ def plot_markers(markers):
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  borderLeft: isWatchlistOpen ? "1px solid #2a2e39" : "none",
-                  borderRight: "1px solid #2a2e39",
+                  borderLeft: isWatchlistOpen ? "1px solid var(--border-color)" : "none",
+                  borderRight: "1px solid var(--border-color)",
                   display: activeTab === "Option Chain" ? "flex" : "none",
                   flexDirection: "column",
                   height: "100%",
@@ -2211,8 +2212,8 @@ def plot_markers(markers):
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  borderLeft: isWatchlistOpen ? "1px solid #2a2e39" : "none",
-                  borderRight: "1px solid #2a2e39",
+                  borderLeft: isWatchlistOpen ? "1px solid var(--border-color)" : "none",
+                  borderRight: "1px solid var(--border-color)",
                   display: activeTab === "OI Analytics" ? "flex" : "none",
                   flexDirection: "column",
                   height: "100%",

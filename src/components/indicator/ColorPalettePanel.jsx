@@ -3,7 +3,7 @@ import { Form } from "react-bootstrap";
 
 const COLORS = [
   "#ffffff","#d9d9d9","#bfbfbf","#a6a6a6","#8c8c8c","#737373","#595959","#404040","#262626","#000000",
-  "#f28b82","#fbbc04","#fff475","#ccff90","#a7ffeb","#a0e7e5","#8ab4f8","#a78bfa","#d580ff","#ff8fab",
+  "#f28b82","#fbbc04","#fff475","#ccff90","#a7ffeb","#a0e7e5","#8ab4f8","var(--accent-color)","#d580ff","#ff8fab",
   "#ea9999","#f9cb9c","#ffe599","#b6d7a8","#a2c4c9","#9fc5e8","#b4a7d6","#d5a6bd","#f4cccc","#ead1dc",
   "#e06666","#f6b26b","#ffd966","#93c47d","#76a5af","#6fa8dc","#8e7cc3","#c27ba0","#f4b6c2","#e6b8af",
   "#cc0000","#ff9900","#ffff00","#00ff00","#00ffff","#00a2e8","#3c78d8","#674ea7","#a64d79","#ff00ff",
@@ -13,10 +13,10 @@ const COLORS = [
 /* ================= UTILS ================= */
 
 export const getColorFromRGBA = (colorStr) => {
-  if (!colorStr) return "#2962ff";
+  if (!colorStr) return "var(--accent-color)";
   if (colorStr.startsWith("#")) return colorStr;
   const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!match) return "#2962ff";
+  if (!match) return "var(--accent-color)";
   const r = parseInt(match[1], 10).toString(16).padStart(2, "0");
   const g = parseInt(match[2], 10).toString(16).padStart(2, "0");
   const b = parseInt(match[3], 10).toString(16).padStart(2, "0");
@@ -57,7 +57,7 @@ export default function ColorPalettePanel({
       currentStyle.color || 
       currentStyle.topFillColor1 || 
       currentStyle.bottomFillColor1 || 
-      "#2962ff"
+      "var(--accent-color)"
     );
   };
 

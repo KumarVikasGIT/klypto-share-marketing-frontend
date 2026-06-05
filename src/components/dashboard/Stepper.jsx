@@ -20,9 +20,9 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
       {STEPS.map((step, i) => {
         const done   = stepFilled[step.id] && step.id !== currentStep;
         const active = step.id === currentStep;
-        const color  = done ? '#10b981' : active ? '#8b5cf6' : '#374151';
-        const bg     = done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(139,92,246,0.12)' : 'rgba(31,41,55,0.6)';
-        const borderC= done ? 'rgba(16,185,129,0.3)' : active ? 'rgba(139,92,246,0.4)'  : '#1f2937';
+        const color  = done ? 'var(--success-color)' : active ? 'var(--accent-color)' : 'var(--border-color)';
+        const bg     = done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(139,92,246,0.12)' : 'var(--bg-secondary)';
+        const borderC= done ? 'rgba(16,185,129,0.3)' : active ? 'rgba(139,92,246,0.4)'  : 'var(--bg-secondary)';
 
         return (
           <React.Fragment key={step.id}>
@@ -36,7 +36,7 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
               {/* Circle */}
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: done ? '#10b981' : active ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : '#1f2937',
+                background: done ? 'var(--success-color)' : active ? 'linear-gradient(135deg,var(--accent-color),var(--accent-color))' : 'var(--bg-secondary)',
                 border: `1.5px solid ${color}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.25s ease',
@@ -45,7 +45,7 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
                   ? <svg width="11" height="11" fill="white" viewBox="0 0 16 16">
                       <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
                     </svg>
-                  : <span style={{ fontSize: '0.65rem', fontWeight: 800, color: active ? '#fff' : '#6b7280' }}>
+                  : <span style={{ fontSize: '0.65rem', fontWeight: 800, color: active ? 'var(--bg-primary)' : 'var(--text-secondary)' }}>
                       {step.id}
                     </span>
                 }
@@ -55,13 +55,13 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
               <div style={{ minWidth: 0 }}>
                 <div style={{
                   fontSize: '0.75rem', fontWeight: 700,
-                  color: active ? '#f3f4f6' : done ? '#10b981' : '#9ca3af',
+                  color: active ? 'var(--text-primary)' : done ? 'var(--success-color)' : 'var(--text-secondary)',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   transition: 'color 0.25s',
                 }}>{step.title}</div>
                 <div style={{
                   fontSize: '0.6rem', marginTop: 1, fontWeight: 500,
-                  color: active ? '#9ca3af' : done ? 'rgba(16,185,129,0.6)' : '#4b5563',
+                  color: active ? 'var(--text-secondary)' : done ? 'rgba(16,185,129,0.6)' : 'var(--text-secondary)',
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{step.desc}</div>
               </div>
@@ -71,7 +71,7 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
                 <div style={{
                   position: 'absolute', top: 8, right: 8,
                   width: 6, height: 6, borderRadius: '50%',
-                  background: '#8b5cf6',
+                  background: 'var(--accent-color)',
                   animation: 'stepPulse 1.8s ease-in-out infinite',
                 }} />
               )}
@@ -82,13 +82,13 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
               <div style={{ flexShrink: 0, width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 <div style={{
                   height: 1.5, width: '100%',
-                  background: stepFilled[step.id] ? 'rgba(16,185,129,0.5)' : '#1f2937',
+                  background: stepFilled[step.id] ? 'rgba(16,185,129,0.5)' : 'var(--bg-secondary)',
                   transition: 'background 0.3s',
                 }} />
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ position: 'absolute', right: -1 }}>
                   <path
                     d="M1 1l6 3-6 3"
-                    stroke={stepFilled[step.id] ? '#10b981' : '#374151'}
+                    stroke={stepFilled[step.id] ? 'var(--success-color)' : 'var(--border-color)'}
                     strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
                   />
                 </svg>

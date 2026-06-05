@@ -268,7 +268,7 @@ export default function SearchSelect({ stocks, stock, setStock, onSelect, style 
       case "EQ":  return { bg: "#064e3b", text: "#6ee7b7" };
       case "FUT": return { bg: "#78350f", text: "#fcd34d" };
       case "OPT": return { bg: "#1e3a5f", text: "#93c5fd" };
-      default:    return { bg: "#1f2937", text: "#9ca3af" };
+      default:    return { bg: "var(--bg-secondary)", text: "var(--text-secondary)" };
     }
   };
 
@@ -289,12 +289,12 @@ export default function SearchSelect({ stocks, stock, setStock, onSelect, style 
           }}
         >
           <span style={{
-            color: displayValue ? "inherit" : "#6b7280",
+            color: displayValue ? "inherit" : "var(--text-secondary)",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>
             {displayValue || "Select stock"}
           </span>
-          <span style={{ fontSize: "0.65rem", color: "#6b7280", flexShrink: 0 }}>▼</span>
+          <span style={{ fontSize: "0.65rem", color: "var(--text-secondary)", flexShrink: 0 }}>▼</span>
         </div>
       ) : (
         <input
@@ -312,12 +312,12 @@ export default function SearchSelect({ stocks, stock, setStock, onSelect, style 
       {open && (
         <div style={{
           position: "absolute", top: "100%", left: 0, right: 0, zIndex: 1000,
-          background: "#111827", border: "1px solid #374151", borderRadius: 6,
+          background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 6,
           maxHeight: 260, overflowY: "auto",
           boxShadow: "0 8px 24px rgba(0,0,0,0.4)", marginTop: 3,
         }}>
           {filtered.length === 0 ? (
-            <div style={{ padding: "10px 12px", fontSize: "0.82rem", color: "#6b7280" }}>
+            <div style={{ padding: "10px 12px", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
               No results found
             </div>
           ) : (
@@ -331,20 +331,20 @@ export default function SearchSelect({ stocks, stock, setStock, onSelect, style 
                   onMouseEnter={() => setHighlighted(i)}
                   style={{
                     padding: "8px 12px", cursor: "pointer",
-                    background: i === highlighted ? "#1f2937" : isActive ? "#0f2820" : "transparent",
-                    borderLeft: isActive ? "2px solid #10b981" : "2px solid transparent",
+                    background: i === highlighted ? "var(--bg-secondary)" : isActive ? "rgba(16, 185, 129, 0.1)" : "transparent",
+                    borderLeft: isActive ? "2px solid var(--success-color)" : "2px solid transparent",
                     display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
                     <div style={{
                       fontSize: "0.83rem", fontWeight: isActive ? 700 : 500,
-                      color: isActive ? "#10b981" : "#f3f4f6",
+                      color: isActive ? "var(--success-color)" : "var(--text-primary)",
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                     }}>
                       {s.name || s.symbol}
                     </div>
-                    <div style={{ fontSize: "0.65rem", color: "#6b7280", marginTop: 1 }}>
+                    <div style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginTop: 1 }}>
                       {s.symbol || s.userCode || ""}
                       {s.token ? ` · ${s.token}` : ""}
                     </div>

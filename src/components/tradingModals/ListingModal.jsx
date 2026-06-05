@@ -298,10 +298,10 @@ export const ListingModal = ({
 
   return (
     <div className="fixed inset-0 z-99 flex items-center justify-center bg-black/60">
-      <div className="w-full px-5 py-4 max-w-3xl h-[90vh] rounded-md bg-white border border-slate-700 shadow-lg">
+      <div className="w-full px-5 py-4 max-w-2xl max-h-[85vh] rounded-md bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-color)] shadow-lg flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl text-black">{title}</h2>
+          <h2 className="text-xl text-[var(--text-primary)]">{title}</h2>
           <IoCloseSharp
             size={20}
             onClick={onClose}
@@ -311,7 +311,7 @@ export const ListingModal = ({
 
         {/* ================= SYMBOL SEARCH ================= */}
         {title === "Symbol Search" && (
-          <div className="py-3">
+          <div className="py-3 flex flex-col flex-1 overflow-hidden">
             {/* 🔥 Tabs */}
             <div
               style={{
@@ -319,7 +319,7 @@ export const ListingModal = ({
                 alignItems: "center",
                 gap: "0",
                 marginBottom: "12px",
-                borderBottom: "1px solid #2a2e39",
+                borderBottom: "1px solid var(--border-color)",
               }}
             >
               {TABS.map((tab) => (
@@ -332,15 +332,15 @@ export const ListingModal = ({
                     border: "none",
                     borderBottom:
                       activeTab === tab
-                        ? "2px solid #2962ff"
-                        : "2px solid white",
+                        ? "2px solid var(--accent-color)"
+                        : "2px solid transparent",
                     marginBottom: "-1px",
                     padding: "6px 14px",
                     fontSize: "12px",
                     fontWeight: activeTab === tab ? "600" : "400",
                     fontFamily: "'Trebuchet MS', sans-serif",
                     letterSpacing: "0.03em",
-                    color: activeTab === tab ? "#25272bff" : "#6a7187",
+                    color: activeTab === tab ? "var(--text-primary)" : "#6a7187",
                     cursor: "pointer",
                     transition: "color 0.15s ease, border-color 0.15s ease",
                     whiteSpace: "nowrap",
@@ -362,10 +362,11 @@ export const ListingModal = ({
 
             {/* Search */}
             <InputGroup className="mb-3">
-              <InputGroup.Text>
+              <InputGroup.Text style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", borderColor: "var(--border-color)" }}>
                 <FiSearch />
               </InputGroup.Text>
               <Form.Control
+                style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
                 type="text"
                 autoFocus
                 placeholder="Search symbol..."
@@ -375,7 +376,7 @@ export const ListingModal = ({
             </InputGroup>
 
             {/* List */}
-            <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+            <div style={{ flex: 1, overflowY: "auto", marginTop: "10px", paddingRight: "5px" }} className="custom-scrollbar">
               {loading ? (
                 <Spinner />
               ) : filteredList?.length > 0 ? (
@@ -400,7 +401,7 @@ export const ListingModal = ({
                           }
                         }}
                         className="d-flex justify-content-between align-items-center"
-                        style={{ cursor: "pointer" }}
+                        style={{ cursor: "pointer", background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
                       >
                         <div className="d-flex align-items-center gap-2">
                           <img
@@ -453,7 +454,7 @@ export const ListingModal = ({
                   })}
                 </ListGroup>
               ) : (
-                <p className="text-center text-dark py-3">No Data found</p>
+                <p className="text-center text-[var(--text-primary)] py-3">No Data found</p>
               )}
             </div>
           </div>
@@ -461,13 +462,14 @@ export const ListingModal = ({
 
         {/* ================= INDICATORS ================= */}
         {title === "Indicators" && (
-          <div className="mt-3" style={{ maxHeight: "70vh" }}>
+          <div className="mt-3 flex flex-col flex-1 overflow-hidden">
             {/* Search */}
             <InputGroup className="mb-3">
-              <InputGroup.Text>
+              <InputGroup.Text style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", borderColor: "var(--border-color)" }}>
                 <FiSearch />
               </InputGroup.Text>
               <Form.Control
+                style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
                 type="text"
                 autoFocus
                 placeholder="Search indicators"
@@ -477,7 +479,7 @@ export const ListingModal = ({
             </InputGroup>
 
             {/* List */}
-            <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+            <div style={{ flex: 1, overflowY: "auto", marginTop: "10px", paddingRight: "5px" }} className="custom-scrollbar">
               {loading ? (
                 <Spinner />
               ) : filteredIndicators.length > 0 ? (
@@ -501,6 +503,9 @@ export const ListingModal = ({
                           alignItems: "center",
                           justifyContent: "space-between",
                           padding: "10px 14px",
+                          background: "var(--bg-secondary)",
+                          color: "var(--text-primary)",
+                          borderColor: "var(--border-color)"
                         }}
                       >
                         <div>
@@ -520,13 +525,14 @@ export const ListingModal = ({
 
         {/* ================= ALERT ================= */}
         {title === "Alerts" && (
-          <div className="mt-3" style={{ color: "black" }}>
+          <div className="mt-3" style={{ color: "var(--text-primary)" }}>
             <h5>Create RSI Alert</h5>
 
             {/* Condition Dropdown */}
             <label className="small mb-1">Condition</label>
             <Form.Select
               className="mb-3"
+              style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
               value={rsiValue.condition}
               onChange={(e) =>
                 setRsiValue({
@@ -545,6 +551,7 @@ export const ListingModal = ({
             <label className="small mb-1">RSI Value</label>
             <InputGroup className="mb-3">
               <Form.Control
+                style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
                 type="number"
                 placeholder="Enter RSI Value (e.g. 70)"
                 value={rsiValue.value}

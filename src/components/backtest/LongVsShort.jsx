@@ -10,7 +10,7 @@ const LongVsShort = ({ data }) => {
     datasets: [
       {
         data: [data.long.netPnl, data.short.netPnl],
-        backgroundColor: ["#089981", "#f23645"],
+        backgroundColor: ["var(--success-color)", "var(--danger-color)"],
         borderWidth: 0,
         cutout: "75%",
       },
@@ -25,10 +25,10 @@ const LongVsShort = ({ data }) => {
         display: false,
       },
       tooltip: {
-        backgroundColor: "#1e222d",
-        titleColor: "#d1d4dc",
-        bodyColor: "#d1d4dc",
-        borderColor: "#2a2e39",
+        backgroundColor: "var(--bg-secondary)",
+        titleColor: "var(--text-primary)",
+        bodyColor: "var(--text-primary)",
+        borderColor: "var(--border-color)",
         borderWidth: 1,
       },
     },
@@ -53,17 +53,17 @@ const LongVsShort = ({ data }) => {
         <div className="ls-legend">
           <div className="ls-legend-item">
             <div className="ls-legend-title">
-              <span className="ls-legend-color" style={{ background: "#089981" }}></span> Long
+              <span className="ls-legend-color" style={{ background: "var(--success-color)" }}></span> Long
             </div>
-            <div className="ls-legend-val" style={{ color: "#089981" }}>
+            <div className="ls-legend-val" style={{ color: "var(--success-color)" }}>
               ${data.long.netPnl.toLocaleString("en-US", { minimumFractionDigits: 2 })} ({data.long.percentage}%)
             </div>
           </div>
           <div className="ls-legend-item">
             <div className="ls-legend-title">
-              <span className="ls-legend-color" style={{ background: "#f23645" }}></span> Short
+              <span className="ls-legend-color" style={{ background: "var(--danger-color)" }}></span> Short
             </div>
-            <div className="ls-legend-val" style={{ color: "#089981" }}>
+            <div className="ls-legend-val" style={{ color: "var(--success-color)" }}>
               ${data.short.netPnl.toLocaleString("en-US", { minimumFractionDigits: 2 })} ({data.short.percentage}%)
             </div>
           </div>
@@ -72,8 +72,8 @@ const LongVsShort = ({ data }) => {
 
       <style>{`
         .long-short-container {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           display: flex;
           flex-direction: column;
@@ -85,7 +85,7 @@ const LongVsShort = ({ data }) => {
         }
         .ls-title {
           font-size: 13px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           font-weight: 600;
         }
         .ls-body {
@@ -113,11 +113,11 @@ const LongVsShort = ({ data }) => {
         .ls-center-val {
           font-size: 12px;
           font-weight: 600;
-          color: #d1d4dc;
+          color: var(--text-primary);
         }
         .ls-center-lbl {
           font-size: 10px;
-          color: #787b86;
+          color: var(--text-secondary);
         }
         .ls-legend {
           width: 100%;
@@ -135,7 +135,7 @@ const LongVsShort = ({ data }) => {
           align-items: center;
           gap: 6px;
           font-size: 12px;
-          color: #d1d4dc;
+          color: var(--text-primary);
         }
         .ls-legend-color {
           width: 8px;

@@ -13,10 +13,10 @@ const SummaryCards = ({ data }) => {
             style={{
               color:
                 item.isPositive === true
-                  ? "#089981"
+                  ? "var(--success-color)"
                   : item.isPositive === false
-                  ? "#f23645"
-                  : "#d1d4dc",
+                  ? "var(--danger-color)"
+                  : "var(--text-primary)",
             }}
           >
             {item.label.includes("Rate") || item.label.includes("Return") || item.label.includes("Drawdown") ? "" : item.value < 0 ? "-" : ""}
@@ -27,7 +27,7 @@ const SummaryCards = ({ data }) => {
             {item.label.includes("Rate") || item.label.includes("Return") || item.label.includes("Drawdown") ? "%" : ""}
           </div>
           {item.percentage && (
-            <div className="summary-card-sub" style={{ color: "#089981" }}>
+            <div className="summary-card-sub" style={{ color: "var(--success-color)" }}>
               {item.percentage}%
             </div>
           )}
@@ -62,8 +62,8 @@ const SummaryCards = ({ data }) => {
           margin-bottom: 16px;
         }
         .summary-card {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           padding: 12px;
           display: flex;
@@ -72,13 +72,13 @@ const SummaryCards = ({ data }) => {
         }
         .summary-card-title {
           font-size: 11px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           display: flex;
           align-items: center;
           gap: 4px;
         }
         .info-icon {
-          color: #787b86;
+          color: var(--text-secondary);
           font-size: 10px;
           cursor: pointer;
         }
@@ -88,7 +88,7 @@ const SummaryCards = ({ data }) => {
         }
         .summary-card-sub {
           font-size: 10px;
-          color: #787b86;
+          color: var(--text-secondary);
         }
       `}</style>
     </div>

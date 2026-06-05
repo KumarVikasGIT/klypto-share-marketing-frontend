@@ -18,15 +18,15 @@ const KeyMetrics = ({ data }) => {
 
       <style>{`
         .key-metrics-container {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           padding: 16px;
           height: 100%;
         }
         .metrics-header {
           font-size: 13px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           margin-bottom: 16px;
           font-weight: 600;
         }
@@ -40,12 +40,12 @@ const KeyMetrics = ({ data }) => {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          border-bottom: 1px solid #2a2e39;
+          border-bottom: 1px solid var(--border-color);
           padding-bottom: 6px;
         }
         .metric-label {
           font-size: 12px;
-          color: #787b86;
+          color: var(--text-secondary);
         }
         .metric-value {
           font-size: 12px;

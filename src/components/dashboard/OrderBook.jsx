@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import apiService from "../../../services/apiServices";
+import apiService from "../../services/apiServices";
 
 const MOCK_ORDERS = [
   {
@@ -67,18 +67,18 @@ const MOCK_ORDERS = [
 const TYPE_META = {
   BUY_CALL: {
     label: "Buy Call",
-    color: "#10b981",
+    color: "var(--success-color)",
     bg: "rgba(16,185,129,0.12)",
   },
-  SQ_CALL: { label: "Sq. Call", color: "#9ca3af", bg: "rgba(156,163,175,0.1)" },
-  BUY_PUT: { label: "Buy Put", color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
-  SQ_PUT: { label: "Sq. Put", color: "#9ca3af", bg: "rgba(156,163,175,0.1)" },
+  SQ_CALL: { label: "Sq. Call", color: "var(--text-secondary)", bg: "rgba(156,163,175,0.1)" },
+  BUY_PUT: { label: "Buy Put", color: "var(--danger-color)", bg: "rgba(239,68,68,0.12)" },
+  SQ_PUT: { label: "Sq. Put", color: "var(--text-secondary)", bg: "rgba(156,163,175,0.1)" },
 };
 
 const STATUS_META = {
-  COMPLETE: { color: "#10b981", bg: "rgba(16,185,129,0.1)", dot: "#10b981" },
-  PENDING: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)", dot: "#f59e0b" },
-  REJECTED: { color: "#ef4444", bg: "rgba(239,68,68,0.1)", dot: "#ef4444" },
+  COMPLETE: { color: "var(--success-color)", bg: "rgba(16,185,129,0.1)", dot: "var(--success-color)" },
+  PENDING: { color: "#f0b90b", bg: "rgba(245,158,11,0.1)", dot: "#f0b90b" },
+  REJECTED: { color: "var(--danger-color)", bg: "rgba(239,68,68,0.1)", dot: "var(--danger-color)" },
 };
 
 const FILTERS = ["All", "COMPLETE", "PENDING", "REJECTED"];
@@ -188,20 +188,20 @@ const OrderBook = ({ orders, setOrders }) => {
     fontWeight: 700,
     letterSpacing: "0.1em",
     textTransform: "uppercase",
-    color: "#6b7280",
+    color: "var(--text-secondary)",
     textAlign: "left",
     cursor: "pointer",
     whiteSpace: "nowrap",
     userSelect: "none",
-    borderBottom: "1px solid #1f2937",
-    background: "#0d1117",
+    borderBottom: "1px solid var(--bg-secondary)",
+    background: "var(--bg-primary)",
   });
 
   const tdStyle = {
     padding: "11px 14px",
     fontSize: "0.8rem",
-    color: "#d1d5db",
-    borderBottom: "1px solid #111827",
+    color: "var(--text-primary)",
+    borderBottom: "1px solid var(--bg-primary)",
     whiteSpace: "nowrap",
     verticalAlign: "middle",
   };
@@ -237,8 +237,8 @@ const OrderBook = ({ orders, setOrders }) => {
               width: 18,
               height: 18,
               borderRadius: 4,
-              background: "linear-gradient(135deg,#7c3aed,#4f46e5)",
-              color: "#fff",
+              background: "linear-gradient(135deg,var(--accent-color),var(--accent-color))",
+              color: "var(--text-primary)",
               fontSize: "0.6rem",
               fontWeight: 700,
             }}
@@ -251,7 +251,7 @@ const OrderBook = ({ orders, setOrders }) => {
               fontWeight: 700,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: "#9ca3af",
+              color: "var(--text-secondary)",
             }}
           >
             Order Book
@@ -260,11 +260,11 @@ const OrderBook = ({ orders, setOrders }) => {
             style={{
               fontSize: "0.6rem",
               fontWeight: 700,
-              background: "#1f2937",
-              color: "#6b7280",
+              background: "var(--bg-secondary)",
+              color: "var(--text-secondary)",
               borderRadius: 4,
               padding: "2px 8px",
-              border: "1px solid #374151",
+              border: "1px solid var(--border-color)",
             }}
           >
             {orders.length} orders
@@ -287,7 +287,7 @@ const OrderBook = ({ orders, setOrders }) => {
           <span
             style={{
               fontSize: "0.65rem",
-              color: "#6b7280",
+              color: "var(--text-secondary)",
               fontWeight: 600,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
@@ -299,7 +299,7 @@ const OrderBook = ({ orders, setOrders }) => {
             style={{
               fontSize: "0.9rem",
               fontWeight: 700,
-              color: totalPnl >= 0 ? "#10b981" : "#ef4444",
+              color: totalPnl >= 0 ? "var(--success-color)" : "var(--danger-color)",
             }}
           >
             {totalPnl >= 0 ? "+" : ""}₹
@@ -326,21 +326,21 @@ const OrderBook = ({ orders, setOrders }) => {
               background:
                 filter === f
                   ? f === "All"
-                    ? "#4f46e5"
-                    : (STATUS_META[f]?.bg ?? "#4f46e5")
+                    ? "var(--accent-color)"
+                    : (STATUS_META[f]?.bg ?? "var(--accent-color)")
                   : "transparent",
               color:
                 filter === f
                   ? f === "All"
-                    ? "#fff"
-                    : (STATUS_META[f]?.color ?? "#fff")
-                  : "#6b7280",
+                    ? "var(--text-primary)"
+                    : (STATUS_META[f]?.color ?? "var(--text-primary)")
+                  : "var(--text-secondary)",
               borderColor:
                 filter === f
                   ? f === "All"
-                    ? "#4f46e5"
-                    : (STATUS_META[f]?.color ?? "#4f46e5")
-                  : "#374151",
+                    ? "var(--accent-color)"
+                    : (STATUS_META[f]?.color ?? "var(--accent-color)")
+                  : "var(--border-color)",
               transition: "all 0.15s",
             }}
           >
@@ -355,14 +355,14 @@ const OrderBook = ({ orders, setOrders }) => {
         style={{
           borderRadius: 10,
           overflow: "hidden",
-          border: "1px solid #1f2937",
+          border: "1px solid var(--bg-secondary)",
         }}
       >
         <table
           style={{
             width: "100%",
             borderCollapse: "collapse",
-            background: "#111827",
+            background: "var(--bg-primary)",
           }}
         >
           <thead>
@@ -398,7 +398,7 @@ const OrderBook = ({ orders, setOrders }) => {
                   style={{
                     ...tdStyle,
                     textAlign: "center",
-                    color: "#4b5563",
+                    color: "var(--text-secondary)",
                     padding: "32px",
                   }}
                 >
@@ -414,21 +414,21 @@ const OrderBook = ({ orders, setOrders }) => {
                   <tr
                     key={o.id}
                     style={{
-                      background: i % 2 === 0 ? "#111827" : "#0f1623",
+                      background: i % 2 === 0 ? "var(--bg-primary)" : "var(--bg-secondary)",
                       transition: "background 0.1s",
                     }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "#1a2235")
+                      (e.currentTarget.style.background = "var(--border-color)")
                     }
                     onMouseLeave={(e) =>
                       (e.currentTarget.style.background =
-                        i % 2 === 0 ? "#111827" : "#0f1623")
+                        i % 2 === 0 ? "var(--bg-primary)" : "var(--bg-secondary)")
                     }
                   >
                     <td
                       style={{
                         ...tdStyle,
-                        color: "#6b7280",
+                        color: "var(--text-secondary)",
                         fontFamily: "monospace",
                         fontSize: "0.75rem",
                       }}
@@ -436,7 +436,7 @@ const OrderBook = ({ orders, setOrders }) => {
                       {o.time}
                     </td>
                     <td
-                      style={{ ...tdStyle, fontWeight: 700, color: "#f3f4f6" }}
+                      style={{ ...tdStyle, fontWeight: 700, color: "var(--text-primary)" }}
                     >
                       {o.stock}
                     </td>
@@ -462,7 +462,7 @@ const OrderBook = ({ orders, setOrders }) => {
                     <td
                       style={{
                         ...tdStyle,
-                        color: "#9ca3af",
+                        color: "var(--text-secondary)",
                         fontSize: "0.75rem",
                       }}
                     >
@@ -472,7 +472,7 @@ const OrderBook = ({ orders, setOrders }) => {
                       <span style={{ fontWeight: 700 }}>{o.qty}</span>
                       <span
                         style={{
-                          color: "#4b5563",
+                          color: "var(--text-secondary)",
                           fontSize: "0.7rem",
                           marginLeft: 4,
                         }}
@@ -488,7 +488,7 @@ const OrderBook = ({ orders, setOrders }) => {
                         ...tdStyle,
                         fontWeight: 700,
                         fontFamily: "monospace",
-                        color: "#e5e7eb",
+                        color: "var(--text-primary)",
                       }}
                     >
                       ₹

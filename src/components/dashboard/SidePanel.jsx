@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import socket from "../../../services/socket";
-import SocketEvents from "../../../services/socketEvent";
+import socket from "../../services/socket";
+import SocketEvents from "../../services/socketEvent";
 
 const SidePanel = ({ stock, expiry }) => {
   const [spotPrice, setSpotPrice] = useState(null);
@@ -109,14 +109,14 @@ const SidePanel = ({ stock, expiry }) => {
   };
 
   const changeColor =
-    spotChange == null ? "#d1d4dc" : spotChange >= 0 ? "#22ab94" : "#ef4444";
+    spotChange == null ? "var(--text-primary)" : spotChange >= 0 ? "var(--success-color)" : "var(--danger-color)";
   const changeSign = spotChange != null && spotChange >= 0 ? "+" : "";
 
   return (
     <div className="side-panel">
       <button
         className="btn-action btn-buy-put mb-3"
-        style={{ background: "#ef4444" }}
+        style={{ background: "var(--danger-color)", color: "#fff" }}
       >
         SQUARE OFF ALL
       </button>
@@ -183,7 +183,7 @@ const SidePanel = ({ stock, expiry }) => {
                   colSpan={5}
                   style={{
                     textAlign: "center",
-                    color: "#787b86",
+                    color: "var(--text-secondary)",
                     padding: "16px 0",
                     fontSize: "0.75rem",
                   }}
@@ -203,14 +203,14 @@ const SidePanel = ({ stock, expiry }) => {
                   >
                     <td
                       style={
-                        isATM ? { color: "#22ab94", fontWeight: "bold" } : {}
+                        isATM ? { color: "var(--success-color)", fontWeight: "bold" } : {}
                       }
                     >
                       {formatOI(row.ce?.oi)}
                     </td>
                     <td
                       style={
-                        isATM ? { color: "#22ab94", fontWeight: "bold" } : {}
+                        isATM ? { color: "var(--success-color)", fontWeight: "bold" } : {}
                       }
                     >
                       {formatPrice(row.ce?.ltp)}
@@ -233,14 +233,14 @@ const SidePanel = ({ stock, expiry }) => {
                     </td>
                     <td
                       style={
-                        isATM ? { color: "#ef4444", fontWeight: "bold" } : {}
+                        isATM ? { color: "var(--danger-color)", fontWeight: "bold" } : {}
                       }
                     >
                       {formatPrice(row.pe?.ltp)}
                     </td>
                     <td
                       style={
-                        isATM ? { color: "#ef4444", fontWeight: "bold" } : {}
+                        isATM ? { color: "var(--danger-color)", fontWeight: "bold" } : {}
                       }
                     >
                       {formatOI(row.pe?.oi)}

@@ -97,9 +97,9 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
       height: "calc(100vh - 60px)", // Assuming navbar is 60px
       backgroundColor: "#ffffff", // Light theme based on user's image snippet for the left part? Wait, user asked for darktheme. Let me make it dark.
       // Wait, user explicitly said "this is the view i want for my application in darktheme". The image looks light theme, but they WANT dark theme.
-      background: "#131722",
-      color: "#d1d4dc",
-      borderRight: "1px solid #2a2e39",
+      background: "var(--bg-primary)",
+      color: "var(--text-primary)",
+      borderRight: "1px solid var(--border-color)",
       fontFamily:
         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     },
@@ -108,45 +108,46 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
       justifyContent: "space-between",
       alignItems: "center",
       padding: "12px 16px",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
       fontWeight: "600",
       fontSize: "0.95rem",
     },
     headerIcons: {
       display: "flex",
       gap: "12px",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       cursor: "pointer",
     },
     tabsContainer: {
       display: "flex",
       padding: "0 16px",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
       gap: "16px",
     },
     tabActive: {
       padding: "12px 0",
-      color: "#2962ff",
-      borderBottom: "2px solid #2962ff",
+      color: "var(--accent-color)",
+      borderBottom: "2px solid var(--accent-color)",
       fontWeight: "500",
       fontSize: "0.9rem",
       cursor: "pointer",
     },
     searchContainer: {
       padding: "12px 16px",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
     },
     searchBox: {
       display: "flex",
       alignItems: "center",
-      backgroundColor: "#2a2e39",
+      backgroundColor: "var(--bg-secondary)",
       borderRadius: "4px",
       padding: "6px 12px",
+      border: "1px solid var(--border-color)",
     },
     searchInput: {
       border: "none",
       background: "transparent",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
       outline: "none",
       width: "100%",
       marginLeft: "8px",
@@ -161,7 +162,7 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
       justifyContent: "space-between",
       alignItems: "center",
       padding: "10px 14px",
-      borderBottom: "1px solid #1e222d",
+      borderBottom: "1px solid var(--bg-secondary)",
       cursor: "pointer",
     },
     stockLeft: {
@@ -171,14 +172,14 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
     stockName: {
       fontWeight: "600",
       fontSize: "0.85rem",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
       display: "flex",
       alignItems: "center",
       gap: "8px",
     },
     segment: {
       fontSize: "0.6rem",
-      color: "#787b86",
+      color: "var(--text-secondary)",
     },
     stockRight: {
       display: "flex",
@@ -197,9 +198,9 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
     },
     footer: {
       padding: "12px 16px",
-      borderTop: "1px solid #2a2e39",
+      borderTop: "1px solid var(--border-color)",
       fontSize: "0.8rem",
-      color: "#2962ff",
+      color: "var(--accent-color)",
       cursor: "pointer",
       display: "flex",
       justifyContent: "space-between",
@@ -213,10 +214,10 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
           width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: #131722;
+          background: var(--bg-primary);
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #2a2e39;
+          background: var(--border-color);
           border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -236,7 +237,7 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
         <div
           style={{
             ...styles.tabActive,
-            color: "#787b86",
+            color: "var(--text-secondary)",
             borderBottom: "none",
             display: "flex",
             alignItems: "center",
@@ -249,14 +250,14 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
 
       <div style={styles.searchContainer}>
         <div style={styles.searchBox}>
-          <FiSearch color="#787b86" size={14} />
+          <FiSearch color="var(--text-secondary)" size={14} />
           <input
             style={styles.searchInput}
             placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <FiSettings color="#787b86" size={14} style={{ cursor: "pointer" }} />
+          <FiSettings color="var(--text-secondary)" size={14} style={{ cursor: "pointer" }} />
         </div>
       </div>
 
@@ -268,8 +269,10 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
             // s.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
           )
           .map((stock, idx) => {
-            const isPositive = parseFloat(stock.percent_change) >= 0;
-            const color = isPositive ? "#22ab94" : "#f23645"; // TradingView green/red
+            const pChange = parseFloat(stock.percent_change);
+            const rawChange = parseFloat(stock.change);
+            const isPositive = (!isNaN(pChange) ? pChange : (!isNaN(rawChange) ? rawChange : 0)) >= 0;
+            const color = isPositive ? "var(--success-color)" : "var(--danger-color)"; // TradingView green/red
             const Arrow = isPositive ? "▲" : "▼";
 
             return (
@@ -287,7 +290,7 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
                   })
                 }
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#2a2e39")
+                  (e.currentTarget.style.backgroundColor = "var(--border-color)")
                 }
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.backgroundColor = "transparent")

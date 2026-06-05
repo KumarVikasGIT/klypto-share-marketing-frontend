@@ -29,34 +29,34 @@ export const summaryMetrics = {
 
 // Key Metrics Table Data
 export const keyMetrics = [
-  { label: "Initial Capital", value: "$10,000.00", color: "#d1d4dc" },
-  { label: "Final Capital", value: "$34,560.75", color: "#089981" },
-  { label: "Net PnL", value: "$24,560.75", color: "#089981" },
-  { label: "Total Return", value: "24.56%", color: "#089981" },
-  { label: "Annualized Return", value: "18.47%", color: "#089981" },
-  { label: "Calmar Ratio", value: "2.11", color: "#d1d4dc" },
-  { label: "Sharpe Ratio", value: "1.34", color: "#d1d4dc" },
-  { label: "Sortino Ratio", value: "2.02", color: "#d1d4dc" },
-  { label: "Total Trades", value: "312", color: "#d1d4dc" },
-  { label: "Win Rate (Accuracy)", value: "62.18%", color: "#089981" },
-  { label: "Profit Factor", value: "2.35", color: "#089981" },
-  { label: "Expectancy", value: "$78.72", color: "#089981" },
-  { label: "Avg Profit", value: "$125.73", color: "#089981" },
-  { label: "Avg Loss", value: "-$63.91", color: "#f23645" },
-  { label: "Max Drawdown", value: "-8.73%", color: "#f23645" },
-  { label: "Max Drawdown ($)", value: "-$8,642.21", color: "#f23645" }
+  { label: "Initial Capital", value: "$10,000.00", color: "var(--text-primary)" },
+  { label: "Final Capital", value: "$34,560.75", color: "var(--success-color)" },
+  { label: "Net PnL", value: "$24,560.75", color: "var(--success-color)" },
+  { label: "Total Return", value: "24.56%", color: "var(--success-color)" },
+  { label: "Annualized Return", value: "18.47%", color: "var(--success-color)" },
+  { label: "Calmar Ratio", value: "2.11", color: "var(--text-primary)" },
+  { label: "Sharpe Ratio", value: "1.34", color: "var(--text-primary)" },
+  { label: "Sortino Ratio", value: "2.02", color: "var(--text-primary)" },
+  { label: "Total Trades", value: "312", color: "var(--text-primary)" },
+  { label: "Win Rate (Accuracy)", value: "62.18%", color: "var(--success-color)" },
+  { label: "Profit Factor", value: "2.35", color: "var(--success-color)" },
+  { label: "Expectancy", value: "$78.72", color: "var(--success-color)" },
+  { label: "Avg Profit", value: "$125.73", color: "var(--success-color)" },
+  { label: "Avg Loss", value: "-$63.91", color: "var(--danger-color)" },
+  { label: "Max Drawdown", value: "-8.73%", color: "var(--danger-color)" },
+  { label: "Max Drawdown ($)", value: "-$8,642.21", color: "var(--danger-color)" }
 ];
 
 // Secondary Stats Cards
 export const secondaryStats = {
-  consecutiveWins: { value: 9, subValue: "Best: 17", color: "#089981", label: "Consecutive Wins" },
-  consecutiveLosses: { value: 4, subValue: "Worst: 7", color: "#f23645", label: "Consecutive Losses" },
-  avgProfitPerTrade: { value: "$125.73", color: "#089981", label: "Avg Profit per Trade" },
-  avgLossPerTrade: { value: "-$63.91", color: "#f23645", label: "Avg Loss per Trade" },
-  largestWinningStreak: { value: "$7,890.40", subValue: "17 Wins", color: "#089981", label: "Largest Winning Streak" },
-  largestLosingStreak: { value: "-$3,210.50", subValue: "7 Losses", color: "#f23645", label: "Largest Losing Streak" },
-  recoveryFactor: { value: "2.84", color: "#089981", label: "Recovery Factor" },
-  kellyCriterion: { value: "12.35%", color: "#089981", label: "Kelly Criterion" }
+  consecutiveWins: { value: 9, subValue: "Best: 17", color: "var(--success-color)", label: "Consecutive Wins" },
+  consecutiveLosses: { value: 4, subValue: "Worst: 7", color: "var(--danger-color)", label: "Consecutive Losses" },
+  avgProfitPerTrade: { value: "$125.73", color: "var(--success-color)", label: "Avg Profit per Trade" },
+  avgLossPerTrade: { value: "-$63.91", color: "var(--danger-color)", label: "Avg Loss per Trade" },
+  largestWinningStreak: { value: "$7,890.40", subValue: "17 Wins", color: "var(--success-color)", label: "Largest Winning Streak" },
+  largestLosingStreak: { value: "-$3,210.50", subValue: "7 Losses", color: "var(--danger-color)", label: "Largest Losing Streak" },
+  recoveryFactor: { value: "2.84", color: "var(--success-color)", label: "Recovery Factor" },
+  kellyCriterion: { value: "12.35%", color: "var(--success-color)", label: "Kelly Criterion" }
 };
 
 // Long vs Short Performance
@@ -111,13 +111,13 @@ export const drawdownData = equityCurveData.map((data, i) => {
 
 // Profit by Time (Days of week) - mapped as a generic histogram for Lightweight charts
 export const profitByTimeData = [
-  { time: '2023-01-01', value: 4000, color: '#089981' }, // Mon
-  { time: '2023-01-02', value: 6500, color: '#089981' }, // Tue
-  { time: '2023-01-03', value: 3500, color: '#089981' }, // Wed
-  { time: '2023-01-04', value: 3000, color: '#089981' }, // Thu
-  { time: '2023-01-05', value: 5000, color: '#089981' }, // Fri
-  { time: '2023-01-06', value: 1000, color: '#089981' }, // Sat
-  { time: '2023-01-07', value: 0, color: '#089981' },    // Sun
+  { time: '2023-01-01', value: 4000, color: 'var(--success-color)' }, // Mon
+  { time: '2023-01-02', value: 6500, color: 'var(--success-color)' }, // Tue
+  { time: '2023-01-03', value: 3500, color: 'var(--success-color)' }, // Wed
+  { time: '2023-01-04', value: 3000, color: 'var(--success-color)' }, // Thu
+  { time: '2023-01-05', value: 5000, color: 'var(--success-color)' }, // Fri
+  { time: '2023-01-06', value: 1000, color: 'var(--success-color)' }, // Sat
+  { time: '2023-01-07', value: 0, color: 'var(--success-color)' },    // Sun
 ];
 
 // PnL Distribution (Histogram)
@@ -130,6 +130,6 @@ for (let i = -15; i <= 25; i++) {
   pnlDistributionData.push({
     time: distTime.toISOString().split('T')[0],
     value: isLoss ? val * 0.5 : val, 
-    color: isLoss ? '#f23645' : '#089981'
+    color: isLoss ? 'var(--danger-color)' : 'var(--success-color)'
   });
 }

@@ -23,8 +23,8 @@ const SecondaryStats = ({ data }) => {
           margin-bottom: 16px;
         }
         .sec-stat-card {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           padding: 12px;
           text-align: center;
@@ -35,7 +35,7 @@ const SecondaryStats = ({ data }) => {
         }
         .sec-stat-title {
           font-size: 11px;
-          color: #d1d4dc;
+          color: var(--text-primary);
         }
         .sec-stat-value {
           font-size: 16px;
@@ -43,7 +43,7 @@ const SecondaryStats = ({ data }) => {
         }
         .sec-stat-sub {
           font-size: 10px;
-          color: #787b86;
+          color: var(--text-secondary);
         }
       `}</style>
     </div>

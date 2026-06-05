@@ -92,7 +92,21 @@ const OptionChain = () => {
     s.on("live-options-list", (response) => {
       console.log("[OptionChain] live-options-list received:", response);
       if (Array.isArray(response?.data) && response.data.length > 0) {
-        setLiveContractsList(response.data);
+        setLiveContractsList((prev) => {
+          if (prev.length === 0) return response.data; // Initial 900 records load
+          
+          // Merge new ticks into the existing list so the dropdown never empties
+          const mergedMap = new Map(
+            prev.map(c => [`${c.symbol}-${c.expiry ?? c.expiry_date}-${c.strike ?? c.strike_price}-${c.option_type}`, c])
+          );
+          
+          response.data.forEach(c => {
+            const key = `${c.symbol}-${c.expiry ?? c.expiry_date}-${c.strike ?? c.strike_price}-${c.option_type}`;
+            mergedMap.set(key, { ...mergedMap.get(key), ...c });
+          });
+          
+          return Array.from(mergedMap.values());
+        });
         
         // Auto-select first contract if none is selected
         setSelectedContract((prev) => {
@@ -187,9 +201,9 @@ const OptionChain = () => {
   // ── Helpers ──
   const getStyle = (val) => {
     const n = Number(val);
-    if (n > 0) return { color: "#089981" };
-    if (n < 0) return { color: "#f23645" };
-    return { color: "#d1d4dc" };
+    if (n > 0) return { color: "var(--success-color)" };
+    if (n < 0) return { color: "var(--danger-color)" };
+    return { color: "var(--text-primary)" };
   };
 
   const fmtLtp = (val) => {
@@ -269,17 +283,19 @@ const OptionChain = () => {
   };
 
   const filteredContracts = liveContractsList.filter((c) => {
-    const search = symbolSearch.toLowerCase();
-    return c.symbol?.toLowerCase().includes(search) || 
-           (c.strike ?? c.strike_price)?.toString().includes(search) ||
-           (c.expiry ?? c.expiry_date)?.toLowerCase().includes(search);
+    const search = (symbolSearch || "").toLowerCase();
+    const sym = (c.symbol || "").toLowerCase();
+    const str = (c.strike ?? c.strike_price ?? "").toString();
+    const exp = (c.expiry ?? c.expiry_date ?? "").toLowerCase();
+    
+    return sym.includes(search) || str.includes(search) || exp.includes(search);
   });
 
   // ── Render ──
   return (
     <div
       className="w-100 h-100 p-3"
-      style={{ background: "#131722", color: "#d1d4dc", overflowY: "auto" }}
+      style={{ background: "var(--bg-primary)", color: "var(--text-primary)", overflowY: "auto" }}
     >
       {/* ── Header Controls ── */}
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
@@ -297,8 +313,8 @@ const OptionChain = () => {
             }}
             style={{
               padding: "6px 12px",
-              background: "#1e222d",
-              border: "1px solid #2a2e39",
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border-color)",
               borderRadius: 6,
               cursor: "pointer",
               display: "flex",
@@ -307,24 +323,24 @@ const OptionChain = () => {
               gap: 8,
               fontSize: 13,
               fontWeight: 600,
-              color: "#d1d4dc",
+              color: "var(--text-primary)",
               minWidth: 140,
             }}
           >
             {selectedContract ? (
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontWeight: 700, color: "#fff" }}>{selectedContract.symbol}</span>
-                <span style={{ fontSize: 10, background: "#2a2e39", color: "#d1d4dc", padding: "2px 6px", borderRadius: 4 }}>{selectedContract.exchange ?? "NSE FO"}</span>
+                <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{selectedContract.symbol}</span>
+                <span style={{ fontSize: 10, background: "var(--border-color)", color: "var(--text-primary)", padding: "2px 6px", borderRadius: 4 }}>{selectedContract.exchange ?? "NSE FO"}</span>
                 <span style={{ color: "#363a45" }}>|</span>
-                <span style={{ color: "#d1d4dc", fontWeight: 500 }}>{selectedContract.expiry} {selectedContract.strike} {selectedContract.option_type}</span>
-                <span style={{ color: (selectedContract.change_percentage ?? 0) >= 0 ? "#089981" : "#f23645", fontWeight: 600 }}>
+                <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{selectedContract.expiry} {selectedContract.strike} {selectedContract.option_type}</span>
+                <span style={{ color: (selectedContract.change_percentage ?? 0) >= 0 ? "var(--success-color)" : "var(--danger-color)", fontWeight: 600 }}>
                   {selectedContract.ltp ?? 0} {(selectedContract.change_percentage ?? 0) >= 0 ? "▲" : "▼"}
                 </span>
               </div>
             ) : (
               <span>{selectedSymbol || "Select Symbol"}</span>
             )}
-            <span style={{ fontSize: 10, color: "#787b86" }}>{dropdownOpen ? "▲" : "▼"}</span>
+            <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>{dropdownOpen ? "▲" : "▼"}</span>
           </div>
           {dropdownOpen && (
             <div
@@ -332,8 +348,8 @@ const OptionChain = () => {
                 position: "absolute",
                 top: "calc(100% + 4px)",
                 left: 0,
-                background: "#1e222d",
-                border: "1px solid #2a2e39",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
                 borderRadius: 6,
                 zIndex: 100,
                 minWidth: 400,
@@ -341,7 +357,7 @@ const OptionChain = () => {
                 overflow: "hidden",
               }}
             >
-              <div style={{ padding: "6px 8px", borderBottom: "1px solid #2a2e39" }}>
+              <div style={{ padding: "6px 8px", borderBottom: "1px solid var(--border-color)" }}>
                 <input
                   autoFocus
                   value={symbolSearch}
@@ -349,12 +365,12 @@ const OptionChain = () => {
                   placeholder="Search symbol..."
                   style={{
                     width: "100%",
-                    background: "#131722",
-                    border: "1px solid #2a2e39",
+                    background: "var(--bg-primary)",
+                    border: "1px solid var(--border-color)",
                     borderRadius: 4,
                     padding: "4px 8px",
                     fontSize: 12,
-                    color: "#d1d4dc",
+                    color: "var(--text-primary)",
                     outline: "none",
                   }}
                   onClick={(e) => e.stopPropagation()}
@@ -362,14 +378,14 @@ const OptionChain = () => {
               </div>
               <div style={{ maxHeight: 220, overflowY: "auto" }}>
                 {filteredContracts.length === 0 ? (
-                  <div style={{ padding: "10px 12px", color: "#787b86", fontSize: 12 }}>
+                  <div style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: 12 }}>
                     {liveContractsList.length === 0 ? "Waiting for live options list..." : "No contracts found"}
                   </div>
                 ) : filteredContracts.map((contract, idx) => {
                   const change = contract.change_absolute ?? contract.change ?? contract.netChange ?? 0;
                   const pChange = contract.change_percentage ?? contract.pChange ?? contract.change_percent ?? 0;
                   const isPos = pChange >= 0;
-                  const color = isPos ? "#089981" : "#f23645";
+                  const color = isPos ? "var(--success-color)" : "var(--danger-color)";
                   const exchange = contract.exchange ?? "NFO";
                   const expDate = contract.expiry ?? contract.expiry_date;
                   const strikePrice = contract.strike ?? contract.strike_price;
@@ -386,26 +402,26 @@ const OptionChain = () => {
                       }}
                       style={{
                         padding: "8px 12px",
-                        borderBottom: "1px solid #2a2e39",
+                        borderBottom: "1px solid var(--border-color)",
                         cursor: "pointer",
-                        background: selectedSymbol === contract.symbol ? "rgba(8,153,129,0.15)" : "transparent",
+                        background: selectedSymbol === contract.symbol ? "rgba(8,153,129,0.2)" : "transparent",
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = selectedSymbol === contract.symbol ? "rgba(8,153,129,0.15)" : "transparent"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = selectedSymbol === contract.symbol ? "rgba(8,153,129,0.2)" : "transparent"; }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontWeight: 600, color: "#d1d4dc" }}>{contract.symbol}</span>
-                          <span style={{ fontSize: 9, background: "#2962ff", color: "#fff", padding: "1px 4px", borderRadius: 4 }}>{exchange}</span>
+                          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{contract.symbol}</span>
+                          <span style={{ fontSize: 9, background: "var(--accent-color)", color: "#fff", padding: "1px 4px", borderRadius: 4 }}>{exchange}</span>
                         </div>
                         <div style={{ fontSize: 11, color }}>
                           {change > 0 ? "+" : ""}{Number(change).toFixed(2)} ({isPos ? "+" : ""}{Number(pChange).toFixed(2)}%)
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, fontSize: 11, color: "#787b86" }}>
-                        <span>Exp: <b style={{color: "#d1d4dc"}}>{expDate}</b></span>
-                        <span>Strike: <b style={{color: "#d1d4dc"}}>{strikePrice}</b></span>
-                        <span style={{ color: contract.option_type === "CE" ? "#089981" : "#f23645", fontWeight: 600 }}>{contract.option_type}</span>
+                      <div style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--text-secondary)" }}>
+                        <span>Exp: <b style={{color: "var(--text-primary)"}}>{expDate}</b></span>
+                        <span>Strike: <b style={{color: "var(--text-primary)"}}>{strikePrice}</b></span>
+                        <span style={{ color: contract.option_type === "CE" ? "var(--success-color)" : "var(--danger-color)", fontWeight: 600 }}>{contract.option_type}</span>
                       </div>
                     </div>
                   );
@@ -419,7 +435,7 @@ const OptionChain = () => {
         {spotPrice != null && (
           <span style={{
             fontSize: 15, fontWeight: 700,
-            color: spotChange == null ? "#d1d4dc" : spotChange >= 0 ? "#089981" : "#f23645",
+            color: spotChange == null ? "var(--text-primary)" : spotChange >= 0 ? "var(--success-color)" : "var(--danger-color)",
           }}>
             ₹{Number(spotPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             {spotChange != null && (
@@ -431,7 +447,7 @@ const OptionChain = () => {
         )}
 
         {pcr != null && (
-          <span style={{ fontSize: 12, color: "#787b86" }}>PCR: <b style={{ color: "#d1d4dc" }}>{pcr}</b></span>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>PCR: <b style={{ color: "var(--text-primary)" }}>{pcr}</b></span>
         )}
 
         {/* Expiry Pills */}
@@ -443,9 +459,9 @@ const OptionChain = () => {
               style={{
                 padding: "4px 10px",
                 borderRadius: 4,
-                border: "1px solid #2a2e39",
-                background: activeExpiry === exp ? "#089981" : "#1e222d",
-                color: activeExpiry === exp ? "#fff" : "#d1d4dc",
+                border: "1px solid var(--border-color)",
+                background: activeExpiry === exp ? "var(--success-color)" : "var(--bg-secondary)",
+                color: activeExpiry === exp ? "#fff" : "var(--text-primary)",
                 fontSize: 11,
                 cursor: "pointer",
                 fontWeight: activeExpiry === exp ? 600 : 400,
@@ -458,20 +474,20 @@ const OptionChain = () => {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #2a2e39" }}>
+      <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border-color)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "center" }}>
           <thead>
-            <tr style={{ background: "#1e222d", borderBottom: "1px solid #2a2e39" }}>
-              <th colSpan="4" style={{ padding: "12px", borderRight: "1px solid #2a2e39", color: "#089981" }}>CALL</th>
-              <th style={{ padding: "12px", borderRight: "1px solid #2a2e39", color: "#d1d4dc" }}>Strike</th>
-              <th colSpan="4" style={{ padding: "12px", color: "#f23645" }}>PUT</th>
+            <tr style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
+              <th colSpan="4" style={{ padding: "12px", borderRight: "1px solid var(--border-color)", color: "var(--success-color)" }}>CALL</th>
+              <th style={{ padding: "12px", borderRight: "1px solid var(--border-color)", color: "var(--text-primary)" }}>Strike</th>
+              <th colSpan="4" style={{ padding: "12px", color: "var(--danger-color)" }}>PUT</th>
             </tr>
-            <tr style={{ background: "#1e222d", borderBottom: "1px solid #2a2e39", color: "#787b86", fontSize: 11 }}>
+            <tr style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)", fontSize: 11 }}>
               <th style={{ padding: "8px" }}>Volume</th>
               <th style={{ padding: "8px" }}>OI Chng</th>
               <th style={{ padding: "8px" }}>OI</th>
-              <th style={{ padding: "8px", borderRight: "1px solid #2a2e39" }}>LTP</th>
-              <th style={{ padding: "8px", borderRight: "1px solid #2a2e39" }}>Strike</th>
+              <th style={{ padding: "8px", borderRight: "1px solid var(--border-color)" }}>LTP</th>
+              <th style={{ padding: "8px", borderRight: "1px solid var(--border-color)" }}>Strike</th>
               <th style={{ padding: "8px" }}>LTP</th>
               <th style={{ padding: "8px" }}>OI</th>
               <th style={{ padding: "8px" }}>OI Chng</th>
@@ -481,7 +497,7 @@ const OptionChain = () => {
           <tbody>
             {strikes.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: 40, color: "#787b86", fontSize: 13 }}>
+                <td colSpan={9} style={{ padding: 40, color: "var(--text-secondary)", fontSize: 13 }}>
                   {selectedSymbol ? `Waiting for option chain data for ${selectedSymbol}…` : "Select a symbol to view option chain"}
                 </td>
               </tr>
@@ -517,16 +533,16 @@ const OptionChain = () => {
                     left: optType === "PE" ? "4px" : undefined,
                     top: "50%", transform: "translateY(-50%)",
                     display: "flex", gap: "4px",
-                    background: "#1e222d", padding: "4px",
+                    background: "var(--bg-secondary)", padding: "4px",
                     borderRadius: "4px", boxShadow: "0 2px 8px rgba(0,0,0,0.6)", zIndex: 10,
                   }}>
                     <button
                       onClick={() => handleTrade(strike, optType, "BUY", ltp)}
-                      style={{ background: "#45c4aa", color: "#131722", fontWeight: "700", border: "none", padding: "2px 7px", borderRadius: "3px", fontSize: "11px", cursor: "pointer" }}
+                      style={{ background: "#45c4aa", color: "var(--bg-primary)", fontWeight: "700", border: "none", padding: "2px 7px", borderRadius: "3px", fontSize: "11px", cursor: "pointer" }}
                     >B</button>
                     <button
                       onClick={() => handleTrade(strike, optType, "SELL", ltp)}
-                      style={{ background: "#ff646d", color: "#131722", fontWeight: "700", border: "none", padding: "2px 7px", borderRadius: "3px", fontSize: "11px", cursor: "pointer" }}
+                      style={{ background: "#ff646d", color: "var(--bg-primary)", fontWeight: "700", border: "none", padding: "2px 7px", borderRadius: "3px", fontSize: "11px", cursor: "pointer" }}
                     >S</button>
                   </div>
                 );
@@ -537,13 +553,13 @@ const OptionChain = () => {
                     onMouseLeave={() => setHoveredRow(null)}
                     style={{
                       padding: "10px", fontWeight: "bold",
-                      borderRight: "1px solid #2a2e39",
-                      background: isATM ? "#0e2a22" : "#1e222d",
-                      color: isATM ? "#089981" : "#d1d4dc",
+                      borderRight: "1px solid var(--border-color)",
+                      background: isATM ? "#0e2a22" : "var(--bg-secondary)",
+                      color: isATM ? "var(--success-color)" : "var(--text-primary)",
                     }}
                   >
                     {isATM && spot != null ? (
-                      <span style={{ background: "#089981", color: "#fff", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>
+                      <span style={{ background: "var(--success-color)", color: "#fff", padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>
                         {Number(spot).toFixed(2)}
                       </span>
                     ) : strike.toLocaleString("en-IN")}
@@ -554,17 +570,17 @@ const OptionChain = () => {
                   <tr
                     key={`${strike}-${i}`}
                     style={{
-                      borderBottom: "1px solid #2a2e39",
-                      borderTop: isATM ? "2px solid #089981" : undefined,
+                      borderBottom: "1px solid var(--border-color)",
+                      borderTop: isATM ? "2px solid var(--success-color)" : undefined,
                     }}
                   >
                     {/* CALL SIDE */}
                     <td {...ceProps} style={{ padding: "10px", background: callBg }}>{fmtOI(ce.volume)}</td>
                     <td {...ceProps} style={{ padding: "10px", background: callBg }}>{renderOiChng(ce.oiChg, ce.oiChgPct)}</td>
-                    <td {...ceProps} style={{ padding: "10px", background: callBg, color: "#f23645" }}>{fmtOI(ce.oi)}</td>
+                    <td {...ceProps} style={{ padding: "10px", background: callBg, color: "var(--danger-color)" }}>{fmtOI(ce.oi)}</td>
                     <td
                       {...ceProps}
-                      style={{ padding: "10px", background: callBg, borderRight: "1px solid #2a2e39", position: "relative" }}
+                      style={{ padding: "10px", background: callBg, borderRight: "1px solid var(--border-color)", position: "relative" }}
                     >
                       {renderLtp(ce.ltp, ce.ltpChgPct)}
                       {hoveredCell === `${strike}-CE` && <BsButtons optType="CE" ltp={ce.ltp} />}
@@ -581,7 +597,7 @@ const OptionChain = () => {
                       {renderLtp(pe.ltp, pe.ltpChgPct)}
                       {hoveredCell === `${strike}-PE` && <BsButtons optType="PE" ltp={pe.ltp} />}
                     </td>
-                    <td {...peProps} style={{ padding: "10px", background: putBg, color: "#089981" }}>{fmtOI(pe.oi)}</td>
+                    <td {...peProps} style={{ padding: "10px", background: putBg, color: "var(--success-color)" }}>{fmtOI(pe.oi)}</td>
                     <td {...peProps} style={{ padding: "10px", background: putBg }}>{renderOiChng(pe.oiChg, pe.oiChgPct)}</td>
                     <td {...peProps} style={{ padding: "10px", background: putBg }}>{fmtOI(pe.volume)}</td>
                   </tr>

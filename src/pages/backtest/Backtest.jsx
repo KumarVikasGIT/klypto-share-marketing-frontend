@@ -11,18 +11,18 @@ import {
   drawdownData,
   profitByTimeData,
   pnlDistributionData,
-} from "../components/backtest/dummyData";
+} from "../../components/backtest/dummyData";
 
-import SummaryCards from "../components/backtest/SummaryCards";
-import KeyMetrics from "../components/backtest/KeyMetrics";
-import SecondaryStats from "../components/backtest/SecondaryStats";
-import RecentTrades from "../components/backtest/RecentTrades";
-import EquityCurve from "../components/backtest/EquityCurve";
-import DrawdownCurve from "../components/backtest/DrawdownCurve";
-import PnLDistribution from "../components/backtest/PnLDistribution";
-import ProfitByTime from "../components/backtest/ProfitByTime";
-import TradeOutcome from "../components/backtest/TradeOutcome";
-import LongVsShort from "../components/backtest/LongVsShort";
+import SummaryCards from "../../components/backtest/SummaryCards";
+import KeyMetrics from "../../components/backtest/KeyMetrics";
+import SecondaryStats from "../../components/backtest/SecondaryStats";
+import RecentTrades from "../../components/backtest/RecentTrades";
+import EquityCurve from "../../components/backtest/EquityCurve";
+import DrawdownCurve from "../../components/backtest/DrawdownCurve";
+import PnLDistribution from "../../components/backtest/PnLDistribution";
+import ProfitByTime from "../../components/backtest/ProfitByTime";
+import TradeOutcome from "../../components/backtest/TradeOutcome";
+import LongVsShort from "../../components/backtest/LongVsShort";
 
 const Backtest = () => {
   return (
@@ -31,14 +31,14 @@ const Backtest = () => {
       <div className="bd-top-bar">
         <div className="bd-title-group">
           <h1>Backtest Dashboard</h1>
-          <span className="bd-subtitle">Strategy: <span style={{ color: "#2962ff" }}>EMA Crossover</span></span>
+          <span className="bd-subtitle">Strategy: <span style={{ color: "var(--accent-color)" }}>EMA Crossover</span></span>
         </div>
         <div className="bd-controls">
           <div className="bd-date-picker">
             <span>2023-01-01</span>
-            <span style={{ color: "#787b86", margin: "0 8px" }}>→</span>
+            <span style={{ color: "var(--text-secondary)", margin: "0 8px" }}>→</span>
             <span>2024-05-20</span>
-            <span style={{ marginLeft: 8, color: "#787b86" }}>📅</span>
+            <span style={{ marginLeft: 8, color: "var(--text-secondary)" }}>📅</span>
           </div>
           <select className="bd-select">
             <option>All Markets</option>

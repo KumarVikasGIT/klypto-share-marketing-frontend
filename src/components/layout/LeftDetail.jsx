@@ -40,9 +40,9 @@ const LeftDetail = ({
       display: "flex",
       flexDirection: "column",
       height: "calc(100vh - 60px)",
-      background: "#131722",
-      color: "#d1d4dc",
-      borderRight: "1px solid #2a2e39",
+      background: "var(--bg-primary)",
+      color: "var(--text-primary)",
+      borderRight: "1px solid var(--border-color)",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     },
     header: {
@@ -50,7 +50,7 @@ const LeftDetail = ({
       justifyContent: "space-between",
       alignItems: "center",
       padding: "12px 16px",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
     },
     headerTitle: {
       display: "flex",
@@ -62,13 +62,13 @@ const LeftDetail = ({
     headerIcons: {
       display: "flex",
       gap: "12px",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       cursor: "pointer",
       alignItems: "center",
     },
     tabBar: {
       display: "flex",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
     },
     tab: (active) => ({
       flex: 1,
@@ -76,9 +76,9 @@ const LeftDetail = ({
       textAlign: "center",
       fontSize: "0.75rem",
       fontWeight: active ? 600 : 400,
-      color: active ? "#d1d4dc" : "#787b86",
+      color: active ? "var(--text-primary)" : "var(--text-secondary)",
       cursor: "pointer",
-      borderBottom: active ? "2px solid #2962ff" : "2px solid transparent",
+      borderBottom: active ? "2px solid var(--accent-color)" : "2px solid transparent",
       transition: "all 0.15s",
       display: "flex",
       alignItems: "center",
@@ -86,7 +86,7 @@ const LeftDetail = ({
       gap: 5,
     }),
     scannerBadge: {
-      background: "#2962ff",
+      background: "var(--accent-color)",
       color: "#fff",
       borderRadius: 20,
       padding: "1px 6px",
@@ -98,9 +98,9 @@ const LeftDetail = ({
       justifyContent: "space-between",
       padding: "8px 16px",
       fontSize: "0.7rem",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       textTransform: "uppercase",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
     },
     listContainer: {
       flex: 1,
@@ -111,13 +111,13 @@ const LeftDetail = ({
       justifyContent: "space-between",
       alignItems: "center",
       padding: "10px 16px",
-      borderBottom: "1px solid #1e222d",
+      borderBottom: "1px solid var(--bg-secondary)",
       cursor: "pointer",
     },
     stockName: {
       fontWeight: "600",
       fontSize: "0.85rem",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
     },
     stockChange: {
       fontSize: "0.75rem",
@@ -127,8 +127,8 @@ const LeftDetail = ({
       justifyContent: "space-between",
       alignItems: "center",
       padding: "12px 16px",
-      borderTop: "1px solid #2a2e39",
-      background: "#1e222d",
+      borderTop: "1px solid var(--border-color)",
+      background: "var(--bg-secondary)",
     },
     footerLeft: {
       display: "flex",
@@ -136,12 +136,12 @@ const LeftDetail = ({
       gap: "8px",
       fontSize: "0.9rem",
       fontWeight: "600",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
     },
     footerIcons: {
       display: "flex",
       gap: "16px",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       cursor: "pointer",
     },
     btnContainer: {
@@ -149,7 +149,7 @@ const LeftDetail = ({
       gap: "8px",
     },
     addBtn: {
-      background: "#2962ff",
+      background: "var(--accent-color)",
       color: "white",
       border: "none",
       borderRadius: "4px",
@@ -158,7 +158,7 @@ const LeftDetail = ({
       cursor: "pointer",
     },
     deleteBtn: {
-      background: "#f23645",
+      background: "var(--danger-color)",
       color: "white",
       border: "none",
       borderRadius: "4px",
@@ -172,14 +172,14 @@ const LeftDetail = ({
       justifyContent: "space-between",
       alignItems: "center",
       padding: "10px 16px",
-      borderBottom: "1px solid #1e222d",
+      borderBottom: "1px solid var(--bg-secondary)",
       cursor: "pointer",
     },
     badge: {
       width: 26,
       height: 26,
       borderRadius: "50%",
-      background: "linear-gradient(135deg, #2962ff, #22ab94)",
+      background: "linear-gradient(135deg, var(--accent-color), #22ab94)",
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
@@ -194,7 +194,7 @@ const LeftDetail = ({
     },
     timeTag: {
       fontSize: "0.68rem",
-      color: "#787b86",
+      color: "var(--text-secondary)",
     },
     emptyState: {
       textAlign: "center",
@@ -221,15 +221,15 @@ const LeftDetail = ({
     <div style={styles.container}>
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #131722; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: var(--bg-primary); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
         .left-detail-list-item:hover { background: #1a1f2e; }
       `}</style>
 
       {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerTitle}>
-          Details <span style={{ fontSize: "0.8rem", color: "#787b86", marginLeft: "4px" }}>▼</span>
+          Details <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginLeft: "4px" }}>▼</span>
         </div>
         <div style={styles.headerIcons}>
           {activeTab === "watchlist" && (
@@ -238,7 +238,7 @@ const LeftDetail = ({
           {activeTab === "scanner" && (
             <FiZap
               size={14}
-              color={scanner ? "#f7c948" : "#787b86"}
+              color={scanner ? "#f7c948" : "var(--text-secondary)"}
               onClick={() => setIsScannerOpen(true)}
               title="Configure Scanner"
             />
@@ -288,7 +288,7 @@ const LeftDetail = ({
               const calculatedPercentChange =
                 low !== 0 ? (calculatedChange / low) * 100 : 0;
               const isPositive = calculatedChange >= 0;
-              const color = isPositive ? "#22ab94" : "#f23645";
+              const color = isPositive ? "#22ab94" : "var(--danger-color)";
 
               return (
                 <div
@@ -300,7 +300,7 @@ const LeftDetail = ({
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <div style={{
                       width: "24px", height: "24px", borderRadius: "50%",
-                      background: idx % 2 === 0 ? "#2962ff" : "#1e222d",
+                      background: idx % 2 === 0 ? "var(--accent-color)" : "var(--bg-secondary)",
                       display: "flex", justifyContent: "center", alignItems: "center",
                       fontSize: "0.6rem", fontWeight: "bold",
                     }}>
@@ -333,17 +333,17 @@ const LeftDetail = ({
               <span>
                 {scanner.indicator} {scanner.condition} {scanner.value}
               </span>
-              <span style={{ marginLeft: "auto", color: "#787b86", cursor: "pointer" }}
+              <span style={{ marginLeft: "auto", color: "var(--text-secondary)", cursor: "pointer" }}
                 onClick={() => setIsScannerOpen(true)}>
                 Edit
               </span>
             </div>
           ) : (
-            <div style={{ ...styles.scannerActiveBar, color: "#787b86", background: "#1a1f2e" }}>
+            <div style={{ ...styles.scannerActiveBar, color: "var(--text-secondary)", background: "#1a1f2e" }}>
               <FiZap size={11} />
               <span>No scanner active —</span>
               <span
-                style={{ color: "#2962ff", cursor: "pointer", marginLeft: 4 }}
+                style={{ color: "var(--accent-color)", cursor: "pointer", marginLeft: 4 }}
                 onClick={() => setIsScannerOpen(true)}
               >
                 Configure
@@ -398,7 +398,7 @@ const LeftDetail = ({
         <div style={styles.footerLeft}>
           <div style={{
             width: "24px", height: "24px", borderRadius: "50%",
-            background: "#2962ff", display: "flex",
+            background: "var(--accent-color)", display: "flex",
             justifyContent: "center", alignItems: "center",
           }}>
             <span style={{ fontSize: "0.8rem" }}>D</span>

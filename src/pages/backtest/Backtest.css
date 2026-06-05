@@ -1,6 +1,6 @@
 .backtest-dashboard {
-  background-color: #131722;
-  color: #d1d4dc;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
   padding: 24px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -19,12 +19,12 @@
   font-size: 20px;
   font-weight: 600;
   margin: 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .bd-subtitle {
   font-size: 13px;
-  color: #787b86;
+  color: var(--text-secondary);
   margin-top: 4px;
   display: block;
 }
@@ -36,12 +36,12 @@
 }
 
 .bd-date-picker, .bd-select {
-  background: #1e222d;
-  border: 1px solid #2a2e39;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 6px 12px;
   font-size: 12px;
-  color: #d1d4dc;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
 }
@@ -53,7 +53,7 @@
 }
 
 .bd-run-btn {
-  background: #2962ff;
+  background: var(--accent-color);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -64,18 +64,18 @@
 }
 
 .bd-run-btn:hover {
-  background: #1e53e5;
+  background: var(--accent-color);
 }
 
 .bd-icon-btn {
   background: transparent;
-  color: #787b86;
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 16px;
 }
 
 .bd-icon-btn:hover {
-  color: #d1d4dc;
+  color: var(--text-primary);
 }
 
 /* Grid Layout */

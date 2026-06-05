@@ -13,9 +13,9 @@ const LeftAlertListing = ({
       display: "flex",
       flexDirection: "column",
       height: "calc(100vh - 60px)",
-      background: "#131722",
-      color: "#d1d4dc",
-      borderRight: "1px solid #2a2e39",
+      background: "var(--bg-primary)",
+      color: "var(--text-primary)",
+      borderRight: "1px solid var(--border-color)",
       fontFamily:
         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     },
@@ -24,7 +24,7 @@ const LeftAlertListing = ({
       justifyContent: "space-between",
       alignItems: "center",
       padding: "12px 16px",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
       fontWeight: "600",
       fontSize: "0.95rem",
     },
@@ -39,7 +39,7 @@ const LeftAlertListing = ({
       gap: "4px",
       background: "transparent",
       border: "none",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       cursor: "pointer",
       fontSize: "0.8rem",
       padding: "4px 8px",
@@ -54,7 +54,7 @@ const LeftAlertListing = ({
       display: "flex",
       flexDirection: "column",
       padding: "12px 16px",
-      borderBottom: "1px solid #1e222d",
+      borderBottom: "1px solid var(--bg-secondary)",
       cursor: "pointer",
       transition: "background 0.2s",
     },
@@ -66,7 +66,7 @@ const LeftAlertListing = ({
     stockName: {
       fontWeight: "600",
       fontSize: "0.85rem",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
     },
     rsiValue: {
       fontWeight: "600",
@@ -77,7 +77,7 @@ const LeftAlertListing = ({
       display: "flex",
       justifyContent: "space-between",
       fontSize: "0.75rem",
-      color: "#787b86",
+      color: "var(--text-secondary)",
     },
     emptyState: {
       display: "flex",
@@ -85,7 +85,7 @@ const LeftAlertListing = ({
       alignItems: "center",
       justifyContent: "center",
       height: "100%",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       padding: "20px",
       textAlign: "center",
     },
@@ -116,11 +116,11 @@ const LeftAlertListing = ({
     <div style={styles.container}>
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #131722; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: var(--bg-primary); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #363a45; }
-        .alert-item:hover { background-color: #2a2e39; }
-        .clear-btn:hover { background-color: #2a2e39; color: #d1d4dc; }
+        .alert-item:hover { background-color: var(--border-color); }
+        .clear-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
       `}</style>
 
       <div style={styles.header}>
@@ -137,7 +137,7 @@ const LeftAlertListing = ({
             </button>
           )}
           <FiX
-            style={{ cursor: "pointer", color: "#787b86" }}
+            style={{ cursor: "pointer", color: "var(--text-secondary)" }}
             onClick={onClose}
           />
         </div>
@@ -155,7 +155,7 @@ const LeftAlertListing = ({
               style={{
                 fontWeight: "600",
                 fontSize: "0.9rem",
-                color: "#d1d4dc",
+                color: "var(--text-primary)",
               }}
             >
               No active alerts
@@ -201,7 +201,7 @@ const LeftAlertListing = ({
                       <span style={{
                         fontWeight: "600",
                         fontSize: "0.85rem",
-                        color: item.signalType === "BUY" ? "#22ab94" : "#f23645",
+                        color: item.signalType === "BUY" ? "#22ab94" : "var(--danger-color)",
                       }}>
                         {item.signalType}
                       </span>

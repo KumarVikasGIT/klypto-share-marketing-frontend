@@ -38,57 +38,57 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
       display: "flex", alignItems: "center", justifyContent: "center",
     },
     panel: {
-      background: "#131722",
-      border: "1px solid #2a2e39",
+      background: "var(--bg-primary)",
+      border: "1px solid var(--border-color)",
       borderRadius: "10px",
       width: "420px",
       maxHeight: "80vh",
       display: "flex",
       flexDirection: "column",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
       overflow: "hidden",
       boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
     },
     header: {
       display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "14px 18px", borderBottom: "1px solid #2a2e39",
+      padding: "14px 18px", borderBottom: "1px solid var(--border-color)",
       background: "#1a1f2e",
     },
     title: { fontWeight: 700, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: 8, color: "#fff" },
     body: { padding: "18px", display: "flex", flexDirection: "column", gap: "14px" },
-    label: { fontSize: "0.7rem", color: "#787b86", textTransform: "uppercase", marginBottom: 4, letterSpacing: "0.05em" },
+    label: { fontSize: "0.7rem", color: "var(--text-secondary)", textTransform: "uppercase", marginBottom: 4, letterSpacing: "0.05em" },
     select: {
-      width: "100%", background: "#1e222d", border: "1px solid #2a2e39",
-      color: "#d1d4dc", borderRadius: 6, padding: "8px 10px", fontSize: "0.85rem",
+      width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
+      color: "var(--text-primary)", borderRadius: 6, padding: "8px 10px", fontSize: "0.85rem",
       cursor: "pointer", outline: "none",
     },
     input: {
-      width: "100%", background: "#1e222d", border: "1px solid #2a2e39",
-      color: "#d1d4dc", borderRadius: 6, padding: "8px 10px", fontSize: "0.85rem",
+      width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
+      color: "var(--text-primary)", borderRadius: 6, padding: "8px 10px", fontSize: "0.85rem",
       outline: "none", boxSizing: "border-box",
     },
     row: { display: "flex", gap: 10 },
     activateBtn: {
-      flex: 1, background: active ? "#1a3a1a" : "#2962ff",
+      flex: 1, background: active ? "#1a3a1a" : "var(--accent-color)",
       border: active ? "1px solid #22ab94" : "none",
       color: active ? "#22ab94" : "#fff", borderRadius: 6,
       padding: "9px 0", fontSize: "0.85rem", fontWeight: 600,
       cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
     },
     clearBtn: {
-      background: "#2a2e39", border: "none", color: "#787b86",
+      background: "var(--border-color)", border: "none", color: "var(--text-secondary)",
       borderRadius: 6, padding: "9px 14px", fontSize: "0.85rem",
       cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
     },
-    divider: { height: "1px", background: "#2a2e39", margin: "4px 0" },
+    divider: { height: "1px", background: "var(--border-color)", margin: "4px 0" },
     matchedHeader: {
       display: "flex", justifyContent: "space-between", alignItems: "center",
       padding: "10px 18px 6px",
     },
-    matchedTitle: { fontSize: "0.72rem", color: "#787b86", textTransform: "uppercase", letterSpacing: "0.06em" },
+    matchedTitle: { fontSize: "0.72rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" },
     matchedCount: {
-      background: "#2962ff", color: "#fff", borderRadius: 20,
+      background: "var(--accent-color)", color: "#fff", borderRadius: 20,
       padding: "1px 8px", fontSize: "0.7rem", fontWeight: 700,
     },
     matchedList: { flex: 1, overflowY: "auto", padding: "0 10px 10px" },
@@ -99,13 +99,13 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
     },
     badge: {
       width: 28, height: 28, borderRadius: "50%",
-      background: "linear-gradient(135deg, #2962ff, #22ab94)",
+      background: "linear-gradient(135deg, var(--accent-color), #22ab94)",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: "0.65rem", fontWeight: 700, color: "#fff",
     },
-    symbolText: { fontWeight: 600, fontSize: "0.85rem", color: "#d1d4dc" },
+    symbolText: { fontWeight: 600, fontSize: "0.85rem", color: "var(--text-primary)" },
     rsiText: { fontSize: "0.75rem", color: "#22ab94", marginTop: 1 },
-    timeText: { fontSize: "0.68rem", color: "#787b86" },
+    timeText: { fontSize: "0.68rem", color: "var(--text-secondary)" },
     emptyState: {
       textAlign: "center", padding: "24px 0", color: "#4a4f5e", fontSize: "0.8rem",
     },
@@ -121,7 +121,7 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
             <FiZap size={15} color="#f7c948" />
             Scanner
           </div>
-          <FiX size={16} style={{ cursor: "pointer", color: "#787b86" }} onClick={onClose} />
+          <FiX size={16} style={{ cursor: "pointer", color: "var(--text-secondary)" }} onClick={onClose} />
         </div>
 
         <div style={s.body}>
@@ -187,8 +187,8 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
         <div className="scanner-scroll" style={s.matchedList}>
           <style>{`
             .scanner-scroll::-webkit-scrollbar { width: 5px; }
-            .scanner-scroll::-webkit-scrollbar-track { background: #131722; }
-            .scanner-scroll::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 4px; }
+            .scanner-scroll::-webkit-scrollbar-track { background: var(--bg-primary); }
+            .scanner-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
             .scanner-matched-item:hover { background: #222840 !important; }
           `}</style>
 
@@ -217,7 +217,7 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
                   <span style={s.timeText}>{coin.timestamp}</span>
                   <FiTrash2
                     size={13}
-                    color="#787b86"
+                    color="var(--text-secondary)"
                     style={{ cursor: "pointer" }}
                     onClick={(e) => { e.stopPropagation(); removeCoin(coin.symbol); }}
                   />

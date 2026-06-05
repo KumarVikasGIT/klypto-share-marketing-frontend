@@ -108,7 +108,7 @@ export default function VPPlot({
 
         const barWidth = (Number(d.volume) / maxVolume) * profileWidth;
 
-        ctx.fillStyle = config.color || "#2962ff";
+        ctx.fillStyle = config.color || "var(--accent-color)";
 
         ctx.fillRect(canvas.width - barWidth, y - 2, barWidth, 4);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import { IoCloseSharp } from "react-icons/io5";
 import { FaPlay, FaTrash } from "react-icons/fa";
@@ -12,7 +12,20 @@ const CodeEditorPanel = ({
   setEditorCode,
   isDeployed,
 }) => {
-  const debounceRef = useRef(null);
+  const [theme, setTheme] = useState(
+    document.documentElement.getAttribute("data-theme") || "dark"
+  );
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   const handleChange = (value) => {
     setEditorCode(value || "");
@@ -27,29 +40,29 @@ const CodeEditorPanel = ({
     <div
       style={{
         width: "400px",
-        borderLeft: "1px solid #2a2e39",
+        borderLeft: "1px solid var(--border-color)",
         display: "flex",
         flexDirection: "column",
-        background: "#131722",
+        background: "var(--bg-primary)",
         flexShrink: 0,
       }}
     >
       <div
         style={{
           padding: "10px 16px",
-          borderBottom: "1px solid #2a2e39",
+          borderBottom: "1px solid var(--border-color)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
         <span
-          style={{ fontWeight: 600, fontSize: "0.95rem", color: "#d1d4dc" }}
+          style={{ fontWeight: 600, fontSize: "0.95rem", color: "var(--text-primary)" }}
         >
           Code Editor
         </span>
         <IoCloseSharp
-          style={{ cursor: "pointer", color: "#787b86", fontSize: "1.2rem" }}
+          style={{ cursor: "pointer", color: "var(--text-secondary)", fontSize: "1.2rem" }}
           onClick={onClose}
         />
       </div>
@@ -57,17 +70,27 @@ const CodeEditorPanel = ({
         <Editor
           height="100%"
           defaultLanguage="python"
-          theme="vs-dark"
+          theme={theme === "light" ? "light" : "vs-dark"}
           value={editorCode}
           onChange={handleChange}
-          options={{ minimap: { enabled: false } }}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 14,
+            lineHeight: 24,
+            padding: { top: 16 },
+            scrollBeyondLastLine: false,
+            smoothScrolling: true,
+            cursorBlinking: "smooth",
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            renderLineHighlight: "all",
+          }}
         />
       </div>
       <div
         style={{
           padding: "12px 12px 14px",
-          borderTop: "1px solid #2a2e39",
-          background: "linear-gradient(180deg, #1a1e2b 0%, #1e222d 100%)",
+          borderTop: "1px solid var(--border-color)",
+          background: "linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%)",
         }}
       >
         {isDeployed ? (
@@ -111,7 +134,7 @@ const CodeEditorPanel = ({
             style={{
               width: "100%",
               padding: "11px 16px",
-              background: "linear-gradient(135deg, #2962ff 0%, #1a4fd6 100%)",
+              background: "linear-gradient(135deg, var(--accent-color) 0%, #1a4fd6 100%)",
               color: "#fff",
               border: "1px solid rgba(41,98,255,0.6)",
               borderRadius: "6px",
@@ -129,14 +152,14 @@ const CodeEditorPanel = ({
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background =
-                "linear-gradient(135deg, #3d74ff 0%, #2962ff 100%)";
+                "linear-gradient(135deg, #3d74ff 0%, var(--accent-color) 100%)";
               e.currentTarget.style.boxShadow =
                 "0 4px 20px rgba(41,98,255,0.4), inset 0 1px 0 rgba(255,255,255,0.15)";
               e.currentTarget.style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background =
-                "linear-gradient(135deg, #2962ff 0%, #1a4fd6 100%)";
+                "linear-gradient(135deg, var(--accent-color) 0%, #1a4fd6 100%)";
               e.currentTarget.style.boxShadow =
                 "0 2px 12px rgba(41,98,255,0.25), inset 0 1px 0 rgba(255,255,255,0.1)";
               e.currentTarget.style.transform = "translateY(0)";

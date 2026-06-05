@@ -166,7 +166,7 @@ export default function IndicatorStyle({
                       style={{
                         fontSize: "14.5px",
                         fontWeight: 600,
-                        color: "#111827",
+                        color: "var(--bg-primary)",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -183,7 +183,7 @@ export default function IndicatorStyle({
                   style={{
                     fontSize: "14.5px",
                     fontWeight: 600,
-                    color: "#111827",
+                    color: "var(--bg-primary)",
                   }}
                 >
                   {row.label}
@@ -209,14 +209,14 @@ export default function IndicatorStyle({
                     style={{
                       width: 34,
                       height: 34,
-                      border: "1.5px solid #d1d5db",
+                      border: "1.5px solid var(--text-primary)",
                       borderRadius: 7,
                       cursor: "pointer",
                       background:
                         row.type !== "fill"
                           ? (selectedStyle?.[row.key]?.color ??
                             row.color ??
-                            "#2962ff")
+                            "var(--accent-color)")
                           : getFillPreview(row, selectedStyle),
                       boxShadow: "0 1px 3px rgba(0,0,0,0.10)",
                       transition: "box-shadow 0.15s, transform 0.1s",
@@ -302,21 +302,21 @@ export default function IndicatorStyle({
                     fontWeight: 500,
                     padding: "2px 10px",
                     borderRadius: 7,
-                    border: "1.5px solid #d1d5db",
+                    border: "1.5px solid var(--text-primary)",
                     textAlign: "left",
-                    color: "#111827",
+                    color: "var(--bg-primary)",
                     background: "#fff",
                     boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
                     transition: "border-color 0.15s, box-shadow 0.15s",
                     outline: "none",
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#2962ff";
+                    e.currentTarget.style.borderColor = "var(--accent-color)";
                     e.currentTarget.style.boxShadow =
                       "0 0 0 3px rgba(41,98,255,0.12)";
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "#d1d5db";
+                    e.currentTarget.style.borderColor = "var(--text-primary)";
                     e.currentTarget.style.boxShadow =
                       "0 1px 2px rgba(0,0,0,0.06)";
                   }}

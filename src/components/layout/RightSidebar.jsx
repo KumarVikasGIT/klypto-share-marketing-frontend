@@ -17,9 +17,9 @@ const RightSidebar = ({
       alignItems: "center",
       width: "100%",
       height: "calc(100vh - 60px)",
-      backgroundColor: "#131722",
-      borderLeft: "1px solid #2a2e39",
-      color: "#787b86",
+      backgroundColor: "var(--bg-primary)",
+      borderLeft: "1px solid var(--border-color)",
+      color: "var(--text-secondary)",
       paddingTop: "16px",
       gap: "24px",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -34,7 +34,7 @@ const RightSidebar = ({
       transition: "color 0.2s",
     },
     iconItemActive: {
-      color: "#2962ff",
+      color: "var(--accent-color)",
     }
   };
 
@@ -56,8 +56,8 @@ const RightSidebar = ({
             ...styles.iconItem,
             ...(item.active ? styles.iconItemActive : {})
           }}
-          onMouseEnter={(e) => { if (!item.active) e.currentTarget.style.color = "#d1d4dc"; }}
-          onMouseLeave={(e) => { if (!item.active) e.currentTarget.style.color = "#787b86"; }}
+          onMouseEnter={(e) => { if (!item.active) e.currentTarget.style.color = "var(--text-primary)"; }}
+          onMouseLeave={(e) => { if (!item.active) e.currentTarget.style.color = "var(--text-secondary)"; }}
           onClick={() => {
             if (item.id === 'watchlist' && toggleWatchlist) {
               toggleWatchlist();

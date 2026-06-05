@@ -16,7 +16,7 @@ export default function ZIGZAGInput(
   // ✅ SAFE STYLE (uses correct key "z")
   const zigzagStyle = indicatorStyle?.ZIGZAG?.z || {};
 
-  const lineColor = zigzagStyle.color ?? "#2962ff";
+  const lineColor = zigzagStyle.color ?? "var(--accent-color)";
   const visible = zigzagStyle.visible ?? true;
   const width = zigzagStyle.width ?? 2;
 

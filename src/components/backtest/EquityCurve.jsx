@@ -11,18 +11,18 @@ const EquityCurve = ({ equityData, benchmarkData }) => {
     const chartOptions = {
       layout: {
         background: { type: 'solid', color: 'transparent' },
-        textColor: '#d1d4dc',
+        textColor: '#787b86',
       },
       grid: {
-        vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
-        horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+        vertLines: { color: 'rgba(120, 123, 134, 0.2)' },
+        horzLines: { color: 'rgba(120, 123, 134, 0.2)' },
       },
       timeScale: {
-        borderColor: '#2a2e39',
+        borderColor: 'rgba(120, 123, 134, 0.2)',
         timeVisible: true,
       },
       rightPriceScale: {
-        borderColor: '#2a2e39',
+        borderColor: 'rgba(120, 123, 134, 0.2)',
       },
       crosshair: {
         mode: 1,
@@ -33,14 +33,14 @@ const EquityCurve = ({ equityData, benchmarkData }) => {
     chartRef.current = chart;
 
     const equitySeries = chart.addSeries(LineSeries,{
-      color: '#089981',
+      color: 'var(--success-color)',
       lineWidth: 2,
       title: 'Equity',
     });
     equitySeries.setData(equityData);
 
     const benchmarkSeries = chart.addSeries(LineSeries,{
-      color: '#787b86',
+      color: 'var(--text-secondary)',
       lineWidth: 1,
       lineStyle: 2, // Dashed
       title: 'Buy & Hold Benchmark',
@@ -66,16 +66,16 @@ const EquityCurve = ({ equityData, benchmarkData }) => {
       <div className="ec-header">
         <span className="ec-title">Equity Curve <span className="info-icon">ⓘ</span></span>
         <div className="ec-legend">
-          <span className="legend-item"><span className="legend-color" style={{background: '#089981'}}></span> Equity</span>
-          <span className="legend-item"><span className="legend-color" style={{background: '#787b86', height: '2px', width: '12px'}}></span> Buy & Hold Benchmark</span>
+          <span className="legend-item"><span className="legend-color" style={{background: 'var(--success-color)'}}></span> Equity</span>
+          <span className="legend-item"><span className="legend-color" style={{background: 'var(--text-secondary)', height: '2px', width: '12px'}}></span> Buy & Hold Benchmark</span>
         </div>
       </div>
       <div ref={chartContainerRef} style={{ flex: 1, minHeight: '300px' }} />
 
       <style>{`
         .equity-curve-container {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           display: flex;
           flex-direction: column;
@@ -90,7 +90,7 @@ const EquityCurve = ({ equityData, benchmarkData }) => {
         }
         .ec-title {
           font-size: 13px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           font-weight: 600;
           display: flex;
           align-items: center;
@@ -100,7 +100,7 @@ const EquityCurve = ({ equityData, benchmarkData }) => {
           display: flex;
           gap: 16px;
           font-size: 11px;
-          color: #d1d4dc;
+          color: var(--text-primary);
         }
         .legend-item {
           display: flex;
@@ -114,7 +114,7 @@ const EquityCurve = ({ equityData, benchmarkData }) => {
           display: inline-block;
         }
         .info-icon {
-          color: #787b86;
+          color: var(--text-secondary);
           font-size: 10px;
           cursor: pointer;
         }

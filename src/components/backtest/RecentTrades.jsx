@@ -29,18 +29,18 @@ const RecentTrades = ({ data }) => {
                 <td>{trade.id}</td>
                 <td>{trade.entryTime}</td>
                 <td>{trade.exitTime}</td>
-                <td style={{ color: trade.direction === "Long" ? "#089981" : "#f23645" }}>{trade.direction}</td>
+                <td style={{ color: trade.direction === "Long" ? "var(--success-color)" : "var(--danger-color)" }}>{trade.direction}</td>
                 <td>{trade.symbol}</td>
                 <td>{trade.entryPrice.toFixed(2)}</td>
                 <td>{trade.exitPrice.toFixed(2)}</td>
-                <td style={{ color: trade.pnl >= 0 ? "#089981" : "#f23645" }}>
+                <td style={{ color: trade.pnl >= 0 ? "var(--success-color)" : "var(--danger-color)" }}>
                   {trade.pnl >= 0 ? "+" : "-"}${Math.abs(trade.pnl).toFixed(2)}
                 </td>
-                <td style={{ color: trade.pnlPct >= 0 ? "#089981" : "#f23645" }}>
+                <td style={{ color: trade.pnlPct >= 0 ? "var(--success-color)" : "var(--danger-color)" }}>
                   {trade.pnlPct >= 0 ? "+" : ""}{trade.pnlPct.toFixed(2)}%
                 </td>
                 <td>{trade.duration}</td>
-                <td style={{ color: trade.result === "Win" ? "#089981" : "#f23645" }}>{trade.result}</td>
+                <td style={{ color: trade.result === "Win" ? "var(--success-color)" : "var(--danger-color)" }}>{trade.result}</td>
               </tr>
             ))}
           </tbody>
@@ -49,8 +49,8 @@ const RecentTrades = ({ data }) => {
 
       <style>{`
         .recent-trades-container {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           display: flex;
           flex-direction: column;
@@ -58,11 +58,11 @@ const RecentTrades = ({ data }) => {
         }
         .rt-header {
           padding: 12px 16px;
-          border-bottom: 1px solid #2a2e39;
+          border-bottom: 1px solid var(--border-color);
         }
         .rt-title {
           font-size: 13px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           font-weight: 600;
         }
         .rt-table-wrapper {
@@ -76,16 +76,16 @@ const RecentTrades = ({ data }) => {
         }
         .rt-table th {
           font-size: 11px;
-          color: #787b86;
+          color: var(--text-secondary);
           padding: 10px 16px;
           font-weight: 500;
-          border-bottom: 1px solid #2a2e39;
+          border-bottom: 1px solid var(--border-color);
         }
         .rt-table td {
           font-size: 11px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           padding: 10px 16px;
-          border-bottom: 1px solid #2a2e39;
+          border-bottom: 1px solid var(--border-color);
         }
         .rt-table tr:last-child td {
           border-bottom: none;

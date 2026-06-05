@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import "./Dashboard.css";
-import Header from "./components/Header";
-import Stepper from "./components/Stepper";
-import OrderPanel from "./components/OrderPanel";
-import SidePanel from "./components/SidePanel";
-import OrderBook from "./components/OrderBook";
+import Navbar from "../../components/layout/Navbar";
+// import Header from "../../components/dashboard/Header";
+import Stepper from "../../components/dashboard/Stepper";
+import OrderPanel from "../../components/dashboard/OrderPanel";
+import SidePanel from "../../components/dashboard/SidePanel";
+import OrderBook from "../../components/dashboard/OrderBook";
 import { useLocation } from "react-router-dom";
 
 const Dashboard = () => {
@@ -63,8 +64,10 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard-container">
-      <Header />
+    <>
+      <Navbar />
+      <div className="dashboard-container">
+        {/* <Header /> */}
       <Stepper
         currentStep={currentStep}
         filledSteps={{
@@ -83,14 +86,7 @@ const Dashboard = () => {
       <style>{`
         .x-small { font-size: 0.65rem; }
         select.input-dark {
-          appearance: none;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-          background-repeat: no-repeat;
-          background-position: right 10px center;
-          padding-right: 30px;
-        }
-      `}</style>
-    </div>
+    </>
   );
 };
 

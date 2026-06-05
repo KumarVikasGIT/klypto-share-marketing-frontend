@@ -2276,7 +2276,7 @@ export default function IndicatorPropertyDialog({
           style={{
             fontSize: 17,
             fontWeight: 700,
-            color: "#111827",
+            color: "var(--bg-primary)",
             letterSpacing: "-0.2px",
           }}
         >
@@ -2355,7 +2355,7 @@ export default function IndicatorPropertyDialog({
       .nav-tabs .nav-link {
         border: none !important;
         border-bottom: 2.5px solid transparent !important;
-        color: #9ca3af !important;
+        color: var(--text-secondary) !important;
         font-weight: 600 !important;
         font-size: 14px !important;
         padding: 10px 14px !important;
@@ -2365,12 +2365,12 @@ export default function IndicatorPropertyDialog({
         transition: color 0.15s ease, border-color 0.15s ease !important;
       }
       .nav-tabs .nav-link:hover {
-        color: #374151 !important;
-        border-bottom-color: #d1d5db !important;
+        color: var(--border-color) !important;
+        border-bottom-color: var(--text-primary) !important;
       }
       .nav-tabs .nav-link.active {
-        color: #111827 !important;
-        border-bottom: 2.5px solid #111827 !important;
+        color: var(--bg-primary) !important;
+        border-bottom: 2.5px solid var(--bg-primary) !important;
         background: transparent !important;
       }
       .tab-content {
@@ -2383,11 +2383,11 @@ export default function IndicatorPropertyDialog({
         background: transparent;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #d1d5db;
+        background: var(--text-primary);
         border-radius: 10px;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #9ca3af;
+        background: var(--text-secondary);
       }
     `}</style>
       </Modal.Body>
@@ -2402,7 +2402,7 @@ export default function IndicatorPropertyDialog({
             borderRadius: 8,
             padding: "8px 20px",
             border: "1.5px solid #e5e7eb",
-            color: "#374151",
+            color: "var(--border-color)",
             background: "#f9fafb",
           }}
         >
@@ -2417,7 +2417,7 @@ export default function IndicatorPropertyDialog({
             fontWeight: 600,
             borderRadius: 8,
             padding: "8px 20px",
-            background: "#111827",
+            background: "var(--bg-primary)",
             border: "none",
             boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
           }}

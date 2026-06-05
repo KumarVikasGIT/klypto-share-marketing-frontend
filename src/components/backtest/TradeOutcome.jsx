@@ -10,7 +10,7 @@ const TradeOutcome = ({ data }) => {
     datasets: [
       {
         data: [data.winRate.wins, data.winRate.losses],
-        backgroundColor: ["#089981", "#f23645"],
+        backgroundColor: ["var(--success-color)", "var(--danger-color)"],
         borderWidth: 0,
         cutout: "75%",
       },
@@ -25,10 +25,10 @@ const TradeOutcome = ({ data }) => {
         display: false,
       },
       tooltip: {
-        backgroundColor: "#1e222d",
-        titleColor: "#d1d4dc",
-        bodyColor: "#d1d4dc",
-        borderColor: "#2a2e39",
+        backgroundColor: "var(--bg-secondary)",
+        titleColor: "var(--text-primary)",
+        bodyColor: "var(--text-primary)",
+        borderColor: "var(--border-color)",
         borderWidth: 1,
       },
     },
@@ -49,14 +49,14 @@ const TradeOutcome = ({ data }) => {
         </div>
         <div className="to-legend">
           <div className="to-legend-item">
-            <span className="to-legend-color" style={{ background: "#089981" }}></span>
+            <span className="to-legend-color" style={{ background: "var(--success-color)" }}></span>
             <div className="to-legend-text">
               <span className="to-lbl">Winning Trades</span>
               <span className="to-val">{data.winRate.wins} ({data.winRate.value}%)</span>
             </div>
           </div>
           <div className="to-legend-item">
-            <span className="to-legend-color" style={{ background: "#f23645" }}></span>
+            <span className="to-legend-color" style={{ background: "var(--danger-color)" }}></span>
             <div className="to-legend-text">
               <span className="to-lbl">Losing Trades</span>
               <span className="to-val">{data.winRate.losses} ({(100 - data.winRate.value).toFixed(2)}%)</span>
@@ -67,8 +67,8 @@ const TradeOutcome = ({ data }) => {
 
       <style>{`
         .trade-outcome-container {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           display: flex;
           flex-direction: column;
@@ -80,7 +80,7 @@ const TradeOutcome = ({ data }) => {
         }
         .to-title {
           font-size: 13px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           font-weight: 600;
         }
         .to-body {
@@ -106,11 +106,11 @@ const TradeOutcome = ({ data }) => {
         .to-center-val {
           font-size: 16px;
           font-weight: 600;
-          color: #d1d4dc;
+          color: var(--text-primary);
         }
         .to-center-lbl {
           font-size: 10px;
-          color: #787b86;
+          color: var(--text-secondary);
         }
         .to-legend {
           display: flex;
@@ -134,11 +134,11 @@ const TradeOutcome = ({ data }) => {
         }
         .to-lbl {
           font-size: 11px;
-          color: #d1d4dc;
+          color: var(--text-primary);
         }
         .to-val {
           font-size: 11px;
-          color: #787b86;
+          color: var(--text-secondary);
         }
       `}</style>
     </div>

@@ -10,9 +10,9 @@ const ChartTabs = ({ activeTab, setActiveTab, onCodeClick }) => {
       justifyContent: "space-between",
       padding: "0 16px",
       height: "48px",
-      backgroundColor: "#131722",
-      borderBottom: "1px solid #2a2e39",
-      color: "#d1d4dc",
+      backgroundColor: "var(--bg-primary)",
+      borderBottom: "1px solid var(--border-color)",
+      color: "var(--text-primary)",
       fontFamily:
         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     },
@@ -28,10 +28,10 @@ const ChartTabs = ({ activeTab, setActiveTab, onCodeClick }) => {
       fontWeight: "500",
       cursor: "pointer",
       position: "relative",
-      color: "#787b86",
+      color: "var(--text-secondary)",
     },
     tabActive: {
-      color: "#2962ff",
+      color: "var(--accent-color)",
     },
     activeIndicator: {
       position: "absolute",
@@ -39,7 +39,7 @@ const ChartTabs = ({ activeTab, setActiveTab, onCodeClick }) => {
       left: 0,
       right: 0,
       height: "2px",
-      backgroundColor: "#2962ff",
+      backgroundColor: "var(--accent-color)",
     },
     actionsGroup: {
       display: "flex",
@@ -66,10 +66,10 @@ const ChartTabs = ({ activeTab, setActiveTab, onCodeClick }) => {
       justifyContent: "center",
       width: "32px",
       height: "32px",
-      border: "1px solid #2a2e39",
+      border: "1px solid var(--border-color)",
       borderRadius: "4px",
       backgroundColor: "transparent",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       cursor: "pointer",
     },
   };

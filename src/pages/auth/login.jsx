@@ -100,8 +100,8 @@ export default function Login() {
     card: {
       width: 400,
       borderRadius: 16,
-      background: "#111827",
-      border: "1px solid #1f2937",
+      background: "var(--bg-primary)",
+      border: "1px solid var(--bg-secondary)",
       boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
       padding: 32,
     },
@@ -109,7 +109,7 @@ export default function Login() {
       width: 42,
       height: 42,
       borderRadius: 10,
-      background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
+      background: "linear-gradient(135deg,var(--accent-color),#7c3aed)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -132,15 +132,15 @@ export default function Login() {
       display: "block",
       fontSize: "0.75rem",
       fontWeight: 600,
-      color: "#9ca3af",
+      color: "var(--text-secondary)",
       marginBottom: 6,
       letterSpacing: "0.04em",
     },
     input: {
       width: "100%",
       boxSizing: "border-box",
-      background: "#1f2937",
-      border: "1px solid #374151",
+      background: "var(--bg-secondary)",
+      border: "1px solid var(--border-color)",
       borderRadius: 8,
       color: "#f3f4f6",
       padding: "10px 14px",
@@ -156,7 +156,7 @@ export default function Login() {
       padding: "11px",
       borderRadius: 8,
       border: "none",
-      background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
+      background: "linear-gradient(135deg,var(--accent-color),#7c3aed)",
       color: "#fff",
       fontWeight: 700,
       fontSize: "0.875rem",
@@ -185,7 +185,7 @@ export default function Login() {
       gap: 8,
       marginBottom: 20,
     },
-    checkLabel: { fontSize: "0.8rem", color: "#9ca3af", cursor: "pointer" },
+    checkLabel: { fontSize: "0.8rem", color: "var(--text-secondary)", cursor: "pointer" },
   };
 
   return (
@@ -221,12 +221,12 @@ export default function Login() {
               onFocus={(e) =>
                 (e.target.style.borderColor = errors.email
                   ? "#ef4444"
-                  : "#4f46e5")
+                  : "var(--accent-color)")
               }
               onBlur={(e) =>
                 (e.target.style.borderColor = errors.email
                   ? "#ef4444"
-                  : "#374151")
+                  : "var(--border-color)")
               }
               placeholder="you@example.com"
             />
@@ -250,12 +250,12 @@ export default function Login() {
                 onFocus={(e) =>
                   (e.target.style.borderColor = errors.password
                     ? "#ef4444"
-                    : "#4f46e5")
+                    : "var(--accent-color)")
                 }
                 onBlur={(e) =>
                   (e.target.style.borderColor = errors.password
                     ? "#ef4444"
-                    : "#374151")
+                    : "var(--border-color)")
                 }
                 placeholder="••••••••"
               />
@@ -281,7 +281,7 @@ export default function Login() {
               checked={form.remember}
               onChange={handleChange}
               style={{
-                accentColor: "#4f46e5",
+                accentColor: "var(--accent-color)",
                 width: 15,
                 height: 15,
                 cursor: "pointer",

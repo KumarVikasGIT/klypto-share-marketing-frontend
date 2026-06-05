@@ -11,18 +11,18 @@ const DrawdownCurve = ({ drawdownData }) => {
     const chartOptions = {
       layout: {
         background: { type: 'solid', color: 'transparent' },
-        textColor: '#d1d4dc',
+        textColor: '#787b86',
       },
       grid: {
-        vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
-        horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+        vertLines: { color: 'rgba(120, 123, 134, 0.2)' },
+        horzLines: { color: 'rgba(120, 123, 134, 0.2)' },
       },
       timeScale: {
-        borderColor: '#2a2e39',
+        borderColor: 'rgba(120, 123, 134, 0.2)',
         timeVisible: true,
       },
       rightPriceScale: {
-        borderColor: '#2a2e39',
+        borderColor: 'rgba(120, 123, 134, 0.2)',
       },
       crosshair: {
         mode: 1,
@@ -35,7 +35,7 @@ const DrawdownCurve = ({ drawdownData }) => {
     const areaSeries = chart.addSeries(AreaSeries,{
       topColor: 'rgba(242, 54, 69, 0.4)',
       bottomColor: 'rgba(242, 54, 69, 0)',
-      lineColor: '#f23645',
+      lineColor: 'var(--danger-color)',
       lineWidth: 2,
     });
     areaSeries.setData(drawdownData);
@@ -63,8 +63,8 @@ const DrawdownCurve = ({ drawdownData }) => {
 
       <style>{`
         .drawdown-curve-container {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           display: flex;
           flex-direction: column;
@@ -76,14 +76,14 @@ const DrawdownCurve = ({ drawdownData }) => {
         }
         .dd-title {
           font-size: 13px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           font-weight: 600;
           display: flex;
           align-items: center;
           gap: 4px;
         }
         .info-icon {
-          color: #787b86;
+          color: var(--text-secondary);
           font-size: 10px;
           cursor: pointer;
         }

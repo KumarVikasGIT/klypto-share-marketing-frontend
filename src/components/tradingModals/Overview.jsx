@@ -25,7 +25,7 @@ function RangeBar({ low, high, current, label }) {
         style={{
           fontSize: 13,
           fontWeight: 600,
-          color: "#d1d4dc",
+          color: "var(--text-primary)",
           marginBottom: 10,
         }}
       >
@@ -36,7 +36,7 @@ function RangeBar({ low, high, current, label }) {
           position: "relative",
           height: 6,
           borderRadius: 4,
-          background: "linear-gradient(to right,#f23645,#089981)",
+          background: "linear-gradient(to right,var(--danger-color),var(--success-color))",
           marginBottom: 8,
         }}
       >
@@ -50,7 +50,7 @@ function RangeBar({ low, high, current, label }) {
             height: 12,
             borderRadius: "50%",
             background: "#fff",
-            boxShadow: "0 0 0 2px #131722, 0 0 0 3px #787b86",
+            boxShadow: "0 0 0 2px var(--bg-primary), 0 0 0 3px var(--text-secondary)",
             zIndex: 1,
           }}
         />
@@ -65,7 +65,7 @@ function RangeBar({ low, high, current, label }) {
             height: 0,
             borderLeft: "5px solid transparent",
             borderRight: "5px solid transparent",
-            borderTop: "6px solid #787b86",
+            borderTop: "6px solid var(--text-secondary)",
           }}
         />
       </div>
@@ -74,18 +74,18 @@ function RangeBar({ low, high, current, label }) {
           display: "flex",
           justifyContent: "space-between",
           fontSize: 12,
-          color: "#787b86",
+          color: "var(--text-secondary)",
         }}
       >
         <span>
-          <span style={{ color: "#d1d4dc", fontWeight: 500 }}>
+          <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
             {fmt(low, 2)}
           </span>
           <br />
           <span>Low</span>
         </span>
         <span style={{ textAlign: "right" }}>
-          <span style={{ color: "#d1d4dc", fontWeight: 500 }}>
+          <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
             {fmt(high, 2)}
           </span>
           <br />
@@ -101,9 +101,9 @@ function StatItem({ label, value, color }) {
     <div
       style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 90 }}
     >
-      <span style={{ fontSize: 12, color: "#787b86" }}>{label}</span>
+      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{label}</span>
       <span
-        style={{ fontSize: 14, fontWeight: 600, color: color || "#d1d4dc" }}
+        style={{ fontSize: 14, fontWeight: 600, color: color || "var(--text-primary)" }}
       >
         {value}
       </span>
@@ -115,8 +115,8 @@ function SectionCard({ title, children }) {
   return (
     <div
       style={{
-        background: "#1e222d",
-        border: "1px solid #2a2e39",
+        background: "var(--bg-secondary)",
+        border: "1px solid var(--border-color)",
         borderRadius: 10,
         padding: "16px 20px",
         marginBottom: 16,
@@ -127,7 +127,7 @@ function SectionCard({ title, children }) {
           style={{
             fontSize: 13,
             fontWeight: 700,
-            color: "#fff",
+            color: "var(--text-primary)",
             marginBottom: 14,
             textTransform: "uppercase",
             letterSpacing: "0.05em",
@@ -208,8 +208,8 @@ function RatingBar({ label, pct: p, color }) {
           marginBottom: 4,
         }}
       >
-        <span style={{ fontSize: 12, color: "#787b86" }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#d1d4dc" }}>
+        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
           {p}%
         </span>
       </div>
@@ -217,7 +217,7 @@ function RatingBar({ label, pct: p, color }) {
         style={{
           height: 5,
           borderRadius: 3,
-          background: "#2a2e39",
+          background: "var(--border-color)",
           overflow: "hidden",
         }}
       >
@@ -312,7 +312,7 @@ function FundamentalRatios() {
         style={{
           fontSize: 13,
           fontWeight: 700,
-          color: "#fff",
+          color: "var(--text-primary)",
           marginBottom: 14,
           textTransform: "uppercase",
           letterSpacing: "0.05em",
@@ -334,8 +334,8 @@ function FundamentalRatios() {
               fontWeight: 600,
               cursor: "pointer",
               border: "none",
-              background: activeTab === i ? "#2962ff" : "#2a2e39",
-              color: activeTab === i ? "#fff" : "#787b86",
+              background: activeTab === i ? "var(--accent-color)" : "var(--border-color)",
+              color: activeTab === i ? "#fff" : "var(--text-secondary)",
               transition: "all 0.2s",
             }}
           >
@@ -345,7 +345,7 @@ function FundamentalRatios() {
       </div>
       <div
         style={{
-          background: "#16181f",
+          background: "var(--bg-primary)",
           borderRadius: 8,
           padding: "14px 16px",
           display: "grid",
@@ -355,10 +355,10 @@ function FundamentalRatios() {
       >
         {tabData[activeTab].map(({ label, value }) => (
           <div key={label}>
-            <div style={{ fontSize: 11, color: "#787b86", marginBottom: 3 }}>
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 3 }}>
               {label}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#d1d4dc" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
               {value}
             </div>
           </div>
@@ -393,7 +393,7 @@ function ScoreBadge({ label, score, color }) {
       >
         {label}
       </span>
-      <span style={{ fontSize: 11, color: "#787b86" }}>{score}</span>
+      <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{score}</span>
     </div>
   );
 }
@@ -411,18 +411,18 @@ function MarketDepth({ buy = [], sell = [] }) {
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr",
               padding: "0 4px 6px",
-              borderBottom: "1px solid #2a2e39",
+              borderBottom: "1px solid var(--border-color)",
               marginBottom: 4,
             }}
           >
-            <span style={{ fontSize: 11, color: "#787b86" }}>ORDERS</span>
+            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>ORDERS</span>
             <span
-              style={{ fontSize: 11, color: "#787b86", textAlign: "right" }}
+              style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "right" }}
             >
               QTY
             </span>
             <span
-              style={{ fontSize: 11, color: "#089981", textAlign: "right" }}
+              style={{ fontSize: 11, color: "var(--success-color)", textAlign: "right" }}
             >
               BID
             </span>
@@ -436,7 +436,7 @@ function MarketDepth({ buy = [], sell = [] }) {
                   top: 0,
                   bottom: 0,
                   width: `${(b.quantity / maxQty) * 100}%`,
-                  background: "#08998120",
+                  background: "var(--success-color)20",
                   borderRadius: 3,
                 }}
               />
@@ -448,18 +448,18 @@ function MarketDepth({ buy = [], sell = [] }) {
                   padding: "4px",
                 }}
               >
-                <span style={{ fontSize: 12, color: "#787b86" }}>
+                <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                   {b.orders}
                 </span>
                 <span
-                  style={{ fontSize: 12, color: "#d1d4dc", textAlign: "right" }}
+                  style={{ fontSize: 12, color: "var(--text-primary)", textAlign: "right" }}
                 >
                   {b.quantity}
                 </span>
                 <span
                   style={{
                     fontSize: 12,
-                    color: "#089981",
+                    color: "var(--success-color)",
                     textAlign: "right",
                     fontWeight: 600,
                   }}
@@ -471,18 +471,18 @@ function MarketDepth({ buy = [], sell = [] }) {
           ))}
           <div
             style={{
-              borderTop: "1px solid #2a2e39",
+              borderTop: "1px solid var(--border-color)",
               marginTop: 4,
               paddingTop: 4,
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr",
             }}
           >
-            <span style={{ fontSize: 11, color: "#787b86" }}>Total</span>
+            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Total</span>
             <span
               style={{
                 fontSize: 11,
-                color: "#089981",
+                color: "var(--success-color)",
                 textAlign: "right",
                 fontWeight: 600,
               }}
@@ -500,20 +500,20 @@ function MarketDepth({ buy = [], sell = [] }) {
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr",
               padding: "0 4px 6px",
-              borderBottom: "1px solid #2a2e39",
+              borderBottom: "1px solid var(--border-color)",
               marginBottom: 4,
             }}
           >
-            <span style={{ fontSize: 11, color: "#f23645", textAlign: "left" }}>
+            <span style={{ fontSize: 11, color: "var(--danger-color)", textAlign: "left" }}>
               ASK
             </span>
             <span
-              style={{ fontSize: 11, color: "#787b86", textAlign: "right" }}
+              style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "right" }}
             >
               QTY
             </span>
             <span
-              style={{ fontSize: 11, color: "#787b86", textAlign: "right" }}
+              style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "right" }}
             >
               ORDERS
             </span>
@@ -527,7 +527,7 @@ function MarketDepth({ buy = [], sell = [] }) {
                   top: 0,
                   bottom: 0,
                   width: `${(s.quantity / maxQty) * 100}%`,
-                  background: "#f2364520",
+                  background: "var(--danger-color)20",
                   borderRadius: 3,
                 }}
               />
@@ -540,17 +540,17 @@ function MarketDepth({ buy = [], sell = [] }) {
                 }}
               >
                 <span
-                  style={{ fontSize: 12, color: "#f23645", fontWeight: 600 }}
+                  style={{ fontSize: 12, color: "var(--danger-color)", fontWeight: 600 }}
                 >
                   {fmt(s.price)}
                 </span>
                 <span
-                  style={{ fontSize: 12, color: "#d1d4dc", textAlign: "right" }}
+                  style={{ fontSize: 12, color: "var(--text-primary)", textAlign: "right" }}
                 >
                   {s.quantity}
                 </span>
                 <span
-                  style={{ fontSize: 12, color: "#787b86", textAlign: "right" }}
+                  style={{ fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}
                 >
                   {s.orders}
                 </span>
@@ -559,7 +559,7 @@ function MarketDepth({ buy = [], sell = [] }) {
           ))}
           <div
             style={{
-              borderTop: "1px solid #2a2e39",
+              borderTop: "1px solid var(--border-color)",
               marginTop: 4,
               paddingTop: 4,
               display: "grid",
@@ -570,7 +570,7 @@ function MarketDepth({ buy = [], sell = [] }) {
             <span
               style={{
                 fontSize: 11,
-                color: "#f23645",
+                color: "var(--danger-color)",
                 textAlign: "right",
                 fontWeight: 600,
               }}
@@ -578,7 +578,7 @@ function MarketDepth({ buy = [], sell = [] }) {
               {sell.reduce((s, b) => s + b.quantity, 0)}
             </span>
             <span
-              style={{ fontSize: 11, color: "#787b86", textAlign: "right" }}
+              style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "right" }}
             >
               Total
             </span>
@@ -679,7 +679,7 @@ const Overview = ({ selectedCurrency }) => {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#131722",
+    background: "var(--bg-primary)",
   };
 
   if (!selectedCurrency)
@@ -695,7 +695,7 @@ const Overview = ({ selectedCurrency }) => {
       </div>
     );
   if (error)
-    return <div style={{ ...centered, color: "#f23645" }}>{error}</div>;
+    return <div style={{ ...centered, color: "var(--danger-color)" }}>{error}</div>;
   if (!overview)
     return (
       <div style={centered} className="text-muted">
@@ -712,13 +712,13 @@ const pctChange = overview?.percent_change;
 
 const isPositive = Number(netChange) >= 0;
 
-const changeColor = isPositive ? "#089981" : "#f23645";
+const changeColor = isPositive ? "var(--success-color)" : "var(--danger-color)";
 
   return (
     <div
       style={{
-        background: "#131722",
-        color: "#d1d4dc",
+        background: "var(--bg-primary)",
+        color: "var(--text-primary)",
         height: "100%",
         overflowY: "auto",
         padding: "20px 20px 32px",
@@ -741,7 +741,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
               style={{
                 fontSize: 22,
                 fontWeight: 800,
-                color: "#fff",
+                color: "var(--text-primary)",
                 letterSpacing: "-0.02em",
               }}
             >
@@ -753,15 +753,15 @@ const changeColor = isPositive ? "#089981" : "#f23645";
                 fontWeight: 700,
                 padding: "2px 8px",
                 borderRadius: 4,
-                background: "#2a2e39",
-                color: "#787b86",
+                background: "var(--border-color)",
+                color: "var(--text-secondary)",
                 letterSpacing: "0.05em",
               }}
             >
               {overview.exchange || selectedCurrency.segment}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: "#787b86", marginTop: 3 }}>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
             {selectedCurrency.fullName || ""}
           </div>
         </div>
@@ -798,14 +798,14 @@ const changeColor = isPositive ? "#089981" : "#f23645";
             style={{
               flex: "1 1 200px",
               paddingRight: 24,
-              borderRight: "1px solid #2a2e39",
+              borderRight: "1px solid var(--border-color)",
             }}
           >
             <div
               style={{
                 fontSize: 11,
                 fontWeight: 700,
-                color: "#787b86",
+                color: "var(--text-secondary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 marginBottom: 12,
@@ -818,12 +818,12 @@ const changeColor = isPositive ? "#089981" : "#f23645";
               <StatItem
                 label="High"
                 value={fmt(overview?.high)}
-                color="#089981"
+                color="var(--success-color)"
               />
               <StatItem
                 label="Low"
                 value={fmt(overview?.low)}
-                color="#f23645"
+                color="var(--danger-color)"
               />
               <StatItem label="Close" value={fmt(overview?.close)} />
             </div>
@@ -834,7 +834,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
               style={{
                 fontSize: 11,
                 fontWeight: 700,
-                color: "#787b86",
+                color: "var(--text-secondary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 marginBottom: 12,
@@ -902,8 +902,8 @@ const changeColor = isPositive ? "#089981" : "#f23645";
         <div
           style={{
             flex: "1 1 240px",
-            background: "#1e222d",
-            border: "1px solid #2a2e39",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-color)",
             borderRadius: 10,
             padding: "16px 20px",
           }}
@@ -912,7 +912,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
             style={{
               fontSize: 13,
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--text-primary)",
               marginBottom: 4,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -920,7 +920,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
           >
             Analyst Ratings
           </div>
-          <div style={{ fontSize: 11, color: "#787b86", marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 14 }}>
             *Based on the review of {STATIC_ANALYST.analystCount} analyst(s) in
             the last 1 year(s)
           </div>
@@ -932,10 +932,10 @@ const changeColor = isPositive ? "#089981" : "#f23645";
             }}
           >
             <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "#d1d4dc" }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
                 {fmt(STATIC_ANALYST.targetPrice)}
               </div>
-              <div style={{ fontSize: 11, color: "#787b86" }}>Target Price</div>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>Target Price</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div
@@ -943,21 +943,21 @@ const changeColor = isPositive ? "#089981" : "#f23645";
                   fontSize: 18,
                   fontWeight: 800,
                   color:
-                    STATIC_ANALYST.expectedProfit >= 0 ? "#089981" : "#f23645",
+                    STATIC_ANALYST.expectedProfit >= 0 ? "var(--success-color)" : "var(--danger-color)",
                 }}
               >
                 {pct(STATIC_ANALYST.expectedProfit)}
               </div>
-              <div style={{ fontSize: 11, color: "#787b86" }}>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
                 Expected Profit
               </div>
             </div>
           </div>
-          <RatingBar label="BUY" pct={STATIC_ANALYST.buy} color="#089981" />
+          <RatingBar label="BUY" pct={STATIC_ANALYST.buy} color="var(--success-color)" />
           <RatingBar label="HOLD" pct={STATIC_ANALYST.hold} color="#f0b90b" />
-          <RatingBar label="SELL" pct={STATIC_ANALYST.sell} color="#f23645" />
-          <div style={{ fontSize: 10, color: "#4a4f60", marginTop: 10 }}>
-            powered by <strong style={{ color: "#787b86" }}>Trendlyn</strong>
+          <RatingBar label="SELL" pct={STATIC_ANALYST.sell} color="var(--danger-color)" />
+          <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 10 }}>
+            powered by <strong style={{ color: "var(--text-secondary)" }}>Trendlyn</strong>
           </div>
         </div>
 
@@ -965,8 +965,8 @@ const changeColor = isPositive ? "#089981" : "#f23645";
         <div
           style={{
             flex: "1 1 280px",
-            background: "#1e222d",
-            border: "1px solid #2a2e39",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-color)",
             borderRadius: 10,
             padding: "16px 20px",
           }}
@@ -987,9 +987,9 @@ const changeColor = isPositive ? "#089981" : "#f23645";
             flexWrap: "wrap",
           }}
         >
-          <span style={{ fontSize: 12, color: "#787b86", marginRight: 4 }}>
+          <span style={{ fontSize: 12, color: "var(--text-secondary)", marginRight: 4 }}>
             Sector Trend{" "}
-            <span style={{ color: "#2962ff", fontWeight: 700 }}>
+            <span style={{ color: "var(--accent-color)", fontWeight: 700 }}>
               (#{STATIC_PERFORMANCE.sectorRank})
             </span>
           </span>
@@ -1001,8 +1001,8 @@ const changeColor = isPositive ? "#089981" : "#f23645";
                 fontWeight: 700,
                 padding: "2px 8px",
                 borderRadius: 4,
-                background: "#2a2e39",
-                color: "#787b86",
+                background: "var(--border-color)",
+                color: "var(--text-secondary)",
                 letterSpacing: "0.05em",
               }}
             >
@@ -1043,7 +1043,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
                   display: "inline-block",
                 }}
               />
-              <span style={{ fontSize: 12, color: "#787b86" }}>{label}</span>
+              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{label}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: c }}>
                 {val}
               </span>
@@ -1056,17 +1056,17 @@ const changeColor = isPositive ? "#089981" : "#f23645";
           <StatItem
             label="1 Year Return"
             value={pct(STATIC_PERFORMANCE.oneYearReturn)}
-            color="#089981"
+            color="var(--success-color)"
           />
           <StatItem
             label="Sector Return"
             value={pct(STATIC_PERFORMANCE.sectorReturn)}
-            color="#089981"
+            color="var(--success-color)"
           />
           <StatItem
             label="Market Return"
             value={pct(STATIC_PERFORMANCE.marketReturn)}
-            color="#f23645"
+            color="var(--danger-color)"
           />
         </div>
 
@@ -1074,17 +1074,17 @@ const changeColor = isPositive ? "#089981" : "#f23645";
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <div style={{ minWidth: 130 }}>
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, color: "#787b86", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 4 }}>
                 Quality
               </div>
               <ScoreBadge
                 label={STATIC_PERFORMANCE.quality.label}
                 score={STATIC_PERFORMANCE.quality.score}
-                color="#089981"
+                color="var(--success-color)"
               />
             </div>
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, color: "#787b86", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 4 }}>
                 Valuation
               </div>
               <ScoreBadge
@@ -1094,7 +1094,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
               />
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "#787b86", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 4 }}>
                 Financial
               </div>
               <ScoreBadge
@@ -1109,7 +1109,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
             style={{
               flex: 1,
               minWidth: 200,
-              borderLeft: "1px solid #2a2e39",
+              borderLeft: "1px solid var(--border-color)",
               paddingLeft: 20,
             }}
           >
@@ -1146,11 +1146,11 @@ const changeColor = isPositive ? "#089981" : "#f23645";
                         width: 7,
                         height: 7,
                         borderRadius: "50%",
-                        background: "#089981",
+                        background: "var(--success-color)",
                         display: "inline-block",
                       }}
                     />
-                    <span style={{ fontSize: 12, color: "#787b86" }}>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                       {key}
                     </span>
                   </div>
@@ -1158,7 +1158,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
                     style={{
                       fontSize: 12,
                       fontWeight: 700,
-                      color: "#089981",
+                      color: "var(--success-color)",
                       paddingLeft: 12,
                     }}
                   >
@@ -1171,7 +1171,7 @@ const changeColor = isPositive ? "#089981" : "#f23645";
               <div
                 style={{
                   fontSize: 11,
-                  color: "#787b86",
+                  color: "var(--text-secondary)",
                   marginBottom: 8,
                   fontWeight: 700,
                 }}
@@ -1184,11 +1184,11 @@ const changeColor = isPositive ? "#089981" : "#f23645";
                   style={{ display: "flex", gap: 8, marginBottom: 5 }}
                 >
                   <span
-                    style={{ color: "#2962ff", fontSize: 12, marginTop: 1 }}
+                    style={{ color: "var(--accent-color)", fontSize: 12, marginTop: 1 }}
                   >
                     •
                   </span>
-                  <span style={{ fontSize: 12, color: "#d1d4dc" }}>{ins}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-primary)" }}>{ins}</span>
                 </div>
               ))}
             </div>
@@ -1205,15 +1205,15 @@ const changeColor = isPositive ? "#089981" : "#f23645";
             marginBottom: 12,
           }}
         >
-          {/* <div style={{ fontSize: 12, color: "#787b86" }}>
+          {/* <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
             Total Buy Qty:{" "}
-            <span style={{ color: "#089981", fontWeight: 700 }}>
+            <span style={{ color: "var(--success-color)", fontWeight: 700 }}>
               {Number(raw_data?.totBuyQuan ?? 0).toLocaleString("en-IN")}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: "#787b86" }}>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
             Total Sell Qty:{" "}
-            <span style={{ color: "#f23645", fontWeight: 700 }}>
+            <span style={{ color: "var(--danger-color)", fontWeight: 700 }}>
               {Number(raw_data?.totSellQuan ?? 0).toLocaleString("en-IN")}
             </span>
           </div> */}

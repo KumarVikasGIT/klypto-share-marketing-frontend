@@ -11,18 +11,18 @@ const PnLDistribution = ({ data }) => {
     const chartOptions = {
       layout: {
         background: { type: 'solid', color: 'transparent' },
-        textColor: '#d1d4dc',
+        textColor: 'var(--text-primary)',
       },
       grid: {
         vertLines: { visible: false },
         horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
       },
       timeScale: {
-        borderColor: '#2a2e39',
+        borderColor: 'var(--border-color)',
         timeVisible: false,
       },
       rightPriceScale: {
-        borderColor: '#2a2e39',
+        borderColor: 'var(--border-color)',
       },
       crosshair: {
         mode: 1,
@@ -66,8 +66,8 @@ const PnLDistribution = ({ data }) => {
 
       <style>{`
         .pnl-dist-container {
-          background: #1e222d;
-          border: 1px solid #2a2e39;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           display: flex;
           flex-direction: column;
@@ -79,14 +79,14 @@ const PnLDistribution = ({ data }) => {
         }
         .dist-title {
           font-size: 13px;
-          color: #d1d4dc;
+          color: var(--text-primary);
           font-weight: 600;
           display: flex;
           align-items: center;
           gap: 4px;
         }
         .info-icon {
-          color: #787b86;
+          color: var(--text-secondary);
           font-size: 10px;
           cursor: pointer;
         }

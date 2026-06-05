@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { FiSearch } from "react-icons/fi";
+import { FiSearch, FiSun, FiMoon } from "react-icons/fi";
 import { BsGrid, BsBell } from "react-icons/bs";
 import apiService from "../../services/apiServices";
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated, logout } from "../../pages/auth/protected";
+import { isAuthenticated, logout, getUser } from "../../pages/auth/protected";
 
 const Navbar = ({ setSelectedCurrency }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -11,6 +11,20 @@ const Navbar = ({ setSelectedCurrency }) => {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const user = getUser();
+
+  const [theme, setTheme] = useState(
+    localStorage.getItem("theme") || "dark"
+  );
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   const searchContainerRef = useRef(null);
 
@@ -80,9 +94,9 @@ const Navbar = ({ setSelectedCurrency }) => {
       alignItems: "center",
       justifyContent: "space-between",
       padding: "8px 24px",
-      backgroundColor: "#131722",
-      borderBottom: "1px solid #2a2e39",
-      color: "#d1d4dc",
+      backgroundColor: "var(--bg-primary)",
+      borderBottom: "1px solid var(--border-color)",
+      color: "var(--text-primary)",
       height: "60px",
       fontFamily:
         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -92,11 +106,11 @@ const Navbar = ({ setSelectedCurrency }) => {
       display: "flex",
       alignItems: "center",
       gap: "8px",
-      color: "#fff",
+      color: "var(--text-primary)",
       fontWeight: "bold",
       fontSize: "1.2rem",
     },
-    logoIcon: { color: "#2962ff", fontSize: "1.5rem" },
+    logoIcon: { color: "var(--accent-color)", fontSize: "1.5rem" },
     indexData: { display: "flex", flexDirection: "column", fontSize: "0.8rem" },
     indexName: {
       display: "flex",
@@ -118,15 +132,15 @@ const Navbar = ({ setSelectedCurrency }) => {
     searchForm: {
       display: "flex",
       alignItems: "center",
-      backgroundColor: "#2a2e39",
+      backgroundColor: "var(--bg-secondary)",
       borderRadius: "6px",
       padding: "7px 12px",
-      border: "1px solid #3a3e4a",
+      border: "1px solid var(--border-color)",
     },
     searchInput: {
       border: "none",
       backgroundColor: "transparent",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
       outline: "none",
       width: "100%",
       marginLeft: "8px",
@@ -139,8 +153,8 @@ const Navbar = ({ setSelectedCurrency }) => {
       top: "calc(100% + 4px)",
       left: 0,
       right: 0,
-      backgroundColor: "#1e222d",
-      border: "1px solid #2a2e39",
+      backgroundColor: "var(--bg-secondary)",
+      border: "1px solid var(--border-color)",
       borderRadius: "8px",
       boxShadow: "0 8px 28px rgba(0,0,0,0.6)",
       zIndex: 1000,
@@ -152,13 +166,13 @@ const Navbar = ({ setSelectedCurrency }) => {
       padding: "8px 14px 6px",
       fontSize: "0.7rem",
       fontWeight: "600",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       textTransform: "uppercase",
       letterSpacing: "0.06em",
-      borderBottom: "1px solid #2a2e39",
+      borderBottom: "1px solid var(--border-color)",
       position: "sticky",
       top: 0,
-      backgroundColor: "#1e222d",
+      backgroundColor: "var(--bg-secondary)",
     },
     resultItem: {
       display: "flex",
@@ -185,7 +199,7 @@ const Navbar = ({ setSelectedCurrency }) => {
     },
     badgeEQ: {
       background: "rgba(41,98,255,0.12)",
-      color: "#2962ff",
+      color: "var(--accent-color)",
       border: "1px solid rgba(41,98,255,0.25)",
     },
     badgeFUT: {
@@ -207,11 +221,11 @@ const Navbar = ({ setSelectedCurrency }) => {
       gap: "5px",
       fontSize: "0.85rem",
       fontWeight: "600",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
     },
     itemSub: {
       fontSize: "0.72rem",
-      color: "#787b86",
+      color: "var(--text-secondary)",
       marginTop: "2px",
       whiteSpace: "nowrap",
       overflow: "hidden",
@@ -241,17 +255,17 @@ const Navbar = ({ setSelectedCurrency }) => {
     rightSection: { display: "flex", alignItems: "center", gap: "20px" },
     navLinks: { display: "flex", gap: "20px", alignItems: "center" },
     navLink: {
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
       textDecoration: "none",
       fontSize: "0.9rem",
       fontWeight: "500",
       cursor: "pointer",
     },
-    navLinkActive: { color: "#2962ff" },
+    navLinkActive: { color: "var(--accent-color)" },
     iconButton: {
       background: "transparent",
       border: "none",
-      color: "#d1d4dc",
+      color: "var(--text-primary)",
       cursor: "pointer",
       fontSize: "1.2rem",
       display: "flex",
@@ -263,7 +277,7 @@ const Navbar = ({ setSelectedCurrency }) => {
       height: "32px",
       borderRadius: "50%",
       backgroundColor: "#e0e3eb",
-      color: "#131722",
+      color: "var(--bg-primary)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -310,7 +324,7 @@ const Navbar = ({ setSelectedCurrency }) => {
             setShowRecent(false);
           }}
         >
-          <FiSearch color="#787b86" size={15} />
+          <FiSearch color="var(--text-secondary)" size={15} />
           <input
             style={styles.searchInput}
             placeholder="Search stocks, indices… [Ctrl + S]"
@@ -322,7 +336,7 @@ const Navbar = ({ setSelectedCurrency }) => {
             <span
               onClick={() => setSearchTerm("")}
               style={{
-                color: "#787b86",
+                color: "var(--text-secondary)",
                 cursor: "pointer",
                 fontSize: "1rem",
                 lineHeight: 1,
@@ -344,7 +358,7 @@ const Navbar = ({ setSelectedCurrency }) => {
                 style={{
                   padding: "16px",
                   textAlign: "center",
-                  color: "#787b86",
+                  color: "var(--text-secondary)",
                   fontSize: "0.85rem",
                 }}
               >
@@ -355,7 +369,7 @@ const Navbar = ({ setSelectedCurrency }) => {
                 style={{
                   padding: "16px",
                   textAlign: "center",
-                  color: "#787b86",
+                  color: "var(--text-secondary)",
                   fontSize: "0.85rem",
                 }}
               >
@@ -378,7 +392,7 @@ const Navbar = ({ setSelectedCurrency }) => {
                     key={stock.token || idx}
                     style={styles.resultItem}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#2a2e39")
+                      (e.currentTarget.style.backgroundColor = "var(--border-color)")
                     }
                     onMouseLeave={(e) =>
                       (e.currentTarget.style.backgroundColor = "transparent")
@@ -491,14 +505,23 @@ const Navbar = ({ setSelectedCurrency }) => {
             display: "flex",
             gap: "12px",
             alignItems: "center",
-            borderLeft: "1px solid #2a2e39",
+            borderLeft: "1px solid var(--border-color)",
             paddingLeft: "20px",
           }}
         >
           <button style={styles.iconButton}>
             <BsBell />
           </button>
-          <div style={styles.avatar}>KB</div>
+          
+          {/* Theme Toggle */}
+          <button style={styles.iconButton} onClick={toggleTheme} title="Toggle Theme">
+            {theme === "dark" ? <FiSun /> : <FiMoon />}
+          </button>
+          <div style={styles.avatar}>
+            {user?.name 
+              ? user.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() 
+              : "U"}
+          </div>
 
           {/* Auth button */}
           {isAuthenticated ? (

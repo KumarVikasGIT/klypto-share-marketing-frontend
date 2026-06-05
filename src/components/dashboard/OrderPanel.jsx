@@ -1,38 +1,38 @@
 // import React, { useEffect, useState, useRef } from "react";
-// import apiService from "../../../services/apiServices";
+// import apiService from "../../services/apiServices";
 // import SearchSelect from "./SearchSelect";
-// import { s } from "../../../util/common";
+// import { s } from "../../util/common";
 // import OrderBook from "./OrderBook";
-// import socket from "../../../services/socket";
+// import socket from "../../services/socket";
 
 // const ACTIONS = [
 //   {
 //     key: "BUY_CALL",
 //     label: "Buy Call",
 //     sub: "▲ Long",
-//     bg: "#10b981",
+//     bg: "var(--success-color)",
 //     text: "#fff",
 //   },
 //   {
 //     key: "SQ_CALL",
 //     label: "Sq. Off Call",
 //     sub: "Exit Long",
-//     bg: "#1f2937",
-//     text: "#f3f4f6",
+//     bg: "var(--bg-secondary)",
+//     text: "var(--text-primary)",
 //   },
 //   {
 //     key: "BUY_PUT",
 //     label: "Buy Put",
 //     sub: "▼ Short",
-//     bg: "#ef4444",
+//     bg: "var(--danger-color)",
 //     text: "#fff",
 //   },
 //   {
 //     key: "SQ_PUT",
 //     label: "Sq. Off Put",
 //     sub: "Exit Short",
-//     bg: "#1f2937",
-//     text: "#f3f4f6",
+//     bg: "var(--bg-secondary)",
+//     text: "var(--text-primary)",
 //   },
 // ];
 
@@ -353,12 +353,12 @@
 //   };
 
 //   const pricePositive = !priceChange || Number(priceChange) >= 0;
-//   const priceColor = pricePositive ? "#10b981" : "#ef4444";
+//   const priceColor = pricePositive ? "var(--success-color)" : "var(--danger-color)";
 
 //   return (
 //     <div
 //       style={{
-//         color: "#f3f4f6",
+//         color: "var(--text-primary)",
 //         fontFamily: "'DM Sans', sans-serif",
 //         marginLeft: 10,
 //         padding: "10px 0px",
@@ -387,7 +387,7 @@
 //                   alignItems: "center",
 //                   justifyContent: "space-between",
 //                   fontWeight: 700,
-//                   color: "#10b981",
+//                   color: "var(--success-color)",
 //                 }}
 //               >
 //                 <span>{stock}</span>
@@ -395,8 +395,8 @@
 //                 <span
 //                   style={{
 //                     fontSize: "0.65rem",
-//                     background: "#10b98122",
-//                     color: "#10b981",
+//                     background: "var(--success-color)22",
+//                     color: "var(--success-color)",
 //                     padding: "2px 8px",
 //                     borderRadius: 6,
 //                   }}
@@ -424,7 +424,7 @@
 //           <div>
 //             <label style={s.label}>Current Price</label>
 //             {chainLoading ? (
-//               <div style={{ fontSize: "0.95rem", color: "#6b7280" }}>
+//               <div style={{ fontSize: "0.95rem", color: "var(--text-secondary)" }}>
 //                 Loading…
 //               </div>
 //             ) : currentPrice != null ? (
@@ -458,7 +458,7 @@
 //                 )}
 //               </div>
 //             ) : (
-//               <div style={{ fontSize: "0.78rem", color: "#4b5563" }}>
+//               <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
 //                 {stock ? "Waiting for price…" : "—"}
 //               </div>
 //             )}
@@ -496,9 +496,9 @@
 //             fontSize: "0.55rem",
 //             fontWeight: 700,
 //             letterSpacing: "0.08em",
-//             background: "#f59e0b22",
-//             color: "#f59e0b",
-//             border: "1px solid #f59e0b44",
+//             background: "#f0b90b22",
+//             color: "#f0b90b",
+//             border: "1px solid #f0b90b44",
 //             borderRadius: 4,
 //             padding: "2px 7px",
 //           }}
@@ -562,7 +562,7 @@
 //               <div
 //                 style={{
 //                   fontSize: "0.6rem",
-//                   color: "#6b7280",
+//                   color: "var(--text-secondary)",
 //                   letterSpacing: "0.08em",
 //                   textTransform: "uppercase",
 //                 }}
@@ -573,7 +573,7 @@
 //                 style={{
 //                   fontSize: "1.2rem",
 //                   fontWeight: 700,
-//                   color: strategy && preference ? "#10b981" : "#4b5563",
+//                   color: strategy && preference ? "var(--success-color)" : "var(--text-secondary)",
 //                 }}
 //               >
 //                 {strategy && preference ? recommendedStrike : "—"}
@@ -641,10 +641,10 @@
 //                 style={{
 //                   width: 32,
 //                   height: 34,
-//                   background: "#1f2937",
-//                   border: "1px solid #374151",
+//                   background: "var(--bg-secondary)",
+//                   border: "1px solid var(--border-color)",
 //                   borderRadius: "6px 0 0 6px",
-//                   color: "#f3f4f6",
+//                   color: "var(--text-primary)",
 //                   fontSize: "1rem",
 //                   cursor: "pointer",
 //                   flexShrink: 0,
@@ -656,8 +656,8 @@
 //                 style={{
 //                   flex: 1,
 //                   height: 34,
-//                   background: "#1f2937",
-//                   border: "1px solid #374151",
+//                   background: "var(--bg-secondary)",
+//                   border: "1px solid var(--border-color)",
 //                   borderLeft: "none",
 //                   borderRight: "none",
 //                   display: "flex",
@@ -671,7 +671,7 @@
 //                 <span
 //                   style={{
 //                     fontSize: "0.65rem",
-//                     color: "#6b7280",
+//                     color: "var(--text-secondary)",
 //                     marginLeft: 4,
 //                   }}
 //                 >
@@ -683,10 +683,10 @@
 //                 style={{
 //                   width: 32,
 //                   height: 34,
-//                   background: "#1f2937",
-//                   border: "1px solid #374151",
+//                   background: "var(--bg-secondary)",
+//                   border: "1px solid var(--border-color)",
 //                   borderRadius: "0 6px 6px 0",
-//                   color: "#f3f4f6",
+//                   color: "var(--text-primary)",
 //                   fontSize: "1rem",
 //                   cursor: "pointer",
 //                   flexShrink: 0,
@@ -698,7 +698,7 @@
 //             <div
 //               style={{
 //                 fontSize: "0.65rem",
-//                 color: "#6b7280",
+//                 color: "var(--text-secondary)",
 //                 marginTop: 4,
 //                 textAlign: "center",
 //               }}
@@ -730,7 +730,7 @@
 //                 justifyContent: "center",
 //                 fontWeight: 700,
 //                 fontSize: "0.88rem",
-//                 color: "#10b981",
+//                 color: "var(--success-color)",
 //                 letterSpacing: "0.01em",
 //               }}
 //             >
@@ -738,7 +738,7 @@
 //                 ? `₹ ${(currentPrice * qty * lotSize).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
 //                 : "—"}
 //             </div>
-//             <div style={{ fontSize: "0.6rem", color: "#6b7280", marginTop: 3, textAlign: "center" }}>
+//             <div style={{ fontSize: "0.6rem", color: "var(--text-secondary)", marginTop: 3, textAlign: "center" }}>
 //               {qty} lot{qty !== 1 ? "s" : ""} × {lotSize} shares
 //             </div>
 //           </div>
@@ -770,7 +770,7 @@
 //             padding: "9px 14px",
 //             marginBottom: 10,
 //             fontSize: "0.78rem",
-//             color: "#f87171",
+//             color: "var(--danger-color)",
 //             display: "flex",
 //             alignItems: "center",
 //             gap: 8,
@@ -810,12 +810,12 @@
 //                 gap: 2,
 //                 transition: "all 0.15s",
 //                 background: isSelected ? bg : `${bg}22`,
-//                 color: isSelected ? text : bg === "#1f2937" ? "#9ca3af" : bg,
+//                 color: isSelected ? text : bg === "var(--bg-secondary)" ? "var(--text-secondary)" : bg,
 //                 border: isSelected
 //                   ? "none"
-//                   : `1px solid ${bg === "#1f2937" ? "#374151" : bg + "55"}`,
+//                   : `1px solid ${bg === "var(--bg-secondary)" ? "var(--border-color)" : bg + "55"}`,
 //                 boxShadow:
-//                   isSelected && bg !== "#1f2937"
+//                   isSelected && bg !== "var(--bg-secondary)"
 //                     ? `0 4px 14px ${bg}44`
 //                     : "none",
 //               }}
@@ -850,17 +850,17 @@
 
 // export default OrderPanel;
 import React, { useEffect, useState, useRef } from "react";
-import apiService from "../../../services/apiServices";
+import apiService from "../../services/apiServices";
 import SearchSelect from "./SearchSelect";
-import { s } from "../../../util/common";
+import { s } from "../../util/common";
 import OrderBook from "./OrderBook";
-import socket from "../../../services/socket";
+import socket from "../../services/socket";
 
 const ACTIONS = [
-  { key: "BUY_CALL", label: "Buy Call",    sub: "▲ Long",      bg: "#10b981", text: "#fff"     },
-  { key: "SQ_CALL",  label: "Sq. Off Call",sub: "Exit Long",   bg: "#1f2937", text: "#f3f4f6"  },
-  { key: "BUY_PUT",  label: "Buy Put",     sub: "▼ Short",     bg: "#ef4444", text: "#fff"     },
-  { key: "SQ_PUT",   label: "Sq. Off Put", sub: "Exit Short",  bg: "#1f2937", text: "#f3f4f6"  },
+  { key: "BUY_CALL", label: "Buy Call",    sub: "▲ Long",      bg: "var(--success-color)", text: "#fff"     },
+  { key: "SQ_CALL",  label: "Sq. Off Call",sub: "Exit Long",   bg: "var(--bg-secondary)", text: "var(--text-primary)"  },
+  { key: "BUY_PUT",  label: "Buy Put",     sub: "▼ Short",     bg: "var(--danger-color)", text: "#fff"     },
+  { key: "SQ_PUT",   label: "Sq. Off Put", sub: "Exit Short",  bg: "var(--bg-secondary)", text: "var(--text-primary)"  },
 ];
 
 const ACTION_MAP = {
@@ -1212,10 +1212,10 @@ const OrderPanel = ({
   };
 
   const pricePositive = !priceChange || Number(priceChange) >= 0;
-  const priceColor    = pricePositive ? "#10b981" : "#ef4444";
+  const priceColor    = pricePositive ? "var(--success-color)" : "var(--danger-color)";
 
   return (
-    <div style={{ color: "#f3f4f6", fontFamily: "'DM Sans', sans-serif", marginLeft: 10, padding: "10px 0px" }}>
+    <div style={{ color: "var(--text-primary)", fontFamily: "'DM Sans', sans-serif", marginLeft: 10, padding: "10px 0px" }}>
 
       {/* ── STEP 1 ── */}
       <div style={s.sectionTitle}>
@@ -1230,7 +1230,7 @@ const OrderPanel = ({
               <div style={{
                 ...s.select,
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                fontWeight: 700, color: "#10b981",
+                fontWeight: 700, color: "var(--success-color)",
               }}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {(() => {
@@ -1242,7 +1242,7 @@ const OrderPanel = ({
                 <span
                   onClick={() => { setStock(""); setSelectedStockObj(null); setValidationMsg(""); }}
                   style={{
-                    fontSize: "0.6rem", background: "#10b98122", color: "#10b981",
+                    fontSize: "0.6rem", background: "var(--success-color)22", color: "var(--success-color)",
                     padding: "2px 8px", borderRadius: 6, cursor: "pointer", flexShrink: 0,
                   }}
                   title="Change stock"
@@ -1264,7 +1264,7 @@ const OrderPanel = ({
           <div>
             <label style={s.label}>Current Price</label>
             {chainLoading ? (
-              <div style={{ fontSize: "0.95rem", color: "#6b7280" }}>Loading…</div>
+              <div style={{ fontSize: "0.95rem", color: "var(--text-secondary)" }}>Loading…</div>
             ) : currentPrice != null ? (
               <div>
                 <div style={{ fontSize: "1.25rem", fontWeight: 700, color: priceColor, lineHeight: 1 }}>
@@ -1279,7 +1279,7 @@ const OrderPanel = ({
                 )}
               </div>
             ) : (
-              <div style={{ fontSize: "0.78rem", color: "#4b5563" }}>
+              <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
                 {stock ? "Waiting for price…" : "—"}
               </div>
             )}
@@ -1307,7 +1307,7 @@ const OrderPanel = ({
         <span style={s.sectionBar}>2</span>Auto Strike Selection
         <span style={{
           fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.08em",
-          background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44",
+          background: "#f0b90b22", color: "#f0b90b", border: "1px solid #f0b90b44",
           borderRadius: 4, padding: "2px 7px",
         }}>SMART MODE</span>
       </div>
@@ -1347,10 +1347,10 @@ const OrderPanel = ({
               background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.25)",
               borderRadius: 8, padding: "6px 10px", textAlign: "center",
             }}>
-              <div style={{ fontSize: "0.6rem", color: "#6b7280", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <div style={{ fontSize: "0.6rem", color: "var(--text-secondary)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Strike
               </div>
-              <div style={{ fontSize: "1.2rem", fontWeight: 700, color: strategy && preference ? "#10b981" : "#4b5563" }}>
+              <div style={{ fontSize: "1.2rem", fontWeight: 700, color: strategy && preference ? "var(--success-color)" : "var(--text-secondary)" }}>
                 {strategy && preference ? recommendedStrike : "—"}
                 {strategy && preference && recommendedStrike !== "—" && (
                   <span style={{ fontSize: "0.65rem", opacity: 0.5, marginLeft: 4 }}>{preference}</span>
@@ -1363,7 +1363,7 @@ const OrderPanel = ({
                   {liveCeLtp != null && (
                     <span style={{
                       fontSize: "0.65rem", fontWeight: 600,
-                      background: "rgba(16,185,129,0.12)", color: "#10b981",
+                      background: "rgba(16,185,129,0.12)", color: "var(--success-color)",
                       padding: "2px 7px", borderRadius: 5,
                     }}>
                       CE ₹{liveCeLtp.toFixed(2)}
@@ -1372,7 +1372,7 @@ const OrderPanel = ({
                   {livePeLtp != null && (
                     <span style={{
                       fontSize: "0.65rem", fontWeight: 600,
-                      background: "rgba(239,68,68,0.12)", color: "#ef4444",
+                      background: "rgba(239,68,68,0.12)", color: "var(--danger-color)",
                       padding: "2px 7px", borderRadius: 5,
                     }}>
                       PE ₹{livePeLtp.toFixed(2)}
@@ -1415,23 +1415,23 @@ const OrderPanel = ({
             <div style={{ display: "flex", alignItems: "center" }}>
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
-                style={{ width: 32, height: 34, background: "#1f2937", border: "1px solid #374151", borderRadius: "6px 0 0 6px", color: "#f3f4f6", fontSize: "1rem", cursor: "pointer", flexShrink: 0 }}
+                style={{ width: 32, height: 34, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px 0 0 6px", color: "var(--text-primary)", fontSize: "1rem", cursor: "pointer", flexShrink: 0 }}
               >−</button>
               <div style={{
-                flex: 1, height: 34, background: "#1f2937", border: "1px solid #374151",
+                flex: 1, height: 34, background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
                 borderLeft: "none", borderRight: "none",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontWeight: 700, fontSize: "0.9rem",
               }}>
                 {qty}{" "}
-                <span style={{ fontSize: "0.65rem", color: "#6b7280", marginLeft: 4 }}>× {lotSize}</span>
+                <span style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginLeft: 4 }}>× {lotSize}</span>
               </div>
               <button
                 onClick={() => setQty((q) => q + 1)}
-                style={{ width: 32, height: 34, background: "#1f2937", border: "1px solid #374151", borderRadius: "0 6px 6px 0", color: "#f3f4f6", fontSize: "1rem", cursor: "pointer", flexShrink: 0 }}
+                style={{ width: 32, height: 34, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "0 6px 6px 0", color: "var(--text-primary)", fontSize: "1rem", cursor: "pointer", flexShrink: 0 }}
               >+</button>
             </div>
-            <div style={{ fontSize: "0.65rem", color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+            <div style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginTop: 4, textAlign: "center" }}>
               {qty * lotSize} shares total
             </div>
           </div>
@@ -1455,13 +1455,13 @@ const OrderPanel = ({
             <div style={{
               height: 34, background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.3)",
               borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 700, fontSize: "0.88rem", color: "#10b981",
+              fontWeight: 700, fontSize: "0.88rem", color: "var(--success-color)",
             }}>
               {currentPrice != null
                 ? `₹ ${(currentPrice * qty * lotSize).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                 : "—"}
             </div>
-            <div style={{ fontSize: "0.6rem", color: "#6b7280", marginTop: 3, textAlign: "center" }}>
+            <div style={{ fontSize: "0.6rem", color: "var(--text-secondary)", marginTop: 3, textAlign: "center" }}>
               {qty} lot{qty !== 1 ? "s" : ""} × {lotSize} shares
             </div>
           </div>
@@ -1485,7 +1485,7 @@ const OrderPanel = ({
         <div style={{
           background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)",
           borderRadius: 8, padding: "9px 14px", marginBottom: 10,
-          fontSize: "0.78rem", color: "#f87171", display: "flex", alignItems: "center", gap: 8,
+          fontSize: "0.78rem", color: "var(--danger-color)", display: "flex", alignItems: "center", gap: 8,
         }}>
           <span style={{ fontSize: "0.9rem" }}>⚠</span>
           {validationMsg}
@@ -1506,9 +1506,9 @@ const OrderPanel = ({
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
                 transition: "all 0.15s",
                 background: isSelected ? bg : `${bg}22`,
-                color: isSelected ? text : bg === "#1f2937" ? "#9ca3af" : bg,
-                border: isSelected ? "none" : `1px solid ${bg === "#1f2937" ? "#374151" : bg + "55"}`,
-                boxShadow: isSelected && bg !== "#1f2937" ? `0 4px 14px ${bg}44` : "none",
+                color: isSelected ? text : bg === "var(--bg-secondary)" ? "var(--text-secondary)" : bg,
+                border: isSelected ? "none" : `1px solid ${bg === "var(--bg-secondary)" ? "var(--border-color)" : bg + "55"}`,
+                boxShadow: isSelected && bg !== "var(--bg-secondary)" ? `0 4px 14px ${bg}44` : "none",
               }}
               onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = `${bg}44`; }}
               onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = `${bg}22`; }}
