@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.1.16:3000";
-const METADATA_URL = "http://192.168.1.16:3000/api/historical-metadata";
+const SOCKET_URL = "http://192.168.1.3:3000";
+const METADATA_URL = "http://192.168.1.3:3000/api/historical-metadata";
 
 const OptionChain = ({ onSymbolChange }) => {
   const navigate = useNavigate();

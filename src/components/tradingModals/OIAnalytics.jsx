@@ -161,7 +161,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
         try {
           // Using direct axios call for port 3000
           const res = await axios.get(
-            "http://192.168.1.16:3000/api/historical-data",
+            "http://192.168.1.3:3000/api/historical-data",
             {
               params: { symbol: currentSymbol },
             },

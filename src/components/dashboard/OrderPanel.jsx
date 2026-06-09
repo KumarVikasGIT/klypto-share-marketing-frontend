@@ -872,8 +872,9 @@ const OrderPanel = ({
       console.log("🚀 BUY PAYLOAD:", payload);
 
       try {
-        const res = await apiService.post("equity/dispatchOrder", payload);
-        console.log("✅ Order placed:", res);
+        console.log("Simulating order placement (no actual API call)", payload);
+        // const res = await apiService.post("equity/dispatchOrder", payload);
+        // console.log("✅ Order placed:", res);
         setValidationMsg("");
       } catch (err) {
         console.error("❌ Order failed:", err);
@@ -912,8 +913,9 @@ const OrderPanel = ({
       console.log("📤 SQUARE OFF PAYLOAD:", payload);
 
       try {
-        const res = await apiService.post("api/backtest/dashboard", payload);
-        console.log("✅ Square off recorded:", res);
+        console.log("Simulating square off recording (no actual API call)", payload);
+        // const res = await apiService.post("api/backtest/dashboard", payload);
+        // console.log("✅ Square off recorded:", res);
         setValidationMsg("");
       } catch (err) {
         console.error("❌ Square off failed:", err);

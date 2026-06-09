@@ -18,6 +18,8 @@
     "breezeconnect": "^1.0.31",
     "chart.js": "^4.5.1",
     "lightweight-charts": "^5.2.0",
+    "papaparse": "^5.5.3",
+    "pyodide": "^0.27.7",
     "react": "^19.2.5",
     "react-bootstrap": "^2.10.10",
     "react-chartjs-2": "^5.3.1",
