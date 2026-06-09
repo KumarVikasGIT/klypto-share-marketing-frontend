@@ -73,7 +73,7 @@ const OptionChainUI = () => {
   // Initialize Socket Connection
   useEffect(() => {
     // Connect to backend (adjust URL if backend is hosted elsewhere)
-    const socket = io("http://192.168.1.6:3000");
+    const socket = io("http://192.168.1.16:3000");
     setSocketInstance(socket);
 
     socket.on("connect", () => {

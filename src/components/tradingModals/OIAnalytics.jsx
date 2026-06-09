@@ -131,7 +131,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
     if (currentSymbol) {
       const fetchAndSubscribe = async () => {
         try {
-          const response = await apiService.get("options/chain", {
+          const response = await apiService.get("/options/chain", {
             symbol: currentSymbol,
           });
           const expiries = response?.allExpiries ?? response?.expiries ?? [];
@@ -161,7 +161,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
         try {
           // Using direct axios call for port 3000
           const res = await axios.get(
-            "http://192.168.1.6:3000/api/historical-data",
+            "http://192.168.1.16:3000/api/historical-data",
             {
               params: { symbol: currentSymbol },
             },

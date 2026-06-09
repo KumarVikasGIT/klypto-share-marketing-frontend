@@ -4,7 +4,7 @@ import { getToken } from "../pages/auth/protected";
 // 🔹 Create axios instance
 const api = axios.create({
   // baseURL: "https://loiteringly-homeliest-breana.ngrok-free.dev",
-  baseURL: "http://192.168.1.6:8000", // change to your API
+  baseURL: "http://192.168.1.16:8000", // change to your API
   // baseURL: "http://localhost:9000", // change to your API
 
   timeout: 600000, // 1 min

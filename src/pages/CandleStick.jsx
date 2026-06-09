@@ -64,6 +64,7 @@ import CodeEditorPanel from "../components/layout/CodeEditorPanel";
 import OIAnalytics from "../components/tradingModals/OIAnalytics";
 import { FaPlay } from "react-icons/fa";
 import Swal from "sweetalert2";
+import apiService from "../services/apiServices";
 
 export default function Candlestick() {
   const chartRef = useRef();
@@ -434,15 +435,23 @@ def signal(signal_type, index):
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsList, setDetailsList] = useState([]);
   const [activeTab, setActiveTab] = useState("Chart");
-  const [timeframeValue, setTimeframeValue] = useState("1m");
-  const [selectedCurrency, setSelectedCurrency] = useState({
-    symbol: "TCS-EQ",
-    name: "TCS",
-    token: 11536,
-    segment: "NSE",
-    expiry: "",
+  const [timeframeValue, setTimeframeValue] = useState("5m");
+  const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    try {
+      const raw = localStorage.getItem("selectedCurrency");
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.warn("Failed to read selectedCurrency from localStorage", e);
+    }
+    return {
+      symbol: "ADANIPORTS-EQ",
+      name: "ADANIPORTS",
+      token: 15083,
+      segment: "NSE",
+      expiry: "",
+    };
   });
-  const [fromDate, setFromDate] = useState("2026-05-09");
+  const [fromDate, setFromDate] = useState("2026-01-09");
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedIndicator, setSelectedIndicator] = useState([]);
   const [rangeValue, setRangeValue] = useState("1000");
@@ -536,6 +545,8 @@ def signal(signal_type, index):
   const selectedIndicatorRef = useRef(selectedIndicator);
   const ohlcvDisplayRef = useRef(null);
   const actionButtonsRef = useRef(null);
+  const strategyMarkersRef = useRef(null); //ref for markers
+  const markersLoadedRef = useRef(false);
   // ✅ Always-current refs so persistent handlers never capture stale closures
   const selectedCurrencyRef = useRef(selectedCurrency);
   const intervalSecRef = useRef(TIMEFRAME_TO_SECONDS[timeframeValue] ?? 60);
@@ -547,6 +558,18 @@ def signal(signal_type, index):
 
   useEffect(() => {
     selectedCurrencyRef.current = selectedCurrency;
+  }, [selectedCurrency]);
+
+  // Persist selectedCurrency so it survives page refresh
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "selectedCurrency",
+        JSON.stringify(selectedCurrency),
+      );
+    } catch (e) {
+      console.warn("Failed to save selectedCurrency to localStorage", e);
+    }
   }, [selectedCurrency]);
 
   useEffect(() => {
@@ -572,6 +595,77 @@ def signal(signal_type, index):
   const hasPaneIndicators = selectedIndicator.some((ind) =>
     PANE_INDICATORS.has(typeof ind === "object" ? ind.type : ind),
   );
+
+  const fetchStrategyMarkers = async () => {
+  try {
+    console.log("fetchStrategyMarkers: enter");
+    console.log("fetchStrategyMarkers: seriesRef.current exists?", !!seriesRef.current);
+
+    const symbol = selectedCurrencyRef.current?.name;
+    console.log("fetchStrategyMarkers: active symbol:", symbol);
+    if (!symbol) {
+      console.log("fetchStrategyMarkers: no active symbol, aborting");
+      return;
+    }
+
+    const apiSymbol = encodeURIComponent(symbol);
+    console.log("fetchStrategyMarkers: requesting markers for:", apiSymbol);
+    const response = await apiService.get(
+      `/api/strategy/markers?symbol=BOSCHLTD&months=6`
+    );
+    console.log("strategy markers response:", response);
+
+    if (!response?.success || !Array.isArray(response?.markers)) {
+      console.warn("No markers returned");
+      return;
+    }
+
+    // If API returned a symbol, ensure it matches the currently selected symbol.
+    if (response.symbol) {
+      const normalizeStr = (s) =>
+        String(s || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+      if (normalizeStr(response.symbol) !== normalizeStr(symbol)) {
+        console.log(
+          `Received markers for ${response.symbol} but active is ${symbol} — skipping`,
+        );
+        return;
+      }
+    }
+
+    const markers = response.markers
+      .map((marker) => ({
+        // marker.datetimeUTC is in seconds (UTC) — align with candle times (which use IST_OFFSET)
+        time: Number(marker.datetimeUTC) + IST_OFFSET,
+        position: marker.type === "BUY" ? "belowBar" : "aboveBar",
+        color: marker.type === "BUY" ? "#22ab94" : "#ef4444",
+        shape: marker.type === "BUY" ? "arrowUp" : "arrowDown",
+        text: marker.type,
+        size: 2,
+      }))
+      .filter((m) => Number.isFinite(m.time));
+
+    console.log("Strategy markers:", markers.length);
+
+    if (!strategyMarkersRef.current) {
+      strategyMarkersRef.current = createSeriesMarkers(
+        seriesRef.current,
+        markers
+      );
+    } else {
+      strategyMarkersRef.current.setMarkers(markers);
+    }
+  } catch (error) {
+    console.error("Failed to fetch strategy markers:", error);
+  }
+};
+
+useEffect(() => {
+  markersLoadedRef.current = false;
+
+  if (strategyMarkersRef.current) {
+    strategyMarkersRef.current.setMarkers([]);
+  }
+}, [selectedCurrency?.name]);
 
   useEffect(() => {
     if (!selectedIndicator.length) return;
@@ -1213,15 +1307,8 @@ def signal(signal_type, index):
 
       if (!isMounted || !chartRef.current) return;
 
-      setMainChartLoading(false);
-
-      // Remove previous series
-      if (seriesRef.current) {
-        try {
-          chartRef.current.removeSeries(seriesRef.current);
-        } catch {}
-        seriesRef.current = null;
-      }
+      // NOTE: don't remove the existing chart series until we've verified
+      // the incoming response belongs to the currently selected symbol.
 
       // const raw = response?.data || [];
       // const symbolFromResponse = raw[0]?.symbol;
@@ -1293,6 +1380,15 @@ def signal(signal_type, index):
         return;
       }
 
+      // Now it's safe: remove previous series and mark loading false
+      setMainChartLoading(false);
+      if (seriesRef.current) {
+        try {
+          chartRef.current.removeSeries(seriesRef.current);
+        } catch {}
+        seriesRef.current = null;
+      }
+
       switch (chartType) {
         case "line":
           seriesRef.current = chartRef.current.addSeries(
@@ -1302,6 +1398,8 @@ def signal(signal_type, index):
           seriesRef.current.setData(
             data.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
+          // Plot markers after series is created and data is set
+          fetchStrategyMarkers();
           break;
         case "bar":
           seriesRef.current = chartRef.current.addSeries(
@@ -1317,6 +1415,10 @@ def signal(signal_type, index):
               close: d.close,
             })),
           );
+          // Plot markers after series is created and data is set
+          fetchStrategyMarkers();
+          // Plot markers after series is created and data is set
+          fetchStrategyMarkers();
           break;
         case "area":
           seriesRef.current = chartRef.current.addSeries(
@@ -1630,10 +1732,14 @@ def signal(signal_type, index):
     return () => {
       isMounted = false;
       console.log("🧹 SOCKET CLEANUP");
+      // ✅ Remove ALL listeners added in this effect to prevent stale handlers
+      // from firing after symbol/timeframe changes (which caused chart to disappear)
+      socket.off("connect", requestHistoricalData);
+      socket.off("historicalDataResponse");
+      socket.off("historicalDataError");
       socket.off("liveTick", handleChartLiveTick);
       socket.off("liveticks", handleChartLiveTick);
       socket.off("liveIndicatorResponse", handleChartLiveIndicator);
-      socket.off("disconnect");
       socket.off("connect_error");
       socketRef.current = null;
     };

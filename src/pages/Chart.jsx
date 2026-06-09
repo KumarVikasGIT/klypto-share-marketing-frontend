@@ -189,7 +189,7 @@ const GoldChart = () => {
       title: "30",
     });
 
-    const socket = io("http://192.168.1.6:7000");
+    const socket = io("http://192.168.1.16:7000");
     socketRef.current = socket;
 
     socket.on("connect", () => {

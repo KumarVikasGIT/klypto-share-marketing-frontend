@@ -168,6 +168,7 @@ const OrderPanel = ({
 
   const fetchedChainStockRef = useRef(null);
   const subscribedSymbolRef = useRef(null);
+  const lastChainRequestRef = useRef(null);
 
   const recommendedStrike = strikeMap[strategy]?.[preference] ?? "—";
 
@@ -527,7 +528,149 @@ const OrderPanel = ({
     }
   }, [stock]);
 
-  // ── 5. Place order ──
+  // ── 5. Fetch chain API on stock change → populate expiries + full chain data ──
+  const [chainApiData, setChainApiData] = useState(null);
+
+  useEffect(() => {
+    if (!stock) return;
+
+    // Resolve the base symbol name (same logic as effect #2)
+    let symbolForChain;
+    if (stock && typeof stock === "object" && stock.symbol) {
+      symbolForChain = parseSymbolName(stock.symbol).base;
+    } else {
+      const currentToken = stock?.token ?? stock;
+      let stockObj = stocks.find((s) => s.token === currentToken);
+      if (!stockObj && typeof stock === "string") {
+        const { base } = parseSymbolName(stock);
+        if (base) {
+          stockObj = stocks.find(
+            (s) =>
+              (s.symbol ?? s.name ?? s.userCode ?? "")
+                .toUpperCase() === base.toUpperCase() ||
+              stock.toUpperCase().startsWith(
+                (s.symbol ?? s.name ?? s.userCode ?? "").toUpperCase() + " "
+              )
+          );
+        }
+      }
+      if (stockObj) {
+        const rawSymbol =
+          stockObj.symbol ?? stockObj.name ?? stockObj.userCode ?? stockObj.actualSymbol;
+        symbolForChain = parseSymbolName(rawSymbol).base;
+      } else if (typeof stock === "string") {
+        const { base } = parseSymbolName(stock);
+        symbolForChain = base ?? stock;
+      } else {
+        return;
+      }
+    }
+
+    if (!symbolForChain) return;
+
+    // Avoid repeated requests for the same symbol+expiry
+    const requestKey = `${symbolForChain}|${expiry ?? ""}`;
+    if (lastChainRequestRef.current === requestKey) return;
+    lastChainRequestRef.current = requestKey;
+
+    console.log(`[OrderPanel] Fetching chain API → symbol=${symbolForChain}`);
+
+    (async () => {
+      try {
+        const currentSymbol = symbolForChain;
+        const response = await apiService.get("/options/chain", {
+          symbol: currentSymbol,
+        });
+        console.log("[OrderPanel] chain API response:", response);
+        setChainApiData(response);
+
+        // ── Populate expiry dropdown from allExpiries ──
+        const apiExpiries = response?.allExpiries ?? [];
+        if (apiExpiries.length > 0) {
+          setExpiries(apiExpiries);
+          // Only set expiry if none is already chosen or it's not in the new list
+          setExpiry((prev) => {
+            if (prev && apiExpiries.includes(prev)) return prev;
+            return apiExpiries[0];
+          });
+        }
+      } catch (err) {
+        console.error("[OrderPanel] chain API error:", err);
+        // Reset the guard so a retry can be attempted later
+        lastChainRequestRef.current = null;
+      }
+    })();
+  }, [stock, stocks]);
+
+  // ── 5b. Rebuild strikeMap from chain API data whenever expiry changes ──
+  useEffect(() => {
+    if (!chainApiData || !expiry) return;
+
+    // The chain array may be keyed or a plain array
+    const allRows = Array.isArray(chainApiData)
+      ? chainApiData
+      : chainApiData?.chain ?? chainApiData?.data ?? [];
+
+    // Filter rows that belong to the currently selected expiry
+    // Row structure: { strike, isATM, call: { symbol, ... }, put: { symbol, ... } }
+    const rowsForExpiry = allRows.filter((row) => {
+      const rowExpiry =
+        row?.expiry ??
+        row?.call?.expiry ??
+        row?.put?.expiry ??
+        // Try parsing from call symbol e.g. "ADANIPORTS26JUN1800CE"
+        null;
+
+      // If no expiry field on row, include all (API may already filter by expiry)
+      if (!rowExpiry) return true;
+
+      // Normalize: "25JUN2026" → match against selected expiry
+      return rowExpiry === expiry;
+    });
+
+    const rows = rowsForExpiry.length > 0 ? rowsForExpiry : allRows;
+
+    if (rows.length === 0) return;
+
+    // Find ATM row using isATM flag
+    const atmRow = rows.find((r) => r.isATM === true);
+    const strikes = rows
+      .map((r) => Number(r.strike))
+      .filter((n) => !isNaN(n))
+      .sort((a, b) => a - b);
+
+    if (strikes.length === 0) return;
+
+    let atmStrike;
+    if (atmRow) {
+      atmStrike = Number(atmRow.strike);
+    } else {
+      // Fallback: use middle strike
+      atmStrike = strikes[Math.floor(strikes.length / 2)];
+    }
+
+    const atmIdx = strikes.indexOf(atmStrike);
+
+    setStrikeMap({
+      "Nearest ATM": {
+        ATM: fmt(strikes[atmIdx]),
+        ITM: fmt(strikes[atmIdx - 1]),
+        OTM: fmt(strikes[atmIdx + 1]),
+      },
+      "OTM +1": {
+        ATM: fmt(strikes[atmIdx + 1]),
+        ITM: fmt(strikes[atmIdx]),
+        OTM: fmt(strikes[atmIdx + 2]),
+      },
+    });
+
+    console.log(
+      `[OrderPanel] StrikeMap built for expiry=${expiry}, ATM=${atmStrike}`,
+      { strikes }
+    );
+  }, [chainApiData, expiry]);
+
+  // ── 6. Place order ──
   // const handlePlaceOrder = async (selectedAction) => {
   //   const error = getValidationError({
   //     stock,

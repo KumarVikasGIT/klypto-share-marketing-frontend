@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
 import socket from "../../services/socket";
-import SocketEvents from "../../services/socketEvent";
 
 const SidePanel = ({ stock, expiry }) => {
   const [spotPrice, setSpotPrice] = useState(null);
@@ -36,14 +35,19 @@ const SidePanel = ({ stock, expiry }) => {
     };
     if (expiry) payload.expiry = expiry;
     
-    console.log("[SidePanel] Emitting subscribeOptionChain:", payload);
-    socket.emit(SocketEvents.SUBSCRIBE_OPTION_CHAIN, payload);
-    console.log("[SidePanel] Emitted subscribeOptionChain:", payload);
+    // Commented old subscribe call — use `set-filters` like OptionChain.jsx
+    // console.log("[SidePanel] Emitting subscribeOptionChain:", payload);
+    // socket.emit(SocketEvents.SUBSCRIBE_OPTION_CHAIN, payload);
+    // console.log("[SidePanel] Emitted subscribeOptionChain:", payload);
+
+    const filtersPayload = { symbol, expiry_date: expiry };
+    console.log("[SidePanel] set-filters:", filtersPayload);
+    socket.emit("set-filters", filtersPayload);
   };
 
   useEffect(() => {
     const handleUpdate = (data) => {
-            console.log("[SidePanel] optionChainUpdate received:", data);
+      console.log("[SidePanel] optionChainUpdate received:", data);
 
       if (!autoRefreshRef.current) return;
       console.log("[SidePanel] optionChainUpdate received:", data);
@@ -75,7 +79,8 @@ const SidePanel = ({ stock, expiry }) => {
       }
     };
 
-    socket.on(SocketEvents.OPTION_CHAIN_UPDATE, handleUpdate);
+    // Listen only for the literal event name "option-chain-data"
+    socket.on("option-chain-data", handleUpdate);
 
     if (socket.connected) {
       subscribe();
@@ -84,7 +89,7 @@ const SidePanel = ({ stock, expiry }) => {
     }
 
     return () => {
-      socket.off(SocketEvents.OPTION_CHAIN_UPDATE, handleUpdate);
+      socket.off("option-chain-data", handleUpdate);
       socket.off("connect", subscribe);
       socket.emit("unsubscribeOptionChain", { symbol: stock?.name ?? stock });
     };
