@@ -390,7 +390,7 @@ const OrderPanel = ({
 
     // ── live-options-list: register BEFORE emit so we don't miss the response ──
     const handleOptionsList = (response) => {
-      console.log("[OrderPanel] live-options-list raw response:", response);
+      // console.log("[OrderPanel] live-options-list raw response:", response);
 
       // Backend: {success: true, symbol, totalRecords, data: Array}
       if (!response?.success && !Array.isArray(response?.data)) return;
@@ -467,7 +467,9 @@ const OrderPanel = ({
 
     // Emit AFTER registering the listener
     socket.emit("live-options-list", { symbol: symbolForChain });
-    socket.emit("set-filters", { symbol: symbolForChain });
+    // set-filters with expiry if available
+    const initialExpiry = stock && typeof stock === "object" && stock.expiry_date ? stock.expiry_date : (expiry || undefined);
+    socket.emit("set-filters", { symbol: symbolForChain, expiry_date: initialExpiry });
 
     return () => {
       socket.off("option-chain-data", handleOptionChainUpdate);
@@ -601,6 +603,16 @@ const OrderPanel = ({
       }
     })();
   }, [stock, stocks]);
+
+  // ── 5a. Emit set-filters when expiry changes to get live updates for the new expiry ──
+  useEffect(() => {
+    if (subscribedSymbolRef.current && expiry) {
+      socket.emit("set-filters", {
+        symbol: subscribedSymbolRef.current,
+        expiry_date: expiry,
+      });
+    }
+  }, [expiry]);
 
   // ── 5b. Rebuild strikeMap from chain API data whenever expiry changes ──
   useEffect(() => {
@@ -819,10 +831,22 @@ const OrderPanel = ({
     const wsChainRow = wsChain?.chain?.find(
       (c) => Number(c.strike) === strikeNum,
     );
-    const wsContract = wsChainRow?.[isCall ? "ce" : "pe"];
-    const restChainRow = rawChainData?.chain?.find(
-      (c) => Number(c.strike) === strikeNum,
-    );
+    // wsContract might be from the wrong expiry if wsChain wasn't filtered, so check expiry if possible
+    let wsContract = wsChainRow?.[isCall ? "ce" : "pe"];
+    if (wsContract && wsContract.expiry_date && expiry && wsContract.expiry_date !== expiry && wsContract.expiry !== expiry) {
+      wsContract = null; // Mismatch expiry
+    }
+
+    // ── Fallback: REST chain API data ──
+    const allRestRows = Array.isArray(chainApiData)
+      ? chainApiData
+      : chainApiData?.chain ?? chainApiData?.data ?? [];
+      
+    const restChainRow = allRestRows?.find((c) => {
+      const rowExpiry = c?.expiry ?? c?.call?.expiry ?? c?.put?.expiry ?? null;
+      return Number(c.strike) === strikeNum && (!rowExpiry || rowExpiry === expiry);
+    });
+    
     const restContract = restChainRow?.[isCall ? "call" : "put"];
     const contract = wsContract ?? restContract;
 

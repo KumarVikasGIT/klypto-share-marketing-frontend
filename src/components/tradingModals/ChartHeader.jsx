@@ -151,7 +151,7 @@ export default function ChartHeader({
           {selectedCurrency?.name || "TCS"}
         </button>
 
-        <div style={d.divider} />
+        {/* <div style={d.divider} /> */}
 
         {/* Timeframe select */}
         <div title={timeframeValue}>
@@ -236,7 +236,7 @@ export default function ChartHeader({
         </div>
 
         {/* Spacer */}
-        <div style={{ flex: 1 }} />
+        {/* <div style={{ flex: 1 }} /> */}
         <button title="Create Alert" onClick={onOpenScanner} style={d.btn}>
           Create Alert
         </button>

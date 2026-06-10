@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import socket from "../../services/socket";
+import { io } from "socket.io-client";
+
+const SOCKET_URL = "http://192.168.1.8:3000";
 
 const SidePanel = ({ stock, expiry }) => {
   const [spotPrice, setSpotPrice] = useState(null);
@@ -10,6 +12,21 @@ const SidePanel = ({ stock, expiry }) => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const autoRefreshRef = useRef(true);
   const prevSpotRef = useRef(null);
+  
+  // ── Socket state ──
+  const [localSocket, setLocalSocket] = useState(null);
+
+  // Initialize socket
+  useEffect(() => {
+    const s = io(SOCKET_URL);
+    setLocalSocket(s);
+    s.on("connect", () => console.log("[SidePanel] Data socket connected"));
+    s.on("disconnect", () => console.log("[SidePanel] Data socket disconnected"));
+
+    return () => {
+      s.disconnect();
+    };
+  }, []);
   
   const parseSymbolName = (fullName) => {
     if (!fullName || typeof fullName !== "string") return { base: fullName, hasExpiry: false };
@@ -26,31 +43,31 @@ const SidePanel = ({ stock, expiry }) => {
 
   console.log("stock", stock);
   const subscribe = () => {
+    if (!localSocket || !stock || !expiry) return;
     const fullName = stock?.name ?? stock;
     const symbol = parseSymbolName(fullName).base;
-    const payload = {
-      symbol,
-      stock: symbol, // Keep stock for backward compatibility
-      exchange: stock?.segment ?? "NSE",
-    };
-    if (expiry) payload.expiry = expiry;
+    if (!symbol) return;
     
-    // Commented old subscribe call — use `set-filters` like OptionChain.jsx
-    // console.log("[SidePanel] Emitting subscribeOptionChain:", payload);
-    // socket.emit(SocketEvents.SUBSCRIBE_OPTION_CHAIN, payload);
-    // console.log("[SidePanel] Emitted subscribeOptionChain:", payload);
-
     const filtersPayload = { symbol, expiry_date: expiry };
-    console.log("[SidePanel] set-filters:", filtersPayload);
-    socket.emit("set-filters", filtersPayload);
+    console.log("[SidePanel] Emitting set-filters:", filtersPayload);
+    localSocket.emit("set-filters", filtersPayload);
   };
 
   useEffect(() => {
+    if (!localSocket) return;
+
+    console.log("[SidePanel] useEffect mounted. localSocket.connected:", localSocket.connected);
+    
+    // Debug all incoming events on this socket
+    const catchAll = (event, ...args) => {
+      // console.log(`[SidePanel] Socket event received: ${event}`);
+    };
+    localSocket.onAny(catchAll);
     const handleUpdate = (data) => {
-      console.log("[SidePanel] optionChainUpdate received:", data);
+      console.log("[SidePanel] option-chain-data received:", data);
 
       if (!autoRefreshRef.current) return;
-      console.log("[SidePanel] optionChainUpdate received:", data);
+      console.log("[SidePanel] option-chain-data received:", data);
 
       // ✅ Only update if backend sends a valid value, keep previous otherwise
       if (data.spotPrice != null && data.spotPrice !== "") {
@@ -65,14 +82,36 @@ const SidePanel = ({ stock, expiry }) => {
       }
 
       if (data.atmStrike != null) setAtmStrike(data.atmStrike);
-      if (data.chain?.length > 0) {
-        setStrikes(data.chain);
-        const totalCallOI = data.chain.reduce(
-          (sum, row) => sum + (Number(row.ce?.oi) || 0),
+      
+      const chainData = data?.chain ?? data?.data ?? (Array.isArray(data) ? data : []);
+      if (chainData.length > 0) {
+        let finalStrikes = chainData;
+
+        // Group flat array (strike_price + option_type format)
+        if (
+          chainData[0]?.strike_price !== undefined &&
+          chainData[0]?.option_type !== undefined
+        ) {
+          const chainMap = {};
+          chainData.forEach((item) => {
+            const strike = Number(item.strike_price);
+            if (!chainMap[strike])
+              chainMap[strike] = { strike, ce: null, pe: null };
+            if (item.option_type === "CE") chainMap[strike].ce = item;
+            else if (item.option_type === "PE") chainMap[strike].pe = item;
+          });
+          finalStrikes = Object.values(chainMap).sort(
+            (a, b) => a.strike - b.strike,
+          );
+        }
+
+        setStrikes(finalStrikes);
+        const totalCallOI = finalStrikes.reduce(
+          (sum, row) => sum + (Number(row.ce?.oi || row.call?.oi) || 0),
           0,
         );
-        const totalPutOI = data.chain.reduce(
-          (sum, row) => sum + (Number(row.pe?.oi) || 0),
+        const totalPutOI = finalStrikes.reduce(
+          (sum, row) => sum + (Number(row.pe?.oi || row.put?.oi) || 0),
           0,
         );
         setPcr(totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : null);
@@ -80,20 +119,23 @@ const SidePanel = ({ stock, expiry }) => {
     };
 
     // Listen only for the literal event name "option-chain-data"
-    socket.on("option-chain-data", handleUpdate);
+    localSocket.on("option-chain-data", handleUpdate);
 
-    if (socket.connected) {
+    if (localSocket.connected) {
       subscribe();
     } else {
-      socket.once("connect", subscribe);
+      localSocket.once("connect", subscribe);
     }
 
     return () => {
-      socket.off("option-chain-data", handleUpdate);
-      socket.off("connect", subscribe);
-      socket.emit("unsubscribeOptionChain", { symbol: stock?.name ?? stock });
+      localSocket.off("option-chain-data", handleUpdate);
+      localSocket.off("connect", subscribe);
+      localSocket.offAny(catchAll);
+      const unsubSymbol = parseSymbolName(stock?.name ?? stock).base;
+      console.log("[SidePanel] Emitting unsubscribeOptionChain:", { symbol: unsubSymbol });
+      localSocket.emit("unsubscribeOptionChain", { symbol: unsubSymbol });
     };
-  }, [stock, expiry]);
+  }, [stock, expiry, localSocket]);
 
   // ✅ Handles string or number, formats large OI values
   const formatOI = (val) => {

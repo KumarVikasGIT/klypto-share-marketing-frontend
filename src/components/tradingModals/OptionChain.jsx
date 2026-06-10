@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.1.3:3000";
-const METADATA_URL = "http://192.168.1.3:3000/api/historical-metadata";
+const SOCKET_URL = "http://192.168.1.8:3000";
+const METADATA_URL = "http://192.168.1.8:3000/api/historical-metadata";
 
 const OptionChain = ({ onSymbolChange }) => {
   const navigate = useNavigate();
@@ -72,10 +72,10 @@ const OptionChain = ({ onSymbolChange }) => {
 
     // Only set a default expiry if the current active expiry isn't valid for this symbol
     setActiveExpiry((current) => {
-      if (!current || !expiries.includes(current)) {
-        return expiries[0] || "";
-      }
-      return current;
+      if (!current) return expiries[0] || "";
+      const match = expiries.find(e => e.toLowerCase() === current.toLowerCase());
+      if (match) return match;
+      return expiries[0] || "";
     });
 
     // Reset chain on symbol change
@@ -98,7 +98,7 @@ const OptionChain = ({ onSymbolChange }) => {
 
     // Listen for live-options-list to update symbol dropdown
     s.on("live-options-list", (response) => {
-      // console.log("[OptionChain] live-options-list received:", response);
+      console.log("[OptionChain] live-options-list received:", response);
       if (Array.isArray(response?.data) && response.data.length > 0) {
         setLiveContractsList((prev) => {
           if (prev.length === 0) return response.data; // Initial 900 records load
@@ -150,7 +150,7 @@ const OptionChain = ({ onSymbolChange }) => {
 
     const handleUpdate = (response) => {
       if (!autoRefreshRef.current) return;
-      // console.log("[OptionChain] option-chain-data received:", response);
+      console.log("[OptionChain] option-chain-data received:", response);
 
       if (response?.symbol && response.symbol !== selectedSymbol) return;
 

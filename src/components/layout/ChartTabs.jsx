@@ -1,8 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaCode, FaLaptopCode } from "react-icons/fa6";
 import { FiMaximize, FiZap } from "react-icons/fi";
+import { SiVitest } from "react-icons/si";
 
 const ChartTabs = ({ activeTab, setActiveTab, onCodeClick }) => {
+  const navigate = useNavigate();
   const styles = {
     container: {
       display: "flex",
@@ -108,9 +111,18 @@ const ChartTabs = ({ activeTab, setActiveTab, onCodeClick }) => {
           <FaCode />
           CODE EDITOR
         </button>
-        {/* <button style={styles.iconBtn}>
-          <FiMaximize size={14} />
-        </button> */}
+        <button
+          style={{...styles.actionsGroup, borderRadius: "4px", border: "1px solid #999", padding: "6px 12px", color: "#999", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
+          onClick={() => navigate('/backtest')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "rgba(124, 58, 237, 0.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+          }}
+        >
+          <SiVitest size={14} /> BACKTEST
+        </button>
       </div>
     </div>
   );

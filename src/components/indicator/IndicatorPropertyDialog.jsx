@@ -272,6 +272,7 @@ export default function IndicatorPropertyDialog({
     const socketPayload = {
       ...payload,
       type: activeType,
+      instanceId,
       symbol: selectedCurrency?.name,
       interval: timeframeValue,
       fromDate: fromDate,
@@ -279,17 +280,17 @@ export default function IndicatorPropertyDialog({
     };
     console.log("[IndicatorProperty] Final socketPayload:", socketPayload);
 
-    // Remove any previous one-shot listener to avoid accumulation
-    socket.off("updateIndicatorResponse");
-
-    socket.once("updateIndicatorResponse", (response) => {
+    const responseHandler = (response) => {
       console.log("[IndicatorProperty] updateIndicatorResponse:", response);
       setIndicatorLoading(false); // STOP LOADER
 
-      if (!response?.success) {
+      const hasValidData = response?.success !== false &&
+        (response?.data || response?.result || response?.rows);
+
+      if (!hasValidData) {
         console.error(
           "Indicator update failed:",
-          response?.message || response?.error || "Unknown error",
+          response?.message || response?.error || "Unknown or empty response",
         );
         return;
       }
@@ -302,18 +303,20 @@ export default function IndicatorPropertyDialog({
         latestIndicatorValuesRef,
         maType,
       );
-    });
+    };
+
+    socket.once("updateIndicatorResponse", responseHandler);
 
     socket.emit("updateIndicator", socketPayload);
 
-    // Safety fallback: if no response in 30s, stop the loader
+    // Safety fallback: if no response in 5 minutes, stop the loader
     setTimeout(() => {
       setIndicatorLoading((loading) => {
         if (loading) {
           console.warn(
-            "[IndicatorProperty] updateIndicatorResponse timed out (30s)",
+            "[IndicatorProperty] updateIndicatorResponse timed out (5m)",
           );
-          socket.off("updateIndicatorResponse");
+          socket.off("updateIndicatorResponse", responseHandler);
         }
         return false;
       });

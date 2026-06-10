@@ -2149,19 +2149,22 @@ useEffect(() => {
                           </div>
                         </div>
 
-                        <div
-                          style={{ display: "flex", gap: "10px" }}
-                          ref={actionButtonsRef}
-                        >
-                          <Link
-                            to="/dashboard"
-                            state={{
-                              stock: selectedCurrency?.name,
-                              action: "BUY",
-                            }}
-                            style={{ textDecoration: "none" }}
+                          <div
+                            style={{ display: "flex", gap: "10px" }}
+                            ref={actionButtonsRef}
                           >
                             <button
+                              onClick={() => {
+                                const price = currentCandleRef.current?.close;
+                                const state = {
+                                  stock: selectedCurrency?.name,
+                                  action: "BUY",
+                                  price: price,
+                                };
+                                const key = `trade_${Date.now()}`;
+                                sessionStorage.setItem(key, JSON.stringify(state));
+                                window.open(`/dashboard?tradeKey=${key}`, "_blank");
+                              }}
                               style={{
                                 padding: "10px 20px",
                                 border: "1px solid green",
@@ -2174,17 +2177,19 @@ useEffect(() => {
                             >
                               Buy @<span data-buy-price>--</span>
                             </button>
-                          </Link>
 
-                          <Link
-                            to="/dashboard"
-                            state={{
-                              stock: selectedCurrency?.name,
-                              action: "SELL",
-                            }}
-                            style={{ textDecoration: "none" }}
-                          >
                             <button
+                              onClick={() => {
+                                const price = currentCandleRef.current?.close;
+                                const state = {
+                                  stock: selectedCurrency?.name,
+                                  action: "SELL",
+                                  price: price,
+                                };
+                                const key = `trade_${Date.now()}`;
+                                sessionStorage.setItem(key, JSON.stringify(state));
+                                window.open(`/dashboard?tradeKey=${key}`, "_blank");
+                              }}
                               style={{
                                 padding: "10px 20px",
                                 border: "1px solid red",
@@ -2197,8 +2202,7 @@ useEffect(() => {
                             >
                               Sell @<span data-sell-price>--</span>
                             </button>
-                          </Link>
-                        </div>
+                          </div>
                       </div>
 
                       {/* -----------------INDICATOR BAR------------------- */}
