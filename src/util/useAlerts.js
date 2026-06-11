@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import socket from "../services/socket";
-
+import useSocket from "./useSocket";
+import EVENTS from "../services/websocket/socketEvent";
 export default function useAlerts() {
   const [scanner, setScanner] = useState(null);
   const scannerRef = useRef(null);
@@ -43,9 +43,13 @@ export default function useAlerts() {
       const currentScanner = scannerRef.current;
 
       // Always update previousValue even if no scanner active or it doesn't match
-      if (!currentScanner || typeof currentValue !== "number" || currentScanner.indicator !== indicatorType) {
+      if (
+        !currentScanner ||
+        typeof currentValue !== "number" ||
+        currentScanner.indicator !== indicatorType
+      ) {
         if (typeof currentValue === "number") {
-           previousValueRef.current[`${symbol}_${indicatorType}`] = currentValue;
+          previousValueRef.current[`${symbol}_${indicatorType}`] = currentValue;
         }
         return;
       }
@@ -68,11 +72,17 @@ export default function useAlerts() {
           currentValue <= Number(currentScanner.value);
       }
 
-      if (currentScanner.condition === "greaterThan" || currentScanner.condition === ">") {
+      if (
+        currentScanner.condition === "greaterThan" ||
+        currentScanner.condition === ">"
+      ) {
         matched = currentValue > Number(currentScanner.value);
       }
 
-      if (currentScanner.condition === "lessThan" || currentScanner.condition === "<") {
+      if (
+        currentScanner.condition === "lessThan" ||
+        currentScanner.condition === "<"
+      ) {
         matched = currentValue < Number(currentScanner.value);
       }
 
@@ -121,8 +131,8 @@ export default function useAlerts() {
     }
   };
 
-  useEffect(() => {
-    const handleStocks = (data) => {
+  useSocket({
+    [EVENTS.STOCK_LIST.STOCKS_LIST]: (data) => {
       const stocksArray = Array.isArray(data) ? data : data?.stocks || [];
       stocksArray.forEach((s) => {
         if (s.name && s.rsi != null) {
@@ -131,21 +141,24 @@ export default function useAlerts() {
           checkAlert(s.name, rsiVal, "RSI");
         }
       });
-    };
-
-    const handleStockUpdate = (stock) => {
+    },
+    [EVENTS.STOCK_LIST.STOCK_UPDATE]: (stock) => {
       if (stock?.name && stock.rsi != null) {
         const rsiVal = Number(stock.rsi);
         valueMapRef.current[`${stock.name}_RSI`] = rsiVal;
         checkAlert(stock.name, rsiVal, "RSI");
       }
-    };
-
-    const handleLiveTick = (tick) => {
+    },
+    [EVENTS.CHART.LIVE_TICK]: (tick) => {
       if (tick?.type && Array.isArray(tick?.data) && tick.data.length > 0) {
         const sym = tick.symbol || tick.name;
         const typeKey = tick.type.toLowerCase();
-        const val = tick.data[0][typeKey] ?? tick.data[0][tick.type] ?? tick.data[0].value ?? tick.data[0].rsi ?? tick.data[0].RSI;
+        const val =
+          tick.data[0][typeKey] ??
+          tick.data[0][tick.type] ??
+          tick.data[0].value ??
+          tick.data[0].rsi ??
+          tick.data[0].RSI;
         const indicatorVal = Number(val);
 
         if (sym && Number.isFinite(indicatorVal)) {
@@ -162,33 +175,25 @@ export default function useAlerts() {
         valueMapRef.current[`${sym}_RSI`] = rsiVal;
         checkAlert(sym, rsiVal, "RSI");
       }
-    };
-
-    const handleIndicatorTick = (tick) => {
+    },
+    [EVENTS.INDICATOR.LIVE_RESPONSE]: (tick) => {
       if (!tick?.success || !tick?.type) return;
       const sym = tick.symbol || tick.name;
       const typeKey = tick.type.toLowerCase();
-      const val = tick.data?.[0]?.[typeKey] ?? tick.data?.[0]?.[tick.type] ?? tick.data?.[0]?.value ?? tick.data?.[0]?.rsi ?? tick.data?.[0]?.RSI;
+      const val =
+        tick.data?.[0]?.[typeKey] ??
+        tick.data?.[0]?.[tick.type] ??
+        tick.data?.[0]?.value ??
+        tick.data?.[0]?.rsi ??
+        tick.data?.[0]?.RSI;
       const indicatorVal = Number(val);
-      
+
       if (sym && Number.isFinite(indicatorVal)) {
         valueMapRef.current[`${sym}_${tick.type}`] = indicatorVal;
         checkAlert(sym, indicatorVal, tick.type);
       }
-    };
-
-    socket.on("liveIndicatorResponse", handleIndicatorTick);
-    socket.on("stocks", handleStocks);
-    socket.on("stockUpdate", handleStockUpdate);
-    socket.on("liveTick", handleLiveTick);
-
-    return () => {
-      socket.off("stocks", handleStocks);
-      socket.off("stockUpdate", handleStockUpdate);
-      socket.off("liveTick", handleLiveTick);
-      socket.off("liveIndicatorResponse", handleIndicatorTick);
-    };
-  }, []);
+    }
+  });
 
   return {
     alertsFeed,

@@ -6,6 +6,7 @@ import {
   CrosshairMode,
 } from "lightweight-charts";
 import io from "socket.io-client";
+import socket from "../services/websocket/socket";
 
 const EVENTS = {
   GET_HISTORICAL_DATA: "getManualHistoricalData",
@@ -189,7 +190,6 @@ const GoldChart = () => {
       title: "30",
     });
 
-    const socket = io("http://192.168.1.8:7000");
     socketRef.current = socket;
 
     socket.on("connect", () => {

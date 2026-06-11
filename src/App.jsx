@@ -9,6 +9,7 @@ import Login from "./pages/auth/login";
 import { ProtectedRoute } from "./pages/auth/ProtectedRoute";
 import Testing from "./pages/Testing";
 import Backtest from "./pages/backtest/Backtest";
+import Signals from "./pages/Signals";
 import "./indicatorLogger";
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
             <Route path="/" element={<Candlestick />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/backtest" element={<Backtest />} />
+            <Route path="/signals" element={<Signals />} />
           </Route>
         </Routes>
       </div>

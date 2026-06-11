@@ -207,7 +207,7 @@ const LeftDetail = ({
       alignItems: "center",
       gap: 8,
       padding: "6px 16px",
-      background: "#1a2a1a",
+      background: "rgba(34, 171, 148, 0.1)",
       borderBottom: "1px solid #22ab9430",
       fontSize: "0.72rem",
       color: "#22ab94",
@@ -223,7 +223,7 @@ const LeftDetail = ({
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: var(--bg-primary); }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-        .left-detail-list-item:hover { background: #1a1f2e; }
+        .left-detail-list-item:hover { background: var(--border-color); }
       `}</style>
 
       {/* Header */}
@@ -339,7 +339,7 @@ const LeftDetail = ({
               </span>
             </div>
           ) : (
-            <div style={{ ...styles.scannerActiveBar, color: "var(--text-secondary)", background: "#1a1f2e" }}>
+            <div style={{ ...styles.scannerActiveBar, color: "var(--text-secondary)", background: "var(--bg-secondary)" }}>
               <FiZap size={11} />
               <span>No scanner active —</span>
               <span

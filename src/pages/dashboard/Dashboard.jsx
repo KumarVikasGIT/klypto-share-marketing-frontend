@@ -1,22 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Dashboard.css";
 import Navbar from "../../components/layout/Navbar";
-// import Header from "../../components/dashboard/Header";
 import Stepper from "../../components/dashboard/Stepper";
 import OrderPanel from "../../components/dashboard/OrderPanel";
 import SidePanel from "../../components/dashboard/SidePanel";
-import OrderBook from "../../components/dashboard/OrderBook";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
-  // const location = useLocation();
-
-  // const passedStock = location.state?.stock || null;
-  // const passedAction = location.state?.action || null;
-  // const passedExpiry = location.state?.expiry || null;
-  // const passedPrice  = location.state?.price  || null;
-
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const tradeKey = searchParams.get("tradeKey");
 
@@ -28,30 +20,56 @@ const Dashboard = () => {
   const passedAction = passedState.action || null;
   const passedExpiry = passedState.expiry || null;
   const passedPrice = passedState.price || null;
+
+  // 1. Redirect if accessed without a valid stock payload
+  useEffect(() => {
+    if (!passedStock) {
+      navigate("/");
+    }
+  }, [passedStock, navigate]);
+
   const [stock, setStock] = useState(passedStock || "");
   const [expiry, setExpiry] = useState(passedExpiry || "");
   const [price, setPrice] = useState(passedPrice || null);
   const [strategy, setStrategy] = useState("Nearest ATM");
   const [preference, setPreference] = useState("ATM");
-  const [product, setProduct] = useState("CARRYFORWARD");
-  const [orderType, setOrderType] = useState("MARKET");
+  
+  const isCE = passedStock?.toUpperCase?.().includes(" CE");
+  const isPE = passedStock?.toUpperCase?.().includes(" PE");
+  
+  // 2. Add instrumentType state
+  const defaultInstrument = passedExpiry || isCE || isPE ? "OPTIONS" : "EQUITY";
+  const [instrumentType, setInstrumentType] = useState(defaultInstrument);
+
+  // Set default product based on instrument type
+  const [product, setProduct] = useState(defaultInstrument === "EQUITY" ? "DELIVERY" : "CARRYFORWARD");
+  const [orderType, setOrderType] = useState(passedPrice ? "LIMIT" : "MARKET");
   const [qty, setQty] = useState(1);
   const [validity, setValidity] = useState("DAY");
-  const [action, setAction] = useState(
-    passedAction === "BUY"
-      ? "BUY_CALL"
-      : passedAction === "SELL"
-        ? "BUY_PUT"
-        : null,
-  );
+
+  let initialAction = passedAction;
+  if (isCE) {
+    initialAction = passedAction === "BUY" ? "BUY_CALL" : passedAction === "SELL" ? "SQ_CALL" : passedAction;
+  } else if (isPE) {
+    initialAction = passedAction === "BUY" ? "BUY_PUT" : passedAction === "SELL" ? "SQ_PUT" : passedAction;
+  } else if (defaultInstrument === "EQUITY") {
+    initialAction = passedAction === "BUY" ? "BUY_EQ" : passedAction === "SELL" ? "SELL_EQ" : passedAction;
+  }
+
+  const [action, setAction] = useState(initialAction || null);
   const [orders, setOrders] = useState([]);
 
-  // Step 1 = stock selected, Step 2 = strike configured, Step 3 = order details, Step 4 = action selected
+  // Step 1 = stock selected, Step 2 = strike configured (or N/A), Step 3 = order details, Step 4 = action selected
   const currentStep = (() => {
     if (action) return 4;
     if (product && orderType) return 3;
-    if (strategy && preference) return 2;
-    if (stock && expiry) return 1;
+    if (instrumentType === "OPTIONS") {
+      if (strategy && preference) return 2;
+    } else {
+      // Step 2 is skipped/N/A for Equity
+      if (stock) return 2;
+    }
+    if (stock && (instrumentType === "EQUITY" || expiry)) return 1;
     return 1;
   })();
 
@@ -78,26 +96,32 @@ const Dashboard = () => {
     setAction,
     orders,
     setOrders,
+    instrumentType,
+    setInstrumentType
   };
+
+  if (!passedStock) return null; // Prevent rendering if redirecting
 
   return (
     <>
       <Navbar />
       <div className="dashboard-container">
-        {/* <Header /> */}
         <Stepper
           currentStep={currentStep}
           filledSteps={{
-            step1: !!(stock && expiry),
-            step2: !!(strategy && preference),
+            step1: instrumentType === "EQUITY" ? !!stock : !!(stock && expiry),
+            step2: instrumentType === "EQUITY" ? true : !!(strategy && preference),
             step3: !!(product && orderType),
             step4: !!action,
           }}
         />
         {/* Order Panel */}
-        <div className="main-grid">
+        <div className="main-grid" style={{ display: instrumentType === "EQUITY" ? "block" : "grid" }}>
           <OrderPanel {...orderState} />
-          <SidePanel stock={stock} expiry={expiry} />
+          {/* Conditionally render SidePanel based on instrumentType */}
+          {instrumentType === "OPTIONS" && (
+            <SidePanel stock={stock} expiry={expiry} />
+          )}
         </div>
       </div>
       <style>{`

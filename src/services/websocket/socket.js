@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const socket = io("http://192.168.1.8:8000", {
+const socket = io("http://192.168.1.13:5000", {
   // const socket = io("http://localhost:9000", {
 
   transports: ["websocket", "polling"],
@@ -8,4 +8,5 @@ const socket = io("http://192.168.1.8:8000", {
 });
 console.log("SOCKET FILE LOADED");
 
+export const SOCKET_URL = "http://192.168.1.13:3000";
 export default socket;

@@ -4,7 +4,7 @@ import { getToken } from "../pages/auth/protected";
 // 🔹 Create axios instance
 const api = axios.create({
   // baseURL: "https://loiteringly-homeliest-breana.ngrok-free.dev",
-  baseURL: "http://192.168.1.8:8000", // change to your API
+  baseURL: "http://192.168.1.13:5000", // change to your API
   // baseURL: "http://localhost:9000", // change to your API
 
   timeout: 600000, // 1 min
@@ -28,12 +28,24 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response?.data,
   (error) => {
-    const message =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Something went wrong";
-    // console.log("API Error:", error?.response?.data?.message);
-    // console.log("API Error Details:", error?.message);
+    if (error?.response?.status === 401) {
+      console.warn(
+        "Session expired or unauthorized. Logging out automatically.",
+      );
+      localStorage.removeItem("session");
+      sessionStorage.removeItem("session");
+
+      // Use setTimeout to avoid synchronous infinite redirect loops
+      setTimeout(() => {
+        if (
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/signup" &&
+          window.location.pathname !== "/"
+        ) {
+          window.location.href = "/login";
+        }
+      }, 500);
+    }
 
     return Promise.reject(error);
   },

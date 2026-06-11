@@ -2,9 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
-
-const SOCKET_URL = "http://192.168.1.8:3000";
-const METADATA_URL = "http://192.168.1.8:3000/api/historical-metadata";
+import { SOCKET_URL } from "../../services/websocket/socket";
 
 const OptionChain = ({ onSymbolChange }) => {
   const navigate = useNavigate();
@@ -50,7 +48,7 @@ const OptionChain = ({ onSymbolChange }) => {
   // Fetch metadata from REST API
   useEffect(() => {
     axios
-      .get(METADATA_URL)
+      .get("http://192.168.1.13:3000/api/historical-metadata")
       .then((res) => {
         const data = res.data;
         console.log("[OptionChain] historical-metadata response:", data);
@@ -73,7 +71,10 @@ const OptionChain = ({ onSymbolChange }) => {
     // Only set a default expiry if the current active expiry isn't valid for this symbol
     setActiveExpiry((current) => {
       if (!current) return expiries[0] || "";
-      const match = expiries.find(e => e.toLowerCase() === current.toLowerCase());
+      const normalizeExp = (e) => (e || "").replace(/\s+/g, "").toLowerCase();
+      const match = expiries.find(
+        (e) => normalizeExp(e) === normalizeExp(current),
+      );
       if (match) return match;
       return expiries[0] || "";
     });
@@ -101,7 +102,7 @@ const OptionChain = ({ onSymbolChange }) => {
       console.log("[OptionChain] live-options-list received:", response);
       if (Array.isArray(response?.data) && response.data.length > 0) {
         setLiveContractsList((prev) => {
-          if (prev.length === 0) return response.data; // Initial 900 records load
+          if (prev.length === 0) return response.data;
 
           // Merge new ticks into the existing list so the dropdown never empties
           const mergedMap = new Map(
@@ -152,9 +153,27 @@ const OptionChain = ({ onSymbolChange }) => {
       if (!autoRefreshRef.current) return;
       console.log("[OptionChain] option-chain-data received:", response);
 
-      if (response?.symbol && response.symbol !== selectedSymbol) return;
+      if (
+        response?.symbol &&
+        response.symbol !== selectedSymbol &&
+        response.symbol !== "ALL"
+      )
+        return;
 
-      const chainData = response?.data || response?.chain || [];
+      let chainData = response?.data || response?.chain || [];
+
+      // If backend sends 'ALL' broadcast, filter locally
+      if (response?.symbol === "ALL") {
+        const normalize = (s) => (s || "").replace(/\s+/g, "").toLowerCase();
+        chainData = chainData.filter((item) => {
+          const itemSym = item.symbol || item.name;
+          const itemExp = item.expiry_date || item.expiry;
+          return (
+            normalize(itemSym) === normalize(selectedSymbol) &&
+            normalize(itemExp) === normalize(activeExpiry)
+          );
+        });
+      }
 
       if (response?.spotPrice != null && response.spotPrice !== "") {
         const newSpot = Number(response.spotPrice);

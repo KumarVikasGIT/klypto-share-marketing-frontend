@@ -45,8 +45,7 @@ export default function SSLPlot({
   const BULLISH = indicatorStyle?.SSL_HYBRID?.candles?.palette?.up || "#00c3ff";
   const BEARISH =
     indicatorStyle?.SSL_HYBRID?.candles?.palette?.down || "#ff0062";
-  const NEUTRAL =
-    indicatorStyle?.SSL_HYBRID?.candles?.palette?.neutral || "#666666";
+  const NEUTRAL = indicatorStyle?.SSL_HYBRID?.candles?.palette?.neutral || "#666666";
 
   // baseline_color = close > upperk ? bullish : close < lowerk ? bearish : neutral
   const getBaselineColor = (close, upperChannel, lowerChannel) => {
@@ -280,10 +279,8 @@ export default function SSLPlot({
     if (!canvasRef.current || !chart) return;
 
     const fill = indicatorStyle?.SSL_HYBRID?.baselineFill;
-    const upperVisible =
-      indicatorStyle?.SSL_HYBRID?.upperChannel?.visible ?? true;
-    const lowerVisible =
-      indicatorStyle?.SSL_HYBRID?.lowerChannel?.visible ?? true;
+    const upperVisible = indicatorStyle?.SSL_HYBRID?.upperChannel?.visible ?? true;
+    const lowerVisible = indicatorStyle?.SSL_HYBRID?.lowerChannel?.visible ?? true;
 
     if (!fill?.visible) return;
     if (!upperVisible || !lowerVisible) return;

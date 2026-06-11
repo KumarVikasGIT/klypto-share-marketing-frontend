@@ -1,94 +1,73 @@
 import React, { useState, useEffect } from "react";
 import { FiSearch, FiSettings, FiX, FiPlus, FiMaximize2 } from "react-icons/fi";
-import socket from "../../services/socket";
+import useSocket from "../../util/useSocket";
+import EVENTS from "../../services/websocket/socketEvent";
+import { Spinner } from "../tradingModals/Spinner";
 
 const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [stocksData, setStocksData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-      socket.emit("getMasterWatchlist");
+  const { emit } = useSocket({
+    [EVENTS.WATCHLIST.RESPONSE]: (data) => {
+      // console.log("stocks event", data);
 
-      /*
-      INITIAL STOCKS
-    */
-      const handleStocks = (data) => {
-        console.log("stocks event", data);
+      const equity = (data?.data?.equity || []).map((item) => ({
+        ...item,
+        category: "EQ",
+      }));
 
-        const equity = (data?.data?.equity || []).map((item) => ({
-          ...item,
-          category: "EQ",
-        }));
+      const futures = (data?.data?.futures || []).map((item) => ({
+        ...item,
+        category: "FUT",
+      }));
 
-        const futures = (data?.data?.futures || []).map((item) => ({
-          ...item,
-          category: "FUT",
-        }));
+      const options = (data?.data?.trendingOptions || []).map((item) => ({
+        ...item,
+        category: "OPT",
+      }));
 
-        const options = (data?.data?.trendingOptions || []).map((item) => ({
-          ...item,
-          category: "OPT",
-        }));
+      const indices = (data?.data?.indices || []).map((item) => ({
+        ...item,
+        category: "IDX",
+      }));
 
-        const indices = (data?.data?.indices || []).map((item) => ({
-          ...item,
-          category: "IDX",
-        }));
+      const combined = [...indices, ...equity, ...futures, ...options];
 
-        const combined = [...indices, ...equity, ...futures, ...options];
+      setStocksData(combined);
+      setIsLoading(false);
+    },
+    [EVENTS.STOCK_LIST.STOCK_UPDATE]: (updatedStock) => {
+      if (!updatedStock?.token) return;
 
+      setStocksData((prev) =>
+        prev.map((stock) =>
+          stock.token === updatedStock.token
+            ? { ...stock, ...updatedStock }
+            : stock,
+        ),
+      );
+    },
+    [EVENTS.CHART.LIVE_TICK]: (tick) => {
+      if (!tick?.token) return;
 
-        setStocksData(combined);
-        
-      };
-      socket.on("masterWatchlistResponse", handleStocks);
+      setStocksData((prev) =>
+        prev.map((stock) =>
+          stock.token === tick.token
+            ? {
+                ...stock,
+                ...tick,
+              }
+            : stock,
+        ),
+      );
+    }
+  });
 
-      /*
-      SINGLE STOCK UPDATE
-      (if the backend sends single stock updates, it might be on 'stockUpdate' or 'liveTick')
-    */
-      const handleStockUpdate = (updatedStock) => {
-        // Handle potential single stock update if emitted
-        if (!updatedStock?.token) return;
-
-        setStocksData((prev) =>
-          prev.map((stock) =>
-            stock.token === updatedStock.token
-              ? { ...stock, ...updatedStock }
-              : stock,
-          ),
-        );
-      };
-      socket.on("stockUpdate", handleStockUpdate);
-
-      /*
-      LIVE TICK
-    */
-      const handleLiveTick = (tick) => {
-        // console.log("liveTick", tick);
-
-        if (!tick?.token) return;
-
-        setStocksData((prev) =>
-          prev.map((stock) =>
-            stock.token === tick.token
-              ? {
-                  ...stock,
-                  ...tick,
-                }
-              : stock,
-          ),
-        );
-      };
-      socket.on("liveTick", handleLiveTick);
-
-      return () => {
-        // socket.disconnect(); // 🔥 Do NOT disconnect singleton socket
-        socket.off("masterWatchlistResponse", handleStocks);
-        socket.off("stockUpdate", handleStockUpdate);
-        socket.off("liveTick", handleLiveTick);
-      };
-    }, []);
+  useEffect(() => {
+    emit(EVENTS.WATCHLIST.GET);
+  }, [emit]);
 
   const styles = {
     container: {
@@ -257,22 +236,33 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <FiSettings color="var(--text-secondary)" size={14} style={{ cursor: "pointer" }} />
+          <FiSettings
+            color="var(--text-secondary)"
+            size={14}
+            style={{ cursor: "pointer" }}
+          />
         </div>
       </div>
 
       <div className="custom-scrollbar" style={styles.listContainer}>
-        {/* {alertResult?.length && alertResult */}
-        {stocksData
-          .filter(
-            (s) => s.name.toLowerCase().includes(searchTerm.toLowerCase()),
-            // s.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
-          )
-          .map((stock, idx) => {
+        {isLoading ? (
+          <div style={{ display: "flex", height: "100%", justifyContent: "center", alignItems: "center" }}>
+            <Spinner />
+          </div>
+        ) : (
+          stocksData
+            .filter(
+              (s) => (s.name || s.symbol || "").toLowerCase().includes(searchTerm.toLowerCase()),
+            )
+            .map((stock, idx) => {
             const pChange = parseFloat(stock.percent_change);
             const rawChange = parseFloat(stock.change);
-            const isPositive = (!isNaN(pChange) ? pChange : (!isNaN(rawChange) ? rawChange : 0)) >= 0;
-            const color = isPositive ? "var(--success-color)" : "var(--danger-color)"; // TradingView green/red
+            const isPositive =
+              (!isNaN(pChange) ? pChange : !isNaN(rawChange) ? rawChange : 0) >=
+              0;
+            const color = isPositive
+              ? "var(--success-color)"
+              : "var(--danger-color)"; // TradingView green/red
             const Arrow = isPositive ? "▲" : "▼";
 
             return (
@@ -290,7 +280,8 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
                   })
                 }
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "var(--border-color)")
+                  (e.currentTarget.style.backgroundColor =
+                    "var(--border-color)")
                 }
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.backgroundColor = "transparent")
@@ -333,7 +324,8 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
                     >
                       <span>
                         {/* {stock?.symbol} */}
-                         {stock?.name}</span>
+                        {stock?.name}
+                      </span>
 
                       {/* <span style={styles.segment}>{stock?.segment}</span> */}
                     </div>
@@ -351,7 +343,8 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
                 </div>
               </div>
             );
-          })}
+          })
+        )}
       </div>
 
       {/*<div style={styles.footer}>

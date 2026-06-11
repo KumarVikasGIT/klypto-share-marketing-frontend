@@ -11,7 +11,7 @@ import PnLDistribution from "../../components/backtest/PnLDistribution";
 import ProfitByTime from "../../components/backtest/ProfitByTime";
 import TradeOutcome from "../../components/backtest/TradeOutcome";
 import LongVsShort from "../../components/backtest/LongVsShort";
-import socket from "../../services/socket";
+import socket from "../../services/websocket/socket";
 
 // Helper: format a number as currency string
 const fmt = (n, decimals = 2) =>

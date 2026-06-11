@@ -4,7 +4,7 @@ import apiService from "../../services/apiServices";
 import useChartFunctions from "../../util/useChartFunctions";
 import { updateIndicatorFromInput } from "./IndicatorIndex";
 import React, { useEffect, useState } from "react";
-import socket from "../../services/socket";
+import socket from "../../services/websocket/socket";
 import { indicatorConfigDefault } from "../../util/indicatorFunctions";
 
 /* =========================
@@ -284,7 +284,8 @@ export default function IndicatorPropertyDialog({
       console.log("[IndicatorProperty] updateIndicatorResponse:", response);
       setIndicatorLoading(false); // STOP LOADER
 
-      const hasValidData = response?.success !== false &&
+      const hasValidData =
+        response?.success !== false &&
         (response?.data || response?.result || response?.rows);
 
       if (!hasValidData) {

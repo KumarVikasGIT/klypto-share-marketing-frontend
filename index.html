@@ -9,7 +9,14 @@
        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
 
-
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem("theme") || "dark";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {}
+      })();
+    </script>
     <title>trading-share-marketing</title>
   </head>
   <body>

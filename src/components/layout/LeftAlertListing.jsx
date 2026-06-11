@@ -1,6 +1,6 @@
 import React from "react";
-import { FiX, FiTrash2 } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import { FiX, FiTrash2, FiMaximize2 } from "react-icons/fi";
+import { Link, useNavigate } from "react-router-dom";
 
 const LeftAlertListing = ({
   onClose,
@@ -8,6 +8,7 @@ const LeftAlertListing = ({
   setAlertResult,
   setSelectedCurrency,
 }) => {
+  const navigate = useNavigate();
   const styles = {
     container: {
       display: "flex",
@@ -126,6 +127,17 @@ const LeftAlertListing = ({
       <div style={styles.header}>
         <span>Script Signals</span>
         <div style={styles.headerActions}>
+          <button
+            className="clear-btn"
+            style={styles.clearBtn}
+            onClick={() => {
+              onClose();
+              navigate("/signals");
+            }}
+            title="Maximize to Dashboard"
+          >
+            <FiMaximize2 size={14} />
+          </button>
           {results.length > 0 && (
             <button
               className="clear-btn"

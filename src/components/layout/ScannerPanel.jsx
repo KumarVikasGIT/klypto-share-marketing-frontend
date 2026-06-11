@@ -53,9 +53,9 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
     header: {
       display: "flex", justifyContent: "space-between", alignItems: "center",
       padding: "14px 18px", borderBottom: "1px solid var(--border-color)",
-      background: "#1a1f2e",
+      background: "var(--bg-secondary)",
     },
-    title: { fontWeight: 700, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: 8, color: "#fff" },
+    title: { fontWeight: 700, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)" },
     body: { padding: "18px", display: "flex", flexDirection: "column", gap: "14px" },
     label: { fontSize: "0.7rem", color: "var(--text-secondary)", textTransform: "uppercase", marginBottom: 4, letterSpacing: "0.05em" },
     select: {
@@ -95,7 +95,7 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
     matchedItem: {
       display: "flex", justifyContent: "space-between", alignItems: "center",
       padding: "9px 10px", borderRadius: 7, cursor: "pointer",
-      marginBottom: 3, background: "#1a1f2e", transition: "background 0.15s",
+      marginBottom: 3, background: "var(--bg-secondary)", transition: "background 0.15s",
     },
     badge: {
       width: 28, height: 28, borderRadius: "50%",
@@ -154,7 +154,7 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
 
           {active && scanner && (
             <div style={{
-              background: "#1a2a1a", border: "1px solid #22ab9440",
+              background: "rgba(34, 171, 148, 0.1)", border: "1px solid #22ab9440",
               borderRadius: 7, padding: "8px 12px", fontSize: "0.8rem", color: "#22ab94",
               display: "flex", alignItems: "center", gap: 7,
             }}>
@@ -189,7 +189,7 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
             .scanner-scroll::-webkit-scrollbar { width: 5px; }
             .scanner-scroll::-webkit-scrollbar-track { background: var(--bg-primary); }
             .scanner-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-            .scanner-matched-item:hover { background: #222840 !important; }
+            .scanner-matched-item:hover { background: var(--border-color) !important; }
           `}</style>
 
           {matchedCoins.length === 0 ? (

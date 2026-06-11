@@ -3,7 +3,8 @@ import apiService from "../../services/apiServices";
 import SearchSelect from "./SearchSelect";
 import { s } from "../../util/common";
 import OrderBook from "./OrderBook";
-import socket from "../../services/socket";
+import useSocket from "../../util/useSocket";
+import EVENTS from "../../services/websocket/socketEvent";
 
 const ACTIONS = [
   {
@@ -41,6 +42,8 @@ const ACTION_MAP = {
   SQ_CALL: "SELL",
   BUY_PUT: "BUY",
   SQ_PUT: "SELL",
+  BUY_EQ: "BUY",
+  SELL_EQ: "SELL",
 };
 
 const getValidationError = ({
@@ -51,15 +54,18 @@ const getValidationError = ({
   product,
   orderType,
   qty,
+  instrumentType,
 }) => {
   if (!stock) return "Please select a Stock before proceeding.";
-  if (!expiry) return "Please select an Expiry date.";
-  if (!strategy) return "Please select a Strategy.";
-  if (!preference) return "Please select a Preference (ATM / ITM / OTM).";
+  if (instrumentType === "OPTIONS") {
+    if (!expiry) return "Please select an Expiry date.";
+    if (!strategy) return "Please select a Strategy.";
+    if (!preference) return "Please select a Preference (ATM / ITM / OTM).";
+  }
   if (!product)
-    return "Please select a Product type (INTRADAY / CARRYFORWARD).";
+    return "Please select a Product type.";
   if (!orderType) return "Please select an Order Type (MARKET / LIMIT).";
-  if (!qty || qty < 1) return "Quantity must be at least 1 lot.";
+  if (!qty || qty < 1) return "Quantity must be at least 1.";
   return null;
 };
 
@@ -96,6 +102,8 @@ const OrderPanel = ({
   setAction,
   orders,
   setOrders,
+  instrumentType,
+  setInstrumentType,
   price: passedPrice, // ← initial price passed from navigation state
 }) => {
   // const parseSymbolName = (fullName) => {
@@ -145,6 +153,19 @@ const OrderPanel = ({
       };
     }
 
+    // Format 3: "ABB26JUN6750CE" (no spaces)
+    const match3 = fullName.match(
+      /^([A-Z][A-Z0-9&-]+?)(\d{1,2}[A-Z]{3}\d{0,4})(\d+(?:\.\d+)?)(CE|PE|CA|PA)$/i,
+    );
+    if (match3) {
+      return {
+        base: match3[1].trim(),
+        expiry: match3[2].trim(),
+        suffix: match3[3].trim() + " " + match3[4].trim(),
+        hasExpiry: true,
+      };
+    }
+
     // No date found — treat entire string as the base symbol
     return { base: fullName, hasExpiry: false };
   };
@@ -175,14 +196,14 @@ const OrderPanel = ({
   // Derived: live CE/PE LTP for the recommended strike from websocket
   const strikeNum = parseStrike(recommendedStrike);
   const wsRow = wsChain?.chain?.find((c) => Number(c.strike) === strikeNum);
-  const liveCeLtp = wsRow?.ce?.ltp != null ? Number(wsRow.ce.ltp) : null;
-  const livePeLtp = wsRow?.pe?.ltp != null ? Number(wsRow.pe.ltp) : null;
+  const liveCe = wsRow?.ce ?? wsRow?.call;
+  const livePe = wsRow?.pe ?? wsRow?.put;
+  const liveCeLtp = liveCe?.ltp != null ? Number(liveCe.ltp) : null;
+  const livePeLtp = livePe?.ltp != null ? Number(livePe.ltp) : null;
 
   // ── 1. Socket: master watchlist + live ticks ──
-  useEffect(() => {
-    socket.emit("getMasterWatchlist");
-
-    const handleStocks = (data) => {
+  const { emit } = useSocket({
+    [EVENTS.WATCHLIST.RESPONSE]: (data) => {
       const equity = (data?.data?.equity || []).map((i) => ({
         ...i,
         category: "EQ",
@@ -200,126 +221,98 @@ const OrderPanel = ({
         category: "IDX",
       }));
       setStocks([...indices, ...equity, ...futures, ...options]);
-    };
-
-    const patchStocks = (upd) => {
+    },
+    [EVENTS.STOCK_LIST.STOCK_UPDATE]: (upd) => {
       if (!upd?.token) return;
       setStocks((prev) =>
         prev.map((s) => (s.token === upd.token ? { ...s, ...upd } : s)),
       );
-    };
+    },
+    [EVENTS.CHART.LIVE_TICK]: (upd) => {
+      if (!upd?.token) return;
+      setStocks((prev) =>
+        prev.map((s) => (s.token === upd.token ? { ...s, ...upd } : s)),
+      );
+    },
+    [EVENTS.OPTION_CHAIN.LIST]: (response) => {
+      // console.log("[OrderPanel] live-options-list raw response:", response);
 
-    socket.on("masterWatchlistResponse", handleStocks);
-    socket.on("stockUpdate", patchStocks);
-    socket.on("liveTick", patchStocks);
+      if (!response?.success && !Array.isArray(response?.data)) return;
+      if (response?.symbol && response.symbol !== subscribedSymbolRef.current) return;
 
-    return () => {
-      socket.off("masterWatchlistResponse", handleStocks);
-      socket.off("stockUpdate", patchStocks);
-      socket.off("liveTick", patchStocks);
-    };
-  }, []);
+      const items = Array.isArray(response?.data) ? response.data : [];
 
-  // ── 2. Subscribe/unsubscribe option chain when stock changes ──
-  useEffect(() => {
-    // Unsubscribe previous symbol if any
-    if (subscribedSymbolRef.current) {
-      socket.emit("unsubscribeOptionChain", {
-        symbol: subscribedSymbolRef.current,
+      const rawExpiries = [
+        ...new Set(
+          items.map((item) => item.expiry ?? item.expiry_date).filter(Boolean),
+        ),
+      ];
+      console.log("[OrderPanel] Extracted expiries:", rawExpiries);
+      setExpiries(rawExpiries);
+      
+      setExpiry((prev) => {
+        if (prev) return prev; // Do not auto-switch the expiry if it was already selected/passed down
+        return rawExpiries.length > 0 ? rawExpiries[0] : "";
       });
-      subscribedSymbolRef.current = null;
-      setWsChain(null);
-    }
 
-    if (!stock) return;
+      const spotPrice = items[0]?.spot_price ?? null;
+      if (spotPrice != null && orderType === "MARKET") setCurrentPrice(Number(spotPrice));
 
-    // stock can be:
-    //  (a) a token string/number  → look up in masterWatchlist stocks[]
-    //  (b) a contract object from OptionChain (has .symbol but no matching token in stocks[])
-    let symbolForChain;
-    if (stock && typeof stock === "object" && stock.symbol) {
-      // Contract object passed directly from OptionChain navigation
-      symbolForChain = parseSymbolName(stock.symbol).base;
-      setSelectedStockObj(stock);
-      // Set price from contract if available
-      if (stock.spot_price != null) setCurrentPrice(Number(stock.spot_price));
-      else if (stock.ltp != null) setCurrentPrice(Number(stock.ltp));
-    } else {
-      // stock can be a token string, token number, or a display string like
-      // "ADANIPORTS 30 Jun 2026 1720 CE" (passed via sessionStorage)
-      const currentToken = stock?.token ?? stock;
-
-      // 1) Try exact token match
-      let stockObj = stocks.find((s) => s.token === currentToken);
-
-      // 2) Fallback: parse the display string and match by base symbol name
-      if (!stockObj && typeof stock === "string") {
-        const { base } = parseSymbolName(stock);
-        if (base) {
-          stockObj = stocks.find(
-            (s) =>
-              // Stock's symbol matches the parsed base (e.g. "ADANIPORTS" === "ADANIPORTS")
-              (s.symbol ?? s.name ?? s.userCode ?? "")
-                .toUpperCase() === base.toUpperCase()
-              // or stock string starts with the stock's symbol
-              || stock.toUpperCase().startsWith(
-                  (s.symbol ?? s.name ?? s.userCode ?? "").toUpperCase() + " "
-                ),
-          );
-        }
+      const strikes = [
+        ...new Set(
+          items
+            .map((item) => Number(item.strike ?? item.strike_price))
+            .filter((n) => !isNaN(n)),
+        ),
+      ].sort((a, b) => a - b);
+      const ltpToUse = spotPrice != null ? Number(spotPrice) : currentPrice;
+      if (strikes.length > 0 && ltpToUse) {
+        const atm = findATM(strikes, ltpToUse);
+        const atmIdx = strikes.indexOf(atm);
+        setStrikeMap({
+          "Nearest ATM": {
+            ATM: fmt(strikes[atmIdx]),
+            ITM: fmt(strikes[atmIdx - 1]),
+            OTM: fmt(strikes[atmIdx + 1]),
+          },
+          "OTM +1": {
+            ATM: fmt(strikes[atmIdx + 1]),
+            ITM: fmt(strikes[atmIdx]),
+            OTM: fmt(strikes[atmIdx + 2]),
+          },
+        });
       }
 
-      if (stockObj) {
-        setSelectedStockObj(stockObj);
-        const rawSymbol =
-          stockObj.symbol ??
-          stockObj.name ??
-          stockObj.userCode ??
-          stockObj.actualSymbol;
-        symbolForChain = parseSymbolName(rawSymbol).base;
-      } else if (typeof stock === "string") {
-        // Still can't find in watchlist — use the parsed base symbol directly
-        // so we can still subscribe to live-options-list
-        const { base } = parseSymbolName(stock);
-        symbolForChain = base ?? stock;
-      } else {
-        return;
-      }
-    }
-
-    // Track which symbol we subscribed to (used to filter incoming events)
-    subscribedSymbolRef.current = symbolForChain;
-
-    // Handler for live option chain updates
-    const handleOptionChainUpdate = (response) => {
+      const chainMap = {};
+      items.forEach((item) => {
+        const strike = Number(item.strike ?? item.strike_price);
+        if (!chainMap[strike])
+          chainMap[strike] = { strike, ce: null, pe: null };
+        if (item.option_type === "CE") chainMap[strike].ce = item;
+        else if (item.option_type === "PE") chainMap[strike].pe = item;
+      });
+      const formattedChain = Object.values(chainMap).sort(
+        (a, b) => a.strike - b.strike,
+      );
+      setWsChain({ symbol: response?.symbol, chain: formattedChain });
+      setRawChainData({ symbol: response?.symbol, chain: formattedChain });
+    },
+    [EVENTS.OPTION_CHAIN.RESPONSE]: (response) => {
       console.log("[OrderPanel] option-chain-data response:", response);
 
-      // The event option-chain-data might send response.data or response
-      const data =
-        response?.data || response?.chain ? response : { chain: response };
+      const data = response?.data || response?.chain ? response : { chain: response };
 
-      // If backend sends symbol, match it
       if (data?.symbol && data.symbol !== subscribedSymbolRef.current) return;
 
-      const chainLtp =
-        data?.spotPrice ??
-        data?.underlyingLtp ??
-        data?.underlyingValue ??
-        data?.ltp ??
-        null;
-      if (chainLtp != null) {
+      const chainLtp = data?.spotPrice ?? data?.underlyingLtp ?? data?.underlyingValue ?? data?.ltp ?? null;
+      if (chainLtp != null && orderType === "MARKET") {
         setCurrentPrice(Number(chainLtp));
       }
 
-      let rawChain =
-        data?.chain ?? data?.data ?? (Array.isArray(data) ? data : []);
+      let rawChain = data?.chain ?? data?.data ?? (Array.isArray(data) ? data : []);
       let formattedChain = rawChain;
 
-      // Group flat array into {strike, ce, pe} if necessary
-      if (
-        rawChain[0]?.strike_price !== undefined &&
-        rawChain[0]?.option_type !== undefined
-      ) {
+      if (rawChain[0]?.strike_price !== undefined && rawChain[0]?.option_type !== undefined) {
         const chainMap = {};
         rawChain.forEach((item) => {
           const strike = Number(item.strike_price);
@@ -336,23 +329,11 @@ const OrderPanel = ({
       setWsChain({ ...data, chain: formattedChain });
       setRawChainData({ ...data, chain: formattedChain });
 
-      // if (data?.lotSize) setLotSize(data.lotSize);
-
-      // const rawExpiries = data?.allExpiries ?? data?.expiries ?? [];
-      // const uniqueExpiries = [...new Set(rawExpiries)];
-      // setExpiries(uniqueExpiries);
-      // // We don't overwrite expiry if the user already selected one
-      // setExpiry(
-      //   (prev) => prev || (uniqueExpiries.length > 0 ? uniqueExpiries[0] : ""),
-      // );
-
-      // Build strike map from chain (used for ATM/ITM/OTM labels)
       const strikes = formattedChain
         .map((c) => Number(c.strike))
         .filter((n) => !isNaN(n))
         .sort((a, b) => a - b);
 
-      // Filter out duplicate strikes
       const uniqueStrikes = [...new Set(strikes)];
 
       const ltpToUse = chainLtp != null ? Number(chainLtp) : currentPrice;
@@ -386,96 +367,73 @@ const OrderPanel = ({
           },
         });
       }
-    };
+    }
+  });
 
-    // ── live-options-list: register BEFORE emit so we don't miss the response ──
-    const handleOptionsList = (response) => {
-      // console.log("[OrderPanel] live-options-list raw response:", response);
+  useEffect(() => {
+    emit(EVENTS.WATCHLIST.GET);
+  }, [emit]);
 
-      // Backend: {success: true, symbol, totalRecords, data: Array}
-      if (!response?.success && !Array.isArray(response?.data)) return;
-
-      // If it's for a different symbol, ignore
-      if (response?.symbol && response.symbol !== subscribedSymbolRef.current)
-        return;
-
-      const items = Array.isArray(response?.data) ? response.data : [];
-
-      // Extract unique expiries from the array items
-      const rawExpiries = [
-        ...new Set(
-          items.map((item) => item.expiry ?? item.expiry_date).filter(Boolean),
-        ),
-      ];
-      console.log("[OrderPanel] Extracted expiries:", rawExpiries);
-      setExpiries(rawExpiries);
-      // Honor the already-selected expiry (e.g. passed from OptionChain) if valid in list;
-      // otherwise default to the first available expiry
-      setExpiry((prev) => {
-        if (prev && rawExpiries.includes(prev)) return prev;
-        return rawExpiries.length > 0 ? rawExpiries[0] : "";
+  // ── 2. Subscribe/unsubscribe option chain when stock changes ──
+  useEffect(() => {
+    if (subscribedSymbolRef.current) {
+      emit("unsubscribeOptionChain", {
+        symbol: subscribedSymbolRef.current,
       });
+      subscribedSymbolRef.current = null;
+      setWsChain(null);
+    }
 
-      // Set spot price from the first item
-      const spotPrice = items[0]?.spot_price ?? null;
-      if (spotPrice != null) setCurrentPrice(Number(spotPrice));
+    if (!stock || instrumentType === "EQUITY") return;
 
-      // Build strike map from these items
-      const strikes = [
-        ...new Set(
-          items
-            .map((item) => Number(item.strike ?? item.strike_price))
-            .filter((n) => !isNaN(n)),
-        ),
-      ].sort((a, b) => a - b);
-      const ltpToUse = spotPrice != null ? Number(spotPrice) : currentPrice;
-      if (strikes.length > 0 && ltpToUse) {
-        const atm = findATM(strikes, ltpToUse);
-        const atmIdx = strikes.indexOf(atm);
-        setStrikeMap({
-          "Nearest ATM": {
-            ATM: fmt(strikes[atmIdx]),
-            ITM: fmt(strikes[atmIdx - 1]),
-            OTM: fmt(strikes[atmIdx + 1]),
-          },
-          "OTM +1": {
-            ATM: fmt(strikes[atmIdx + 1]),
-            ITM: fmt(strikes[atmIdx]),
-            OTM: fmt(strikes[atmIdx + 2]),
-          },
-        });
+    let symbolForChain;
+    if (stock && typeof stock === "object" && stock.symbol) {
+      symbolForChain = parseSymbolName(stock.symbol).base;
+      setSelectedStockObj(stock);
+      if (orderType === "MARKET") {
+        if (stock.spot_price != null) setCurrentPrice(Number(stock.spot_price));
+        else if (stock.ltp != null) setCurrentPrice(Number(stock.ltp));
+      }
+    } else {
+      const currentToken = stock?.token ?? stock;
+      let stockObj = stocks.find((s) => s.token === currentToken);
+      if (!stockObj && typeof stock === "string") {
+        const { base } = parseSymbolName(stock);
+        if (base) {
+          stockObj = stocks.find(
+            (s) =>
+              (s.symbol ?? s.name ?? s.userCode ?? "")
+                .toUpperCase() === base.toUpperCase() ||
+              stock.toUpperCase().startsWith(
+                (s.symbol ?? s.name ?? s.userCode ?? "").toUpperCase() + " "
+              )
+          );
+        }
       }
 
-      // Group into wsChain format { chain: [{strike, ce, pe}] }
-      const chainMap = {};
-      items.forEach((item) => {
-        const strike = Number(item.strike ?? item.strike_price);
-        if (!chainMap[strike])
-          chainMap[strike] = { strike, ce: null, pe: null };
-        if (item.option_type === "CE") chainMap[strike].ce = item;
-        else if (item.option_type === "PE") chainMap[strike].pe = item;
-      });
-      const formattedChain = Object.values(chainMap).sort(
-        (a, b) => a.strike - b.strike,
-      );
-      setWsChain({ symbol: response?.symbol, chain: formattedChain });
-      setRawChainData({ symbol: response?.symbol, chain: formattedChain });
-    };
+      if (stockObj) {
+        setSelectedStockObj(stockObj);
+        const rawSymbol =
+          stockObj.symbol ??
+          stockObj.name ??
+          stockObj.userCode ??
+          stockObj.actualSymbol;
+        symbolForChain = parseSymbolName(rawSymbol).base;
+      } else if (typeof stock === "string") {
+        const { base } = parseSymbolName(stock);
+        symbolForChain = base ?? stock;
+      } else {
+        return;
+      }
+    }
 
-    socket.on("live-options-list", handleOptionsList);
-    socket.on("option-chain-data", handleOptionChainUpdate);
+    subscribedSymbolRef.current = symbolForChain;
 
-    // Emit AFTER registering the listener
-    socket.emit("live-options-list", { symbol: symbolForChain });
-    // set-filters with expiry if available
+    emit(EVENTS.OPTION_CHAIN.LIST, { symbol: symbolForChain });
     const initialExpiry = stock && typeof stock === "object" && stock.expiry_date ? stock.expiry_date : (expiry || undefined);
-    socket.emit("set-filters", { symbol: symbolForChain, expiry_date: initialExpiry });
+    emit(EVENTS.OPTION_CHAIN.GET, { symbol: symbolForChain, expiry_date: initialExpiry });
 
-    return () => {
-      socket.off("option-chain-data", handleOptionChainUpdate);
-      socket.off("live-options-list", handleOptionsList);
-    };
-  }, [stock, stocks]);
+  }, [stock, stocks, emit]);
 
   // ── 3. Keep selectedStockObj + live price in sync with ticks ──
   useEffect(() => {
@@ -484,12 +442,18 @@ const OrderPanel = ({
     const match = stocks.find((s) => s.token === currentToken);
     if (!match) return;
 
-    setSelectedStockObj((prev) => (prev ? { ...prev, ...match } : match));
+    setSelectedStockObj((prev) => {
+      if (!prev) return match;
+      const next = { ...prev, ...match };
+      // Prevent returning a new object reference if the data hasn't actually changed
+      if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+      return next;
+    });
 
     const ltp = Number(match.ltp);
     if (!isNaN(ltp) && ltp > 0) {
       // Only update from stock tick if wsChain hasn't provided a spotPrice
-      if (!wsChain?.spotPrice) {
+      if (!wsChain?.spotPrice && orderType === "MARKET") {
         setCurrentPrice(ltp);
       }
       if (match.change != null) setPriceChange(Number(match.change));
@@ -534,7 +498,7 @@ const OrderPanel = ({
   const [chainApiData, setChainApiData] = useState(null);
 
   useEffect(() => {
-    if (!stock) return;
+    if (!stock || instrumentType === "EQUITY") return;
 
     // Resolve the base symbol name (same logic as effect #2)
     let symbolForChain;
@@ -548,17 +512,22 @@ const OrderPanel = ({
         if (base) {
           stockObj = stocks.find(
             (s) =>
-              (s.symbol ?? s.name ?? s.userCode ?? "")
-                .toUpperCase() === base.toUpperCase() ||
-              stock.toUpperCase().startsWith(
-                (s.symbol ?? s.name ?? s.userCode ?? "").toUpperCase() + " "
-              )
+              (s.symbol ?? s.name ?? s.userCode ?? "").toUpperCase() ===
+                base.toUpperCase() ||
+              stock
+                .toUpperCase()
+                .startsWith(
+                  (s.symbol ?? s.name ?? s.userCode ?? "").toUpperCase() + " ",
+                ),
           );
         }
       }
       if (stockObj) {
         const rawSymbol =
-          stockObj.symbol ?? stockObj.name ?? stockObj.userCode ?? stockObj.actualSymbol;
+          stockObj.symbol ??
+          stockObj.name ??
+          stockObj.userCode ??
+          stockObj.actualSymbol;
         symbolForChain = parseSymbolName(rawSymbol).base;
       } else if (typeof stock === "string") {
         const { base } = parseSymbolName(stock);
@@ -582,6 +551,7 @@ const OrderPanel = ({
         const currentSymbol = symbolForChain;
         const response = await apiService.get("/options/chain", {
           symbol: currentSymbol,
+          expiry: expiry,
         });
         console.log("[OrderPanel] chain API response:", response);
         setChainApiData(response);
@@ -592,7 +562,7 @@ const OrderPanel = ({
           setExpiries(apiExpiries);
           // Only set expiry if none is already chosen or it's not in the new list
           setExpiry((prev) => {
-            if (prev && apiExpiries.includes(prev)) return prev;
+            if (prev) return prev; // Do not auto-switch the expiry if it was already selected/passed down
             return apiExpiries[0];
           });
         }
@@ -602,17 +572,18 @@ const OrderPanel = ({
         lastChainRequestRef.current = null;
       }
     })();
-  }, [stock, stocks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stock, stocks, expiry]);
 
   // ── 5a. Emit set-filters when expiry changes to get live updates for the new expiry ──
   useEffect(() => {
-    if (subscribedSymbolRef.current && expiry) {
-      socket.emit("set-filters", {
+    if (subscribedSymbolRef.current && expiry && instrumentType === "OPTIONS") {
+      emit(EVENTS.OPTION_CHAIN.GET, {
         symbol: subscribedSymbolRef.current,
         expiry_date: expiry,
       });
     }
-  }, [expiry]);
+  }, [expiry, emit]);
 
   // ── 5b. Rebuild strikeMap from chain API data whenever expiry changes ──
   useEffect(() => {
@@ -621,23 +592,39 @@ const OrderPanel = ({
     // The chain array may be keyed or a plain array
     const allRows = Array.isArray(chainApiData)
       ? chainApiData
-      : chainApiData?.chain ?? chainApiData?.data ?? [];
+      : (chainApiData?.chain ?? chainApiData?.data ?? []);
 
     // Filter rows that belong to the currently selected expiry
     // Row structure: { strike, isATM, call: { symbol, ... }, put: { symbol, ... } }
     const rowsForExpiry = allRows.filter((row) => {
-      const rowExpiry =
+      let rowExpiry =
         row?.expiry ??
         row?.call?.expiry ??
         row?.put?.expiry ??
-        // Try parsing from call symbol e.g. "ADANIPORTS26JUN1800CE"
         null;
 
-      // If no expiry field on row, include all (API may already filter by expiry)
+      if (!rowExpiry && (row?.call?.symbol || row?.put?.symbol)) {
+        const parsed = parseSymbolName(row?.call?.symbol ?? row?.put?.symbol);
+        if (parsed.hasExpiry) rowExpiry = parsed.expiry;
+      }
+
+      // If still no expiry field on row, check if the symbol includes the selected expiry's key parts
+      if (!rowExpiry && expiry) {
+        const symbolStr = (row?.call?.symbol ?? row?.put?.symbol ?? "").toUpperCase();
+        const shortExpiryMatch = expiry.match(/^(\d{1,2})\s*([A-Za-z]{3})/);
+        const shortExpiry = shortExpiryMatch ? (shortExpiryMatch[1] + shortExpiryMatch[2]).toUpperCase() : "";
+        if (shortExpiry && !symbolStr.includes(shortExpiry)) {
+           return false; // Definitely a mismatch
+        }
+        return true; // Assume it matches if we can't definitively rule it out
+      }
+
       if (!rowExpiry) return true;
 
-      // Normalize: "25JUN2026" → match against selected expiry
-      return rowExpiry === expiry;
+      // Normalize string comparisons
+      const norm1 = rowExpiry.replace(/\s+/g, "").toUpperCase();
+      const norm2 = expiry.replace(/\s+/g, "").toUpperCase();
+      return norm1 === norm2 || norm1.startsWith(norm2) || norm2.startsWith(norm1);
     });
 
     const rows = rowsForExpiry.length > 0 ? rowsForExpiry : allRows;
@@ -678,7 +665,7 @@ const OrderPanel = ({
 
     console.log(
       `[OrderPanel] StrikeMap built for expiry=${expiry}, ATM=${atmStrike}`,
-      { strikes }
+      { strikes },
     );
   }, [chainApiData, expiry]);
 
@@ -812,11 +799,10 @@ const OrderPanel = ({
       stockObj = stocks.find((s) => s.token === currentToken);
       if (!stockObj && typeof stock === "string") {
         const { base } = parseSymbolName(stock);
-        stockObj = stocks.find(
-          (s) =>
-            (s.symbol ?? s.name ?? s.userCode ?? "")
-              .toUpperCase()
-              .startsWith((base ?? "").toUpperCase()),
+        stockObj = stocks.find((s) =>
+          (s.symbol ?? s.name ?? s.userCode ?? "")
+            .toUpperCase()
+            .startsWith((base ?? "").toUpperCase()),
         );
       }
     }
@@ -825,50 +811,99 @@ const OrderPanel = ({
       return;
     }
 
-    const isCall = selectedAction.includes("CALL");
-    const strikeNum = parseStrike(recommendedStrike);
+    let contract;
+    let tradingsymbol;
+    let symboltoken;
+    let contractLtp;
+    let exchange;
 
-    const wsChainRow = wsChain?.chain?.find(
-      (c) => Number(c.strike) === strikeNum,
-    );
-    // wsContract might be from the wrong expiry if wsChain wasn't filtered, so check expiry if possible
-    let wsContract = wsChainRow?.[isCall ? "ce" : "pe"];
-    if (wsContract && wsContract.expiry_date && expiry && wsContract.expiry_date !== expiry && wsContract.expiry !== expiry) {
-      wsContract = null; // Mismatch expiry
-    }
+    if (instrumentType === "EQUITY") {
+      contract = stockObj;
+      const baseSym = parseSymbolName(stockObj.symbol ?? stockObj.name ?? "").base;
+      tradingsymbol = `${baseSym}-EQ`;
+      symboltoken = stockObj.token;
+      contractLtp = currentPrice;
+      exchange = stockObj.segment;
+    } else {
+      const parsedStock = parseSymbolName(stockObj.symbol ?? stockObj.name ?? "");
+      if (parsedStock.hasExpiry && stockObj.token) {
+        // The user explicitly passed an option contract (e.g. from a watchlist). Use it directly!
+        contract = stockObj;
+        tradingsymbol = contract.symbol ?? contract.tradingsymbol ?? contract.name;
+        symboltoken = contract.token ?? contract.symboltoken;
+        contractLtp = currentPrice;
+        exchange = contract.exch_seg ?? contract.exchange ?? stockObj.segment ?? "NFO";
+      } else {
+        const isCall = selectedAction.includes("CALL");
+        const strikeNum = parseStrike(recommendedStrike);
 
-    // ── Fallback: REST chain API data ──
-    const allRestRows = Array.isArray(chainApiData)
-      ? chainApiData
-      : chainApiData?.chain ?? chainApiData?.data ?? [];
-      
-    const restChainRow = allRestRows?.find((c) => {
-      const rowExpiry = c?.expiry ?? c?.call?.expiry ?? c?.put?.expiry ?? null;
-      return Number(c.strike) === strikeNum && (!rowExpiry || rowExpiry === expiry);
-    });
-    
-    const restContract = restChainRow?.[isCall ? "call" : "put"];
-    const contract = wsContract ?? restContract;
-
-    if (!contract) {
-      setValidationMsg(
-        `Could not find ${isCall ? "CE" : "PE"} contract for strike ${recommendedStrike}.`,
+      const wsChainRow = wsChain?.chain?.find(
+        (c) => Number(c.strike) === strikeNum,
       );
-      return;
+      // ── wsContract matches the live data the user sees in the UI ──
+      let wsContract = wsChainRow?.[isCall ? "ce" : "pe"] ?? wsChainRow?.[isCall ? "call" : "put"];
+
+      // ── Fallback: REST chain API data ──
+      const allRestRows = Array.isArray(chainApiData)
+        ? chainApiData
+        : (chainApiData?.chain ?? chainApiData?.data ?? []);
+
+      let restChainRow = allRestRows?.find((c) => {
+        let rowExpiry = c?.expiry ?? c?.call?.expiry ?? c?.put?.expiry ?? null;
+        if (!rowExpiry && (c?.call?.symbol || c?.put?.symbol)) {
+          const parsed = parseSymbolName(c?.call?.symbol ?? c?.put?.symbol);
+          if (parsed.hasExpiry) rowExpiry = parsed.expiry;
+        }
+
+        let isExpiryMatch = false;
+        if (!rowExpiry && expiry) {
+          const symbolStr = (c?.call?.symbol ?? c?.put?.symbol ?? "").toUpperCase();
+          const shortExpiryMatch = expiry.match(/^(\d{1,2})\s*([A-Za-z]{3})/);
+          const shortExpiry = shortExpiryMatch ? (shortExpiryMatch[1] + shortExpiryMatch[2]).toUpperCase() : "";
+          isExpiryMatch = shortExpiry ? symbolStr.includes(shortExpiry) : true;
+        } else if (rowExpiry && expiry) {
+          const norm1 = rowExpiry.replace(/\s+/g, "").toUpperCase();
+          const norm2 = expiry.replace(/\s+/g, "").toUpperCase();
+          isExpiryMatch = norm1 === norm2 || norm1.startsWith(norm2) || norm2.startsWith(norm1);
+        } else {
+          isExpiryMatch = true;
+        }
+
+        return (
+          Number(c.strike) === strikeNum && isExpiryMatch
+        );
+      });
+
+      // ── Fallback: Mirror the StrikeMap fallback. If strict expiry matching fails, just match the strike. ──
+      if (!restChainRow) {
+        restChainRow = allRestRows?.find((c) => Number(c.strike) === strikeNum);
+      }
+
+      const restContract = restChainRow?.[isCall ? "call" : "put"];
+      contract = wsContract ?? restContract;
+
+      if (!contract) {
+        setValidationMsg(
+          `Could not find ${isCall ? "CE" : "PE"} contract for strike ${recommendedStrike}.`,
+        );
+        return;
+      }
+
+      tradingsymbol =
+        contract?.symbol ??
+        contract?.name ??
+        stockObj.userCode;
+      symboltoken =
+        contract?.token ?? contract?.symboltoken ?? stockObj.token;
+      contractLtp = wsContract?.ltp != null ? Number(wsContract.ltp) : null;
+      // Default to NFO for options
+      exchange = contract?.exch_seg ?? contract?.exchange ?? "NFO";
+      }
     }
 
-    const tradingsymbol =
-      contract?.symbol ??
-      contract?.tradingsymbol ??
-      contract?.name ??
-      stockObj.userCode;
-    const symboltoken =
-      contract?.token ?? contract?.symboltoken ?? stockObj.token;
-    const contractLtp = wsContract?.ltp != null ? Number(wsContract.ltp) : null;
-
-    const isBuy = selectedAction === "BUY_CALL" || selectedAction === "BUY_PUT";
+    const isBuy = selectedAction === "BUY_CALL" || selectedAction === "BUY_PUT" || selectedAction === "BUY_EQ";
     const isSquareOff =
-      selectedAction === "SQ_CALL" || selectedAction === "SQ_PUT";
+      selectedAction === "SQ_CALL" || selectedAction === "SQ_PUT" || selectedAction === "SELL_EQ";
 
     if (isBuy) {
       // ── BUY: dispatch order ──
@@ -877,11 +912,7 @@ const OrderPanel = ({
         tradingsymbol,
         symboltoken,
         transactiontype: ACTION_MAP[selectedAction],
-        exchange:
-          contract?.exch_seg ??
-          contract?.exchange ??
-          stockObj?.segment ??
-          "NFO",
+        exchange,
         ordertype: orderType,
         producttype: product,
         duration: validity || "DAY",
@@ -889,7 +920,7 @@ const OrderPanel = ({
           orderType === "MARKET"
             ? "0"
             : String(contractLtp ?? currentPrice ?? 0),
-        quantity: qty * lotSize,
+        quantity: instrumentType === "EQUITY" ? qty : qty * lotSize,
         squareoff: "0",
       };
 
@@ -937,7 +968,10 @@ const OrderPanel = ({
       console.log("📤 SQUARE OFF PAYLOAD:", payload);
 
       try {
-        console.log("Simulating square off recording (no actual API call)", payload);
+        console.log(
+          "Simulating square off recording (no actual API call)",
+          payload,
+        );
         // const res = await apiService.post("api/backtest/dashboard", payload);
         // console.log("✅ Square off recorded:", res);
         setValidationMsg("");
@@ -962,6 +996,28 @@ const OrderPanel = ({
         padding: "10px 0px",
       }}
     >
+      {/* ── INSTRUMENT TYPE TOGGLE ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        {["EQUITY", "OPTIONS"].map((type) => (
+          <button
+            key={type}
+            onClick={() => setInstrumentType(type)}
+            style={{
+              flex: 1,
+              padding: "10px",
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              background: instrumentType === type ? "var(--accent-color)" : "var(--bg-secondary)",
+              color: instrumentType === type ? "#fff" : "var(--text-secondary)",
+              border: `1px solid ${instrumentType === type ? "transparent" : "var(--border-color)"}`,
+              cursor: "pointer",
+            }}
+          >
+            {type}
+          </button>
+        ))}
+      </div>
       {/* ── STEP 1 ── */}
       <div style={s.sectionTitle}>
         <span style={s.sectionBar}>1</span>Select Stock & Expiry
@@ -1104,36 +1160,31 @@ const OrderPanel = ({
           </div>
 
           <div
-          style={{
-            // Show expiry whenever stock is set (contract strings always have expiry)
-            display: stock ? "block" : "none",
-          }}
+            style={{
+              // Show expiry whenever stock is set and we are in OPTIONS mode
+              display: stock && instrumentType === "OPTIONS" ? "block" : "none",
+            }}
           >
             <label style={s.label}>Expiry</label>
-            <select
-              style={s.select}
-              value={expiry}
-              onChange={(e) => {
-                setExpiry(e.target.value);
-                setValidationMsg("");
+            <div
+              style={{
+                ...s.input,
+                display: "flex",
+                alignItems: "center",
+                background: "var(--bg-secondary)",
+                color: "var(--text-primary)",
+                fontWeight: 700,
               }}
-              disabled={chainLoading}
             >
-              <option value="">
-                {chainLoading ? "Loading…" : "Select expiry"}
-              </option>
-              {/* Always include the current expiry as an option, even while expiries[] loads */}
-              {[...new Set([...(expiry ? [expiry] : []), ...expiries])].map((e) => (
-                <option key={e} value={e}>
-                  {e}
-                </option>
-              ))}
-            </select>
+              {expiry || "—"}
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── STEP 2 ── */}
+      {instrumentType === "OPTIONS" && (
+        <>
       <div style={s.sectionTitle}>
         <span style={s.sectionBar}>2</span>Auto Strike Selection
         <span
@@ -1280,6 +1331,8 @@ const OrderPanel = ({
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* ── STEP 3 ── */}
       <div style={s.sectionTitle}>
@@ -1305,8 +1358,17 @@ const OrderPanel = ({
               }}
             >
               <option value="">Select</option>
-              <option>INTRADAY</option>
-              <option>CARRYFORWARD</option>
+              {instrumentType === "EQUITY" ? (
+                <>
+                  <option>DELIVERY</option>
+                  <option>INTRADAY</option>
+                </>
+              ) : (
+                <>
+                  <option>INTRADAY</option>
+                  <option>CARRYFORWARD</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -1327,7 +1389,7 @@ const OrderPanel = ({
           </div>
 
           <div>
-            <label style={s.label}>Quantity (Lots)</label>
+            <label style={s.label}>Quantity ({instrumentType === "EQUITY" ? "Shares" : "Lots"})</label>
             <div style={{ display: "flex", alignItems: "center" }}>
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -1361,15 +1423,17 @@ const OrderPanel = ({
                 }}
               >
                 {qty}{" "}
-                <span
-                  style={{
-                    fontSize: "0.65rem",
-                    color: "var(--text-secondary)",
-                    marginLeft: 4,
-                  }}
-                >
-                  × {lotSize}
-                </span>
+                {instrumentType === "OPTIONS" && (
+                  <span
+                    style={{
+                      fontSize: "0.65rem",
+                      color: "var(--text-secondary)",
+                      marginLeft: 4,
+                    }}
+                  >
+                    × {lotSize}
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => setQty((q) => q + 1)}
@@ -1396,7 +1460,7 @@ const OrderPanel = ({
                 textAlign: "center",
               }}
             >
-              {qty * lotSize} shares total
+              {instrumentType === "OPTIONS" ? `${qty * lotSize} shares total` : ""}
             </div>
           </div>
 
@@ -1431,19 +1495,21 @@ const OrderPanel = ({
               }}
             >
               {currentPrice != null
-                ? `₹ ${(currentPrice * qty * lotSize).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                ? `₹ ${(currentPrice * (instrumentType === "EQUITY" ? qty : qty * lotSize)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                 : "—"}
             </div>
-            <div
-              style={{
-                fontSize: "0.6rem",
-                color: "var(--text-secondary)",
-                marginTop: 3,
-                textAlign: "center",
-              }}
-            >
-              {qty} lot{qty !== 1 ? "s" : ""} × {lotSize} shares
-            </div>
+            {instrumentType === "OPTIONS" && (
+              <div
+                style={{
+                  fontSize: "0.6rem",
+                  color: "var(--text-secondary)",
+                  marginTop: 3,
+                  textAlign: "center",
+                }}
+              >
+                {qty} lot{qty !== 1 ? "s" : ""} × {lotSize} shares
+              </div>
+            )}
           </div>
 
           <div>
@@ -1488,12 +1554,27 @@ const OrderPanel = ({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr 1fr",
+          gridTemplateColumns: instrumentType === "EQUITY" ? "1fr 1fr" : "1fr 1fr 1fr 1fr",
           gap: 10,
           marginBottom: 4,
         }}
       >
-        {ACTIONS.map(({ key, label, sub, bg, text }) => {
+        {(instrumentType === "EQUITY" ? [
+          {
+            key: "BUY_EQ",
+            label: "Buy",
+            sub: "Long",
+            bg: "var(--success-color)",
+            text: "#fff",
+          },
+          {
+            key: "SELL_EQ",
+            label: "Sell",
+            sub: "Short",
+            bg: "var(--danger-color)",
+            text: "#fff",
+          },
+        ] : ACTIONS).map(({ key, label, sub, bg, text }) => {
           const isSelected = action === key;
           return (
             <button

@@ -1,68 +1,7 @@
 import React, { useEffect, useState } from "react";
 import apiService from "../../services/apiServices";
 
-const MOCK_ORDERS = [
-  {
-    id: "ORD001",
-    time: "09:32:14",
-    stock: "RELIANCE",
-    type: "BUY_CALL",
-    strike: "2,950",
-    expiry: "30 MAY 2024",
-    qty: 2,
-    lots: 150,
-    price: 612.5,
-    status: "COMPLETE",
-  },
-  {
-    id: "ORD002",
-    time: "09:45:02",
-    stock: "NIFTY",
-    type: "BUY_PUT",
-    strike: "22,200",
-    expiry: "06 JUN 2024",
-    qty: 1,
-    lots: 75,
-    price: 188.0,
-    status: "COMPLETE",
-  },
-  {
-    id: "ORD003",
-    time: "10:01:37",
-    stock: "BANKNIFTY",
-    type: "SQ_CALL",
-    strike: "47,500",
-    expiry: "30 MAY 2024",
-    qty: 1,
-    lots: 15,
-    price: 320.0,
-    status: "PENDING",
-  },
-  {
-    id: "ORD004",
-    time: "10:18:55",
-    stock: "INFY",
-    type: "BUY_CALL",
-    strike: "1,480",
-    expiry: "27 JUN 2024",
-    qty: 3,
-    lots: 225,
-    price: 95.25,
-    status: "REJECTED",
-  },
-  {
-    id: "ORD005",
-    time: "10:34:21",
-    stock: "TCS",
-    type: "SQ_PUT",
-    strike: "3,900",
-    expiry: "06 JUN 2024",
-    qty: 1,
-    lots: 75,
-    price: 210.75,
-    status: "COMPLETE",
-  },
-];
+
 
 const TYPE_META = {
   BUY_CALL: {

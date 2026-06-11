@@ -22,9 +22,9 @@ ChartJS.register(
   Tooltip,
   Legend,
 );
-import socket from "../../services/socket";
+import { io } from "socket.io-client";
 import apiService from "../../services/apiServices";
-import axios from "axios";
+import { SOCKET_URL } from "../../services/websocket/socket";
 
 const customDataLabelsPlugin = {
   id: "customDataLabels",
@@ -113,6 +113,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
 
   const [data, setData] = useState([]);
   const [metrics, setMetrics] = useState({});
+  const [loading, setLoading] = useState(true);
 
   let currentSymbol = selectedCurrency?.name || selectedCurrency;
   if (currentSymbol) {
@@ -123,151 +124,64 @@ const OIAnalytics = ({ selectedCurrency }) => {
   }
 
   useEffect(() => {
-    console.log(
-      "OI Analytics Component Mounted. Listening for 'option-chain-data' events on socket:",
-      socket.id,
-    );
+    if (!currentSymbol) return;
 
-    if (currentSymbol) {
-      const fetchAndSubscribe = async () => {
-        try {
-          const response = await apiService.get("/options/chain", {
+    setLoading(true);
+    const s = io(SOCKET_URL);
+
+    const fetchAndSubscribe = async () => {
+      try {
+        const response = await apiService.get("/options/chain", {
+          symbol: currentSymbol,
+        });
+        const expiries = response?.allExpiries ?? response?.expiries ?? [];
+
+        if (expiries && expiries.length > 0) {
+          const firstExpiry = expiries[0];
+          console.log(
+            `Subscribing to option chain for ${currentSymbol} at expiry ${firstExpiry}`,
+          );
+          s.emit("set-filters", {
             symbol: currentSymbol,
+            expiry: firstExpiry,
           });
-          const expiries = response?.allExpiries ?? response?.expiries ?? [];
-
-          if (expiries && expiries.length > 0) {
-            const firstExpiry = expiries[0];
-            console.log(
-              `Subscribing to option chain for ${currentSymbol} at expiry ${firstExpiry}`,
-            );
-
-            socket.emit("set-filters", {
-              symbol: currentSymbol,
-              expiry: firstExpiry,
-            });
-          } else {
-            console.warn("No expiries found for symbol", currentSymbol);
-          }
-        } catch (error) {
-          console.error(
-            "Error fetching options/chain for OI Analytics:",
-            error,
-          );
+        } else {
+          console.warn("No expiries found for symbol", currentSymbol);
+          setLoading(false);
         }
-      };
+      } catch (error) {
+        console.error("Error fetching options/chain for OI Analytics:", error);
+        setLoading(false);
+      }
+    };
 
-      const fetchHistoricalData = async () => {
-        try {
-          // Using direct axios call for port 3000
-          const res = await axios.get(
-            "http://192.168.1.8:3000/api/historical-data",
-            {
-              params: { symbol: currentSymbol },
-            },
-          );
-          const responseData = res.data;
-          console.log("Historical Data:", responseData);
-
-          if (
-            responseData &&
-            responseData.data &&
-            Array.isArray(responseData.data)
-          ) {
-            console.log("Historical Data:", responseData.data);
-
-            // Group the flat CE/PE array by strike_price
-            const grouped = {};
-            let highestCall = { strike: "-", value: 0 };
-            let highestPut = { strike: "-", value: 0 };
-            let totalCallOI = 0;
-            let totalPutOI = 0;
-
-            responseData.data.forEach((item) => {
-              const strike = Number(item.strike_price);
-              if (!grouped[strike]) {
-                grouped[strike] = {
-                  strikePrice: strike,
-                  callOI: 0,
-                  putOI: 0,
-                  pcr: 0,
-                };
-              }
-
-              const oiValue = Number(item.oi || 0);
-              if (item.option_type === "CE") {
-                grouped[strike].callOI = oiValue;
-                totalCallOI += oiValue;
-                if (oiValue > highestCall.value) {
-                  highestCall = { strike: `${strike} CE`, value: oiValue };
-                }
-              } else if (item.option_type === "PE") {
-                grouped[strike].putOI = oiValue;
-                totalPutOI += oiValue;
-                if (oiValue > highestPut.value) {
-                  highestPut = { strike: `${strike} PE`, value: oiValue };
-                }
-              }
-            });
-
-            // Calculate PCR (Put OI / Call OI)
-            Object.values(grouped).forEach((g) => {
-              g.pcr =
-                g.callOI > 0 ? Number((g.putOI / g.callOI).toFixed(2)) : 0;
-            });
-
-            const overallPCR =
-              totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : 0;
-
-            // Set basic metrics for historical view
-            setMetrics((prev) => ({
-              ...prev,
-              highestCallOI: {
-                strike: highestCall.strike,
-                value: (highestCall.value / 100000).toFixed(1) + "L",
-              },
-              highestPutOI: {
-                strike: highestPut.strike,
-                value: (highestPut.value / 100000).toFixed(1) + "L",
-              },
-              totalOICE: (totalCallOI / 100000).toFixed(2) + " L",
-              totalOIPE: (totalPutOI / 100000).toFixed(2) + " L",
-              pcrOI: overallPCR,
-              expiryDate: responseData.data[0]?.expiry_date || "-",
-              spotPrice: responseData.data[0]?.ltp || prev.spotPrice || "-",
-            }));
-
-            const formattedHistorical = Object.values(grouped).sort(
-              (a, b) => a.strikePrice - b.strikePrice,
-            );
-            console.log(
-              "Mapped Data for Chart (Historical):",
-              formattedHistorical,
-            );
-
-            setData((prev) => (prev.length === 0 ? formattedHistorical : prev)); // Only set if websocket hasn't fired yet
-          }
-        } catch (error) {
-          console.error("Error fetching historical data:", error);
-        }
-      };
-
+    s.on("connect", () => {
       fetchAndSubscribe();
-      fetchHistoricalData();
-    }
+    });
 
     const handleOptionChainData = (response) => {
-      console.log("Total Records:", response.totalRecords);
-      console.log("Live Option Chain:", response);
-
+      setLoading(false);
       if (response && response.data && response.data.length > 0) {
-        // Map the backend data to ensure Recharts can read the keys properly
+        let chainData = response.data;
+        if (response.symbol === "ALL") {
+          chainData = chainData.filter((item) => {
+            const symMatch =
+              item.symbol === currentSymbol || item.name === currentSymbol;
+            return symMatch;
+          });
+        }
+        if (chainData.length === 0) return;
+
         let formattedData = [];
 
-        // Check if the live data comes as flat array (like historical) or grouped
-        if (response.data[0].option_type) {
+        if (chainData[0]?.option_type) {
           const grouped = {};
-          response.data.forEach((item) => {
+          let highestCall = { strike: "-", value: 0 };
+          let highestPut = { strike: "-", value: 0 };
+          let totalCallOI = 0;
+          let totalPutOI = 0;
+
+          chainData.forEach((item) => {
             const strike = Number(item.strike_price || item.strike);
             if (!grouped[strike])
               grouped[strike] = {
@@ -277,20 +191,53 @@ const OIAnalytics = ({ selectedCurrency }) => {
                 pcr: 0,
               };
 
-            if (item.option_type === "CE")
-              grouped[strike].callOI = Number(item.oi || 0);
-            if (item.option_type === "PE")
-              grouped[strike].putOI = Number(item.oi || 0);
+            const oiValue = Number(item.oi || 0);
+            if (item.option_type === "CE") {
+              grouped[strike].callOI = oiValue;
+              totalCallOI += oiValue;
+              if (oiValue > highestCall.value) {
+                highestCall = { strike: `${strike} CE`, value: oiValue };
+              }
+            } else if (item.option_type === "PE") {
+              grouped[strike].putOI = oiValue;
+              totalPutOI += oiValue;
+              if (oiValue > highestPut.value) {
+                highestPut = { strike: `${strike} PE`, value: oiValue };
+              }
+            }
           });
+
           Object.values(grouped).forEach((g) => {
             g.pcr = g.callOI > 0 ? Number((g.putOI / g.callOI).toFixed(2)) : 0;
           });
+
+          const overallPCR =
+            totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : 0;
+
+          setMetrics((prev) => ({
+            ...prev,
+            highestCallOI: {
+              strike: highestCall.strike,
+              value: (highestCall.value / 100000).toFixed(1) + "L",
+            },
+            highestPutOI: {
+              strike: highestPut.strike,
+              value: (highestPut.value / 100000).toFixed(1) + "L",
+            },
+            totalOICE: (totalCallOI / 100000).toFixed(2) + " L",
+            totalOIPE: (totalPutOI / 100000).toFixed(2) + " L",
+            pcrOI: overallPCR,
+            expiryDate: chainData[0]?.expiry_date || "-",
+            spotPrice:
+              response.spotPrice || chainData[0]?.ltp || prev.spotPrice || "-",
+            ...response.metrics,
+          }));
+
           formattedData = Object.values(grouped).sort(
             (a, b) => a.strikePrice - b.strikePrice,
           );
         } else {
-          // Pre-grouped data fallback
-          formattedData = response.data.map((item) => ({
+          formattedData = chainData.map((item) => ({
             strikePrice:
               item.strikePrice || item.strike || item.STRIKE_PRC || 0,
             callOI: item.callOI || item.CE_OI || item.ce_oi || 0,
@@ -301,18 +248,14 @@ const OIAnalytics = ({ selectedCurrency }) => {
 
         setData(formattedData);
       }
-
-      if (response && response.metrics) {
-        setMetrics((prev) => ({ ...prev, ...response.metrics }));
-      }
     };
 
-    socket.on("option-chain-data", handleOptionChainData);
+    s.on("option-chain-data", handleOptionChainData);
 
     return () => {
-      socket.off("option-chain-data", handleOptionChainData);
+      s.disconnect();
     };
-  }, [selectedCurrency]);
+  }, [currentSymbol]);
 
   const styles = {
     container: {
@@ -519,108 +462,152 @@ const OIAnalytics = ({ selectedCurrency }) => {
         </div>
 
         <div
-          style={{ width: "100%", height: "400px", background: "transparent" }}
+          style={{
+            width: "100%",
+            height: "400px",
+            background: "transparent",
+            position: "relative",
+          }}
         >
-          <div style={{ width: "100%", height: "400px" }}>
-            <Bar
-              data={{
-                labels: data.map((d) => d.strikePrice),
-                datasets: [
-                  {
-                    type: "bar",
-                    label: "Call OI",
-                    data: data.map((d) => d.callOI),
-                    backgroundColor: "#ef4444",
-                    borderRadius: 2,
-                    maxBarThickness: 20,
-                    yAxisID: "y",
-                  },
-                  {
-                    type: "bar",
-                    label: "Put OI",
-                    data: data.map((d) => d.putOI),
-                    backgroundColor: "#22ab94",
-                    borderRadius: 2,
-                    maxBarThickness: 20,
-                    yAxisID: "y",
-                  },
-                  {
-                    type: "line",
-                    label: "PCR (OI)",
-                    data: data.map((d) => d.pcr),
-                    borderColor: "#7e57c2",
-                    backgroundColor: "#7e57c2",
-                    borderDash: [4, 4],
-                    pointRadius: 4,
-                    pointBackgroundColor: "#7e57c2",
-                    yAxisID: "y1",
-                    tension: 0.2,
-                  },
-                ],
+          {loading ? (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "column",
+                gap: "10px",
+                color: "var(--text-secondary)",
+                zIndex: 10,
               }}
-              plugins={[customDataLabelsPlugin, spotPriceLinePlugin]}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    labels: { color: "var(--text-primary)" },
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: (ctx) =>
-                        `${ctx.dataset.label}: ${ctx.dataset.type === "line" ? ctx.parsed.y : ctx.parsed.y.toLocaleString()}`,
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  border: "3px solid var(--border-color)",
+                  borderTop: "3px solid var(--accent-color)",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+              <div>Loading OI Analytics...</div>
+              <style>
+                {`
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                `}
+              </style>
+            </div>
+          ) : (
+            <div style={{ width: "100%", height: "400px" }}>
+              <Bar
+                data={{
+                  labels: data.map((d) => d.strikePrice),
+                  datasets: [
+                    {
+                      type: "bar",
+                      label: "Call OI",
+                      data: data.map((d) => d.callOI),
+                      backgroundColor: "#ef4444",
+                      borderRadius: 2,
+                      maxBarThickness: 20,
+                      yAxisID: "y",
                     },
-                  },
-                  spotPriceLine: {
-                    spotPrice: metrics?.spotPrice
-                      ? parseFloat(
-                          metrics.spotPrice.toString().replace(/,/g, ""),
-                        )
-                      : null,
-                  },
-                },
-                scales: {
-                  x: {
-                    ticks: { color: "var(--text-primary)", fontSize: 12 },
-                    grid: { color: gridColor },
-                    title: {
-                      display: true,
-                      text: "Strike Price",
-                      color: "var(--text-primary)",
+                    {
+                      type: "bar",
+                      label: "Put OI",
+                      data: data.map((d) => d.putOI),
+                      backgroundColor: "#22ab94",
+                      borderRadius: 2,
+                      maxBarThickness: 20,
+                      yAxisID: "y",
                     },
-                  },
-                  y: {
-                    type: "linear",
-                    position: "left",
-                    ticks: {
-                      color: "var(--text-primary)",
-                      callback: function (value) {
-                        return (value / 100000).toFixed(0) + "L";
+                    {
+                      type: "line",
+                      label: "PCR (OI)",
+                      data: data.map((d) => d.pcr),
+                      borderColor: "#7e57c2",
+                      backgroundColor: "#7e57c2",
+                      borderDash: [4, 4],
+                      pointRadius: 4,
+                      pointBackgroundColor: "#7e57c2",
+                      yAxisID: "y1",
+                      tension: 0.2,
+                    },
+                  ],
+                }}
+                plugins={[customDataLabelsPlugin, spotPriceLinePlugin]}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      labels: { color: "var(--text-primary)" },
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (ctx) =>
+                          `${ctx.dataset.label}: ${ctx.dataset.type === "line" ? ctx.parsed.y : ctx.parsed.y.toLocaleString()}`,
                       },
                     },
-                    grid: { color: gridColor },
-                    title: {
-                      display: true,
-                      text: "Open Interest (OI)",
-                      color: "var(--text-primary)",
+                    spotPriceLine: {
+                      spotPrice: metrics?.spotPrice
+                        ? parseFloat(
+                            metrics.spotPrice.toString().replace(/,/g, ""),
+                          )
+                        : null,
                     },
                   },
-                  y1: {
-                    type: "linear",
-                    position: "right",
-                    ticks: { color: "var(--text-primary)" },
-                    grid: { drawOnChartArea: false },
-                    title: {
-                      display: true,
-                      text: "PCR (OI)",
-                      color: "var(--text-primary)",
+                  scales: {
+                    x: {
+                      ticks: { color: "var(--text-primary)", fontSize: 12 },
+                      grid: { color: gridColor },
+                      title: {
+                        display: true,
+                        text: "Strike Price",
+                        color: "var(--text-primary)",
+                      },
+                    },
+                    y: {
+                      type: "linear",
+                      position: "left",
+                      ticks: {
+                        color: "var(--text-primary)",
+                        callback: function (value) {
+                          return (value / 100000).toFixed(0) + "L";
+                        },
+                      },
+                      grid: { color: gridColor },
+                      title: {
+                        display: true,
+                        text: "Open Interest (OI)",
+                        color: "var(--text-primary)",
+                      },
+                    },
+                    y1: {
+                      type: "linear",
+                      position: "right",
+                      ticks: { color: "var(--text-primary)" },
+                      grid: { drawOnChartArea: false },
+                      title: {
+                        display: true,
+                        text: "PCR (OI)",
+                        color: "var(--text-primary)",
+                      },
                     },
                   },
-                },
-              }}
-            />
-          </div>
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 

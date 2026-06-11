@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { IoCloseSharp } from "react-icons/io5";
 import { FiSearch } from "react-icons/fi";
-import { GrBitcoin } from "react-icons/gr";
-import { Link } from "react-router-dom";
 import { Form, InputGroup, ListGroup } from "react-bootstrap";
 import { Spinner } from "./Spinner";
 import apiService from "../../services/apiServices";
@@ -10,21 +8,27 @@ import { useDebounce } from "../../util/common";
 import { getStockLogo } from "../../util/stockSymbol/helper";
 import NSE from "../../assets/NSE.svg";
 import BSE from "../../assets/BSE.svg";
-import socket from "../../services/socket";
-import SocketEvents from "../../services/socketEvent";
+
 
 const SymbolAvatar = ({ code, symbol }) => {
   const [error, setError] = useState(false);
-  
+
   if (error) {
     const initial = (symbol || code || "S").charAt(0).toUpperCase();
     return (
-      <div 
+      <div
         style={{
-          width: 24, height: 24, borderRadius: "50%",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "var(--accent-color)", color: "#fff",
-          fontSize: "12px", fontWeight: "bold", flexShrink: 0
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--accent-color)",
+          color: "#fff",
+          fontSize: "12px",
+          fontWeight: "bold",
+          flexShrink: 0,
         }}
       >
         {initial}
@@ -96,7 +100,7 @@ export const ListingModal = ({
     if (onSubmit) {
       onSubmit(rsiValue);
     }
-    
+
     // Close modal if needed or let parent handle it
   };
   const debouncedIndicator = useDebounce(searchIndicator, 500);
@@ -285,7 +289,6 @@ export const ListingModal = ({
         ltp: item?.ltp,
       };
     }
-    
 
     // EQUITY / OPTIONS
     return {
@@ -380,7 +383,8 @@ export const ListingModal = ({
                     fontWeight: activeTab === tab ? "600" : "400",
                     fontFamily: "'Trebuchet MS', sans-serif",
                     letterSpacing: "0.03em",
-                    color: activeTab === tab ? "var(--text-primary)" : "#6a7187",
+                    color:
+                      activeTab === tab ? "var(--text-primary)" : "#6a7187",
                     cursor: "pointer",
                     transition: "color 0.15s ease, border-color 0.15s ease",
                     whiteSpace: "nowrap",
@@ -402,11 +406,21 @@ export const ListingModal = ({
 
             {/* Search */}
             <InputGroup className="mb-3">
-              <InputGroup.Text style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", borderColor: "var(--border-color)" }}>
+              <InputGroup.Text
+                style={{
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-secondary)",
+                  borderColor: "var(--border-color)",
+                }}
+              >
                 <FiSearch />
               </InputGroup.Text>
               <Form.Control
-                style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
+                style={{
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
+                  borderColor: "var(--border-color)",
+                }}
                 type="text"
                 autoFocus
                 placeholder="Search symbol..."
@@ -416,7 +430,15 @@ export const ListingModal = ({
             </InputGroup>
 
             {/* List */}
-            <div style={{ flex: 1, overflowY: "auto", marginTop: "10px", paddingRight: "5px" }} className="custom-scrollbar">
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                marginTop: "10px",
+                paddingRight: "5px",
+              }}
+              className="custom-scrollbar"
+            >
               {loading ? (
                 <Spinner />
               ) : filteredList?.length > 0 ? (
@@ -441,10 +463,18 @@ export const ListingModal = ({
                           }
                         }}
                         className="d-flex justify-content-between align-items-center"
-                        style={{ cursor: "pointer", background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
+                        style={{
+                          cursor: "pointer",
+                          background: "var(--bg-secondary)",
+                          color: "var(--text-primary)",
+                          borderColor: "var(--border-color)",
+                        }}
                       >
                         <div className="d-flex align-items-center gap-2">
-                          <SymbolAvatar code={item?.code} symbol={item?.symbol || item?.name} />
+                          <SymbolAvatar
+                            code={item?.code}
+                            symbol={item?.symbol || item?.name}
+                          />
                           <div className="text-uppercase fw-medium small">
                             {item?.name} ({item?.symbol}) {item?.code}
                             {item?.type === "FUTURES" && (
@@ -486,7 +516,9 @@ export const ListingModal = ({
                   })}
                 </ListGroup>
               ) : (
-                <p className="text-center text-[var(--text-primary)] py-3">No Data found</p>
+                <p className="text-center text-[var(--text-primary)] py-3">
+                  No Data found
+                </p>
               )}
             </div>
           </div>
@@ -497,11 +529,21 @@ export const ListingModal = ({
           <div className="mt-3 flex flex-col flex-1 overflow-hidden">
             {/* Search */}
             <InputGroup className="mb-3">
-              <InputGroup.Text style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", borderColor: "var(--border-color)" }}>
+              <InputGroup.Text
+                style={{
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-secondary)",
+                  borderColor: "var(--border-color)",
+                }}
+              >
                 <FiSearch />
               </InputGroup.Text>
               <Form.Control
-                style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
+                style={{
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
+                  borderColor: "var(--border-color)",
+                }}
                 type="text"
                 autoFocus
                 placeholder="Search indicators"
@@ -511,7 +553,15 @@ export const ListingModal = ({
             </InputGroup>
 
             {/* List */}
-            <div style={{ flex: 1, overflowY: "auto", marginTop: "10px", paddingRight: "5px" }} className="custom-scrollbar">
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                marginTop: "10px",
+                paddingRight: "5px",
+              }}
+              className="custom-scrollbar"
+            >
               {loading ? (
                 <Spinner />
               ) : filteredIndicators.length > 0 ? (
@@ -537,12 +587,22 @@ export const ListingModal = ({
                           padding: "10px 14px",
                           background: "var(--bg-secondary)",
                           color: "var(--text-primary)",
-                          borderColor: "var(--border-color)"
+                          borderColor: "var(--border-color)",
                         }}
                       >
                         <div>
-                          <span style={{ fontWeight: 500, fontSize: 13 }}>{item.label}</span>
-                          <span style={{ marginLeft: 8, fontSize: 11, color: "#888" }}>{item.slug}</span>
+                          <span style={{ fontWeight: 500, fontSize: 13 }}>
+                            {item.label}
+                          </span>
+                          <span
+                            style={{
+                              marginLeft: 8,
+                              fontSize: 11,
+                              color: "#888",
+                            }}
+                          >
+                            {item.slug}
+                          </span>
                         </div>
                       </ListGroup.Item>
                     );
@@ -564,7 +624,11 @@ export const ListingModal = ({
             <label className="small mb-1">Condition</label>
             <Form.Select
               className="mb-3"
-              style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
+              style={{
+                background: "var(--bg-secondary)",
+                color: "var(--text-primary)",
+                borderColor: "var(--border-color)",
+              }}
               value={rsiValue.condition}
               onChange={(e) =>
                 setRsiValue({
@@ -583,7 +647,11 @@ export const ListingModal = ({
             <label className="small mb-1">RSI Value</label>
             <InputGroup className="mb-3">
               <Form.Control
-                style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", borderColor: "var(--border-color)" }}
+                style={{
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
+                  borderColor: "var(--border-color)",
+                }}
                 type="number"
                 placeholder="Enter RSI Value (e.g. 70)"
                 value={rsiValue.value}

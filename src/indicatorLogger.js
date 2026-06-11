@@ -1,4 +1,4 @@
-import socket from "./services/socket";
+import socket from "./services/websocket/socket";
 
 /**
  * Indicator Logger Utility

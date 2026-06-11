@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
-
-const SOCKET_URL = "http://192.168.1.8:3000";
+import socket from "../../services/websocket/socket";
 
 const SidePanel = ({ stock, expiry }) => {
   const [spotPrice, setSpotPrice] = useState(null);
@@ -12,27 +11,40 @@ const SidePanel = ({ stock, expiry }) => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const autoRefreshRef = useRef(true);
   const prevSpotRef = useRef(null);
-  
+
   // ── Socket state ──
   const [localSocket, setLocalSocket] = useState(null);
 
   // Initialize socket
   useEffect(() => {
-    const s = io(SOCKET_URL);
-    setLocalSocket(s);
-    s.on("connect", () => console.log("[SidePanel] Data socket connected"));
-    s.on("disconnect", () => console.log("[SidePanel] Data socket disconnected"));
+    setLocalSocket(socket);
+
+    const onConnect = () => console.log("[SidePanel] Data socket connected");
+    const onDisconnect = () => console.log("[SidePanel] Data socket disconnected");
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
 
     return () => {
-      s.disconnect();
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      // Removed socket.disconnect() so we don't kill the shared connection
     };
   }, []);
-  
+
   const parseSymbolName = (fullName) => {
-    if (!fullName || typeof fullName !== "string") return { base: fullName, hasExpiry: false };
-    const match = fullName.match(/^([A-Z-]+)\s?(\d{1,2}[A-Z]{3}\d{2,4})\s?(.*)$/i);
+    if (!fullName || typeof fullName !== "string")
+      return { base: fullName, hasExpiry: false };
+    const match = fullName.match(
+      /^([A-Z-]+)\s?(\d{1,2}[A-Z]{3}\d{2,4})\s?(.*)$/i,
+    );
     if (match) {
-      return { base: match[1].trim(), expiry: match[2], suffix: match[3].trim(), hasExpiry: true };
+      return {
+        base: match[1].trim(),
+        expiry: match[2],
+        suffix: match[3].trim(),
+        hasExpiry: true,
+      };
     }
     return { base: fullName, hasExpiry: false };
   };
@@ -47,7 +59,7 @@ const SidePanel = ({ stock, expiry }) => {
     const fullName = stock?.name ?? stock;
     const symbol = parseSymbolName(fullName).base;
     if (!symbol) return;
-    
+
     const filtersPayload = { symbol, expiry_date: expiry };
     console.log("[SidePanel] Emitting set-filters:", filtersPayload);
     localSocket.emit("set-filters", filtersPayload);
@@ -56,8 +68,11 @@ const SidePanel = ({ stock, expiry }) => {
   useEffect(() => {
     if (!localSocket) return;
 
-    console.log("[SidePanel] useEffect mounted. localSocket.connected:", localSocket.connected);
-    
+    console.log(
+      "[SidePanel] useEffect mounted. localSocket.connected:",
+      localSocket.connected,
+    );
+
     // Debug all incoming events on this socket
     const catchAll = (event, ...args) => {
       // console.log(`[SidePanel] Socket event received: ${event}`);
@@ -82,8 +97,20 @@ const SidePanel = ({ stock, expiry }) => {
       }
 
       if (data.atmStrike != null) setAtmStrike(data.atmStrike);
-      
-      const chainData = data?.chain ?? data?.data ?? (Array.isArray(data) ? data : []);
+      if (data.symbol && data.symbol !== symbol && data.symbol !== "ALL")
+        return;
+
+      let chainData =
+        data?.chain ?? data?.data ?? (Array.isArray(data) ? data : []);
+
+      if (data.symbol === "ALL") {
+        chainData = chainData.filter((item) => {
+          const itemSym = item.symbol || item.name;
+          const itemExp = item.expiry_date || item.expiry;
+          return itemSym === symbol && itemExp === expiry;
+        });
+      }
+
       if (chainData.length > 0) {
         let finalStrikes = chainData;
 
@@ -132,7 +159,9 @@ const SidePanel = ({ stock, expiry }) => {
       localSocket.off("connect", subscribe);
       localSocket.offAny(catchAll);
       const unsubSymbol = parseSymbolName(stock?.name ?? stock).base;
-      console.log("[SidePanel] Emitting unsubscribeOptionChain:", { symbol: unsubSymbol });
+      console.log("[SidePanel] Emitting unsubscribeOptionChain:", {
+        symbol: unsubSymbol,
+      });
       localSocket.emit("unsubscribeOptionChain", { symbol: unsubSymbol });
     };
   }, [stock, expiry, localSocket]);
@@ -156,7 +185,11 @@ const SidePanel = ({ stock, expiry }) => {
   };
 
   const changeColor =
-    spotChange == null ? "var(--text-primary)" : spotChange >= 0 ? "var(--success-color)" : "var(--danger-color)";
+    spotChange == null
+      ? "var(--text-primary)"
+      : spotChange >= 0
+        ? "var(--success-color)"
+        : "var(--danger-color)";
   const changeSign = spotChange != null && spotChange >= 0 ? "+" : "";
 
   return (
@@ -171,7 +204,8 @@ const SidePanel = ({ stock, expiry }) => {
       <div className="card-custom p-0">
         <div className="p-2 d-flex justify-content-between align-items-center border-bottom border-secondary">
           <span className="small fw-bold">
-            LIVE OPTION CHAIN ({parseSymbolName(stock?.name ?? stock).base} {expiry ?? "NEAREST EXPIRY"})
+            LIVE OPTION CHAIN ({parseSymbolName(stock?.name ?? stock).base}{" "}
+            {expiry ?? "NEAREST EXPIRY"})
           </span>
           <div className="d-flex align-items-center gap-2">
             <span className="x-small text-muted">Auto Refresh</span>
@@ -250,14 +284,24 @@ const SidePanel = ({ stock, expiry }) => {
                   >
                     <td
                       style={
-                        isATM ? { color: "var(--success-color)", fontWeight: "bold" } : {}
+                        isATM
+                          ? {
+                              color: "var(--success-color)",
+                              fontWeight: "bold",
+                            }
+                          : {}
                       }
                     >
                       {formatOI(row.ce?.oi)}
                     </td>
                     <td
                       style={
-                        isATM ? { color: "var(--success-color)", fontWeight: "bold" } : {}
+                        isATM
+                          ? {
+                              color: "var(--success-color)",
+                              fontWeight: "bold",
+                            }
+                          : {}
                       }
                     >
                       {formatPrice(row.ce?.ltp)}
@@ -280,14 +324,18 @@ const SidePanel = ({ stock, expiry }) => {
                     </td>
                     <td
                       style={
-                        isATM ? { color: "var(--danger-color)", fontWeight: "bold" } : {}
+                        isATM
+                          ? { color: "var(--danger-color)", fontWeight: "bold" }
+                          : {}
                       }
                     >
                       {formatPrice(row.pe?.ltp)}
                     </td>
                     <td
                       style={
-                        isATM ? { color: "var(--danger-color)", fontWeight: "bold" } : {}
+                        isATM
+                          ? { color: "var(--danger-color)", fontWeight: "bold" }
+                          : {}
                       }
                     >
                       {formatOI(row.pe?.oi)}

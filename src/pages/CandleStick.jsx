@@ -20,7 +20,8 @@ import Navbar from "../components/layout/Navbar";
 import LeftWatchlist from "../components/layout/LeftWatchlist";
 import RightSidebar from "../components/layout/RightSidebar";
 import ChartTabs from "../components/layout/ChartTabs";
-import socket from "../services/socket";
+import useSocket from "../util/useSocket";
+import EVENTS from "../services/websocket/socketEvent";
 
 // import SEO from "../components/SEO";
 import {
@@ -82,17 +83,64 @@ export default function Candlestick() {
   const chartIndicatorHandlerRef = useRef(null);
   const customScriptSeriesRef = useRef(null);
   const customScriptMarkersRef = useRef(null);
+  const lastDeployedMarkersRef = useRef(null);
+  const scannerIntervalRef = useRef(null);
   const pyodideRef = useRef(null);
   const [isDeployed, setIsDeployed] = useState(false);
   const [isPyodideReady, setIsPyodideReady] = useState(false);
 
+  const { matchedCoins, addAlert, clearAllCoins, scanner, removeCoin } =
+    useAlerts();
+  const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsList, setDetailsList] = useState([]);
+  const [activeTab, setActiveTab] = useState("Chart");
+  const [timeframeValue, setTimeframeValue] = useState("5m");
+  const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    try {
+      const raw = localStorage.getItem("selectedCurrency");
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.warn("Failed to read selectedCurrency from localStorage", e);
+    }
+    return {
+      symbol: "ADANIPORTS-EQ",
+      name: "ADANIPORTS",
+      token: 15083,
+      segment: "NSE",
+      expiry: "",
+    };
+  });
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split("T")[0];
+  });
+  const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedIndicator, setSelectedIndicator] = useState([]);
+  const [rangeValue, setRangeValue] = useState("1000");
+  const [chartType, setChartType] = useState("candlestick");
+  const [isMarketOpen, setIsMarketOpen] = useState(false);
+  const [liveOhlcv, setLiveOhlcv] = useState({});
+  const [liveIndicatorData, setLiveIndicatorData] = useState({});
+  const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+  const [editorCode, setEditorCode] = useState(
+    "import pandas as pd\n\n# Example user code\n",
+  );
+  const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
+  const [customSignals, setCustomSignals] = useState([]);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [dashboardSignals, setDashboardSignals] = useState([]);
+  const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
+
+  //code editor
   useEffect(() => {
     // Load Pyodide WebAssembly script dynamically
     if (window.loadPyodide) {
       if (!pyodideRef.current) {
         window
           .loadPyodide({
-            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/",
+            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/",
           })
           .then(async (pyodide) => {
             try {
@@ -110,7 +158,7 @@ export default function Candlestick() {
       script.onload = () => {
         window
           .loadPyodide({
-            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/",
+            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/",
           })
           .then(async (pyodide) => {
             try {
@@ -124,6 +172,12 @@ export default function Candlestick() {
       };
       document.head.appendChild(script);
     }
+    // Cleanup interval on unmount
+    return () => {
+      if (scannerIntervalRef.current) {
+        clearInterval(scannerIntervalRef.current);
+      }
+    };
   }, []);
 
   const handleClearCode = useCallback(() => {
@@ -146,9 +200,141 @@ export default function Candlestick() {
         customScriptMarkersRef.current.setMarkers([]);
       } catch (e) {}
     }
+    lastDeployedMarkersRef.current = null;
+    
+    if (scannerIntervalRef.current) {
+      clearInterval(scannerIntervalRef.current);
+      scannerIntervalRef.current = null;
+    }
+
     setCustomSignals([]);
+    setDashboardSignals([]);
+    setDeployedStrategyCode(null);
     setIsDeployed(false);
   }, []);
+
+  // 1. Polling Effect
+  useEffect(() => {
+    if (!isDeployed || !deployedStrategyCode) {
+      if (scannerIntervalRef.current) {
+        clearInterval(scannerIntervalRef.current);
+        scannerIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const fetchDashboard = async () => {
+      try {
+        const resp = await apiService.get(`/api/strategy/scanner-dashboard`);
+        const data = Array.isArray(resp) ? resp : (resp?.data?.data || resp?.data || []);
+        setDashboardSignals(data);
+      } catch (err) {
+        console.error("Failed to fetch dashboard signals:", err);
+      }
+    };
+
+    if (scannerIntervalRef.current) clearInterval(scannerIntervalRef.current);
+    
+    if (scannerIntervalRef.current) clearInterval(scannerIntervalRef.current);
+    
+    // Fetch immediately on deploy to show existing dashboard results
+    fetchDashboard();
+
+    scannerIntervalRef.current = setInterval(async () => {
+      try {
+        console.log("Background 5m interval: Running scanner trigger...");
+        const payload = { strategy_code: `${deployedStrategyCode}` };
+        
+        // Fire and forget trigger
+        apiService.post(`/api/strategy/run-scanner`, JSON.stringify(payload)).catch(e => console.error(e));
+        
+        // Fetch dashboard for latest results
+        await fetchDashboard();
+      } catch (err) {
+        console.error("Background 5m interval failed:", err);
+      }
+    }, 300000);
+
+    return () => {
+      if (scannerIntervalRef.current) clearInterval(scannerIntervalRef.current);
+    };
+  }, [isDeployed, deployedStrategyCode]);
+
+  // 2. Reactive Plotting Effect
+  useEffect(() => {
+    if (!isDeployed) return;
+
+    const markersToSet = [];
+    const newSignals = [];
+
+    if (dashboardSignals && dashboardSignals.length > 0) {
+      dashboardSignals.forEach((item) => {
+        const type = item.signalType;
+        const utcStr = item.timestamp || item.createdAt || item.updatedAt;
+
+        if (utcStr && type) {
+          const isBuy = type.toUpperCase() === "BUY";
+          
+          // Use unix_timestamp if available, else convert ISO
+          let utcTime;
+          if (item.unix_timestamp) {
+            utcTime = Number(item.unix_timestamp);
+          } else {
+            utcTime = Math.floor(new Date(utcStr).getTime() / 1000);
+          }
+          const chartTime = Number(utcTime) + 19800; // IST_OFFSET
+
+          // Only plot marker if the signal is for the CURRENTLY selected stock
+          const isCurrentStock = item.symbol === selectedCurrency?.name || item.symbol === selectedCurrency?.symbol;
+          
+          if (isCurrentStock) {
+            markersToSet.push({
+              time: chartTime, 
+              position: isBuy ? "belowBar" : "aboveBar",
+              color: isBuy ? "#22c55e" : "#ef4444",
+              shape: isBuy ? "arrowUp" : "arrowDown",
+              text: isBuy ? "BUY" : "SELL",
+              size: 1,
+            });
+          }
+
+          newSignals.unshift({
+            symbol: item.symbol || selectedCurrency?.name || "STOCK",
+            name: item.symbol || selectedCurrency?.name || "STOCK",
+            token: item.symbol,
+            signalType: isBuy ? "BUY" : "SELL",
+            timestamp: new Date(utcStr).toLocaleString(),
+            segment: "SCRIPT",
+          });
+        }
+      });
+      markersToSet.sort((a, b) => a.time - b.time);
+
+      // Auto-open Alerts panel if we have signals
+      if (newSignals.length > 0) {
+        if (typeof setActiveTab === 'function') {
+          setActiveTab("Alerts");
+        }
+      }
+    }
+    
+    lastDeployedMarkersRef.current = markersToSet;
+
+    if (markersToSet.length > 0 && seriesRef.current) {
+      if (!customScriptMarkersRef.current) {
+        customScriptMarkersRef.current = createSeriesMarkers(
+          seriesRef.current,
+          markersToSet,
+        );
+      } else {
+        customScriptMarkersRef.current.setMarkers(markersToSet);
+      }
+    } else if (customScriptMarkersRef.current) {
+      customScriptMarkersRef.current.setMarkers([]);
+    }
+
+    setCustomSignals(newSignals);
+  }, [dashboardSignals, isDeployed, selectedCurrency]);
 
   const handleDeployCode = useCallback(
     async (code) => {
@@ -156,17 +342,6 @@ export default function Candlestick() {
 
       // 1. Clear previous
       handleClearCode();
-
-      if (!pyodideRef.current || !isPyodideReady) {
-        Swal.fire({
-          icon: "warning",
-          title: "Not Ready",
-          text: "The Python compiler is downloading in the background. Please wait a few seconds and try again.",
-          background: "var(--bg-secondary)",
-          color: "var(--text-primary)",
-        });
-        return;
-      }
 
       if (!code || code.trim() === "") {
         Swal.fire({
@@ -180,7 +355,7 @@ export default function Candlestick() {
       }
 
       setIsDeploying(true);
-      // 2. Plot using real Python WebAssembly engine
+
       try {
         const closes = candlesRef?.current?.map((c) => c.close) || [];
         if (closes.length < 4) {
@@ -194,230 +369,42 @@ export default function Candlestick() {
           return;
         }
 
-        toast.info("Compiling Python script...", {
+        toast.info("Evaluating Python script...", {
           autoClose: 2000,
           toastId: "compiling",
         });
 
-        const pyodide = pyodideRef.current;
-
-        // Ensure required packages are fully loaded before execution
-        await pyodide.loadPackagesFromImports(code);
-
-        // Inject close prices as a global Javascript array into Python
-        pyodide.globals.set("close", closes);
-        const opens = candlesRef?.current?.map((c) => c.open) || [];
-        const highs = candlesRef?.current?.map((c) => c.high) || [];
-        const lows = candlesRef?.current?.map((c) => c.low) || [];
-        const volumes = candlesRef?.current?.map((c) => c.volume || 0) || [];
-        const timestamps = candlesRef?.current?.map((c) => c.time) || [];
-
-        pyodide.globals.set("open", opens);
-        pyodide.globals.set("high", highs);
-        pyodide.globals.set("low", lows);
-        pyodide.globals.set("close", closes);
-        pyodide.globals.set("volume", volumes);
-        pyodide.globals.set("datetime", timestamps);
-
-        // Setup the plotting bridge to catch the output
-        const pythonSetup = `
-import js
-
-_plotted_series = []
-_plotted_markers = []
-
-def plot(name, data):
-    try:
-        if isinstance(data, list):
-            _plotted_series.append({
-                "name": name,
-                "data": data
-            })
-        else:
-            _plotted_series.append({
-                "name": name,
-                "data": data.tolist()
-            })
-    except Exception:
-        pass
-
-
-def plot_markers(markers):
-    try:
-        if isinstance(markers, list):
-            _plotted_markers.extend(markers)
-    except Exception:
-        pass
-
-
-def buy(index):
-    _plotted_markers.append({
-        "index": int(index),
-        "type": "BUY"
-    })
-
-
-def sell(index):
-    _plotted_markers.append({
-        "index": int(index),
-        "type": "SELL"
-    })
-
-
-def signal(signal_type, index):
-    _plotted_markers.append({
-        "index": int(index),
-        "type": str(signal_type).upper()
-    })
-`;
-        await pyodide.runPythonAsync(pythonSetup);
-
-        // Execute User's actual code
-        await pyodide.runPythonAsync(code);
-
-        // Fetch the plotted results back into Javascript
-        const plottedSeriesProxy = pyodide.globals.get("_plotted_series");
-        const plottedSeries = plottedSeriesProxy
-          ? plottedSeriesProxy.toJs()
-          : [];
-
-        const plottedMarkersProxy = pyodide.globals.get("_plotted_markers");
-        const plottedMarkers = plottedMarkersProxy
-          ? plottedMarkersProxy.toJs()
-          : [];
-
-        if (
-          (!plottedSeries || plottedSeries.length === 0) &&
-          (!plottedMarkers || plottedMarkers.length === 0)
-        ) {
-          Swal.fire({
-            icon: "warning",
-            title: "No Plot Data",
-            text: 'Script executed successfully but did not call plot(). Make sure you end your script with plot("Name", data) or plot_markers(data)',
-            background: "var(--bg-secondary)",
-            color: "var(--text-primary)",
-          });
-          return;
+        // Close Code Editor if open
+        if (typeof setIsCodeEditorOpen === 'function') {
+          setIsCodeEditorOpen(false);
         }
 
-        // Map Python list values back to Unix timestamps and plot each series
-        customScriptSeriesRef.current = [];
-        const colors = [
-          "var(--accent-color)",
-          "var(--danger-color)",
-          "#22ab94",
-          "#ff9800",
-          "#9c27b0",
-          "#e91e63",
-        ];
+        // Use the backend API to evaluate the Python code
+        const payload = {
+          // symbol: `${selectedCurrency?.name}`,
+          // symbol: "RELIANCE",
+          // interval: "FIVE_MINUTE",
+          // limit: 100,
+          strategy_code: `${code}`,
+        };
+        console.log("Python Deploy Payload:", payload);
 
-        if (plottedSeries && plottedSeries.length > 0) {
-          plottedSeries.forEach((seriesMap, seriesIndex) => {
-            const seriesName =
-              seriesMap.get("name") || `Indicator ${seriesIndex + 1}`;
-            const seriesDataArray = seriesMap.get("data");
+        const response = await apiService.post(
+          `/api/strategy/run-scanner`, // setinterval of 5 mins
+          JSON.stringify(payload),
+        );
 
-            const indicatorData = candlesRef.current
-              .map((candle, index) => {
-                const val = seriesDataArray[index];
-                return {
-                  time: candle.time,
-                  value: typeof val === "number" ? val : null,
-                };
-              })
-              .filter((x) => x.value !== null && !isNaN(x.value));
 
-            if (indicatorData.length > 0) {
-              const lineSeries = chartRef.current.addSeries(LineSeries, {
-                title: seriesName,
-                color: colors[seriesIndex % colors.length],
-                lineWidth: 2,
-              });
-
-              lineSeries.setData(indicatorData);
-              customScriptSeriesRef.current.push(lineSeries);
-            }
-          });
-        }
-
-        if (plottedMarkers && plottedMarkers.length > 0) {
-          const markersToSet = [];
-          const newSignals = [];
-          plottedMarkers.forEach((markerMap) => {
-            const idx = markerMap.get("index");
-            const type = markerMap.get("type");
-            const candle = candlesRef.current[idx];
-            if (candle && type) {
-              const isBuy = type.toUpperCase() === "BUY";
-              markersToSet.push({
-                time: candle.time,
-                position: isBuy ? "belowBar" : "aboveBar",
-                color: isBuy ? "#22ab94" : "var(--danger-color)",
-                shape: isBuy ? "arrowUp" : "arrowDown",
-                text: isBuy ? "BUY" : "SELL",
-                size: 1,
-              });
-
-              let ts = candle.time;
-              if (typeof ts === "object" && ts.year) {
-                ts = new Date(ts.year, ts.month - 1, ts.day).getTime();
-              } else if (typeof ts === "number" && ts < 10000000000) {
-                ts = (ts - 19800) * 1000;
-              }
-
-              const d = new Date(ts);
-              const dateStr = d.toLocaleDateString("en-IN", {
-                timeZone: "Asia/Kolkata",
-              });
-              const timeStr = d.toLocaleTimeString("en-IN", {
-                timeZone: "Asia/Kolkata",
-              });
-
-              newSignals.unshift({
-                symbol: selectedCurrency?.name || "STOCK",
-                name: selectedCurrency?.name || "STOCK",
-                token: selectedCurrency?.token,
-                signalType: isBuy ? "BUY" : "SELL",
-                timestamp: `${dateStr} ${timeStr}`,
-                segment: "SCRIPT",
-              });
-            }
-          });
-
-          if (markersToSet.length > 0 && seriesRef.current) {
-            if (!customScriptMarkersRef.current) {
-              customScriptMarkersRef.current = createSeriesMarkers(
-                seriesRef.current,
-                markersToSet,
-              );
-            } else {
-              customScriptMarkersRef.current.setMarkers(markersToSet);
-            }
-          }
-          setCustomSignals(newSignals);
-        } else {
-          setCustomSignals([]);
-        }
-
-        if (
-          customScriptSeriesRef.current.length > 0 ||
-          (plottedMarkers && plottedMarkers.length > 0)
-        ) {
-          setIsDeployed(true);
-          toast.success("Python compiled and plotted successfully!", {
-            toastId: "script-success",
-          });
-        } else {
-          toast.error("No valid indicator data calculated.", {
-            toastId: "script-error",
-          });
-        }
+        // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
+        setDeployedStrategyCode(code);
+        setIsDeployed(true);
+        toast.success("Scanner triggered successfully! Waiting for results...");
       } catch (err) {
-        console.error("Pyodide execution error:", err);
+        console.error("Python Execution API error:", err);
         Swal.fire({
           icon: "error",
           title: "Python Execution Error",
-          text: err.message,
+          text: err?.response?.data?.message || err.message,
           background: "var(--bg-secondary)",
           color: "var(--text-primary)",
         });
@@ -425,47 +412,8 @@ def signal(signal_type, index):
         setIsDeploying(false);
       }
     },
-    [handleClearCode, isPyodideReady],
+    [handleClearCode, selectedCurrency, timeframeValue],
   );
-
-  const { matchedCoins, addAlert, clearAllCoins, scanner, removeCoin } =
-    useAlerts();
-
-  const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [detailsList, setDetailsList] = useState([]);
-  const [activeTab, setActiveTab] = useState("Chart");
-  const [timeframeValue, setTimeframeValue] = useState("5m");
-  const [selectedCurrency, setSelectedCurrency] = useState(() => {
-    try {
-      const raw = localStorage.getItem("selectedCurrency");
-      if (raw) return JSON.parse(raw);
-    } catch (e) {
-      console.warn("Failed to read selectedCurrency from localStorage", e);
-    }
-    return {
-      symbol: "ADANIPORTS-EQ",
-      name: "ADANIPORTS",
-      token: 15083,
-      segment: "NSE",
-      expiry: "",
-    };
-  });
-  const [fromDate, setFromDate] = useState("2026-01-09");
-  const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
-  const [selectedIndicator, setSelectedIndicator] = useState([]);
-  const [rangeValue, setRangeValue] = useState("1000");
-  const [chartType, setChartType] = useState("candlestick");
-  const [isMarketOpen, setIsMarketOpen] = useState(false);
-  const [liveOhlcv, setLiveOhlcv] = useState({});
-  const [liveIndicatorData, setLiveIndicatorData] = useState({});
-  const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
-  const [editorCode, setEditorCode] = useState(
-    "import pandas as pd\n\n# Example user code\n",
-  );
-  const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
-  const [customSignals, setCustomSignals] = useState([]);
-  const [isDeploying, setIsDeploying] = useState(false);
 
   useEffect(() => {
     const checkMarketStatus = () => {
@@ -502,10 +450,25 @@ def signal(signal_type, index):
     checkMarketStatus();
 
     // Update every minute
-    const interval = setInterval(checkMarketStatus, 60000);
+    // const interval = setInterval(checkMarketStatus, 60000);
 
     return () => clearInterval(interval);
   }, []);
+
+  // Update fromDate dynamically to optimize load times when timeframe changes
+  useEffect(() => {
+    const d = new Date();
+    if (["1", "3", "5"].includes(timeframeValue)) {
+      d.setDate(d.getDate() - 1); // 1 day for 1m-5m
+    } else if (["15", "30"].includes(timeframeValue)) {
+      d.setDate(d.getDate() - 5); // 5 days for 15m-30m
+    } else if (["60", "120", "240"].includes(timeframeValue)) {
+      d.setDate(d.getDate() - 30); // 30 days for hourly
+    } else {
+      d.setFullYear(d.getFullYear() - 1); // 1 year for daily/weekly
+    }
+    setFromDate(d.toISOString().split("T")[0]);
+  }, [timeframeValue]);
 
   const addStockToDetails = (stock) => {
     if (detailsList.find((s) => s.symbol === stock.symbol)) return;
@@ -597,75 +560,80 @@ def signal(signal_type, index):
   );
 
   const fetchStrategyMarkers = async () => {
-  try {
-    console.log("fetchStrategyMarkers: enter");
-    console.log("fetchStrategyMarkers: seriesRef.current exists?", !!seriesRef.current);
+    try {
+      console.log("fetchStrategyMarkers: enter");
+      console.log(
+        "fetchStrategyMarkers: seriesRef.current exists?",
+        !!seriesRef.current,
+      );
 
-    const symbol = selectedCurrencyRef.current?.name;
-    console.log("fetchStrategyMarkers: active symbol:", symbol);
-    if (!symbol) {
-      console.log("fetchStrategyMarkers: no active symbol, aborting");
-      return;
-    }
-
-    const apiSymbol = encodeURIComponent(symbol);
-    console.log("fetchStrategyMarkers: requesting markers for:", apiSymbol);
-    const response = await apiService.get(
-      `/api/strategy/markers?symbol=BOSCHLTD&months=6`
-    );
-    console.log("strategy markers response:", response);
-
-    if (!response?.success || !Array.isArray(response?.markers)) {
-      console.warn("No markers returned");
-      return;
-    }
-
-    // If API returned a symbol, ensure it matches the currently selected symbol.
-    if (response.symbol) {
-      const normalizeStr = (s) =>
-        String(s || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
-      if (normalizeStr(response.symbol) !== normalizeStr(symbol)) {
-        console.log(
-          `Received markers for ${response.symbol} but active is ${symbol} — skipping`,
-        );
+      const symbol = selectedCurrencyRef.current?.name;
+      console.log("fetchStrategyMarkers: active symbol:", symbol);
+      if (!symbol) {
+        console.log("fetchStrategyMarkers: no active symbol, aborting");
         return;
       }
-    }
 
-    const markers = response.markers
-      .map((marker) => ({
-        // marker.datetimeUTC is in seconds (UTC) — align with candle times (which use IST_OFFSET)
-        time: Number(marker.datetimeUTC) + IST_OFFSET,
-        position: marker.type === "BUY" ? "belowBar" : "aboveBar",
-        color: marker.type === "BUY" ? "#22ab94" : "#ef4444",
-        shape: marker.type === "BUY" ? "arrowUp" : "arrowDown",
-        text: marker.type,
-        size: 2,
-      }))
-      .filter((m) => Number.isFinite(m.time));
-
-    console.log("Strategy markers:", markers.length);
-
-    if (!strategyMarkersRef.current) {
-      strategyMarkersRef.current = createSeriesMarkers(
-        seriesRef.current,
-        markers
+      const apiSymbol = encodeURIComponent(symbol);
+      console.log("fetchStrategyMarkers: requesting markers for:", apiSymbol);
+      const response = await apiService.get(
+        `/api/strategy/markers?symbol=BOSCHLTD&months=6`,
       );
-    } else {
-      strategyMarkersRef.current.setMarkers(markers);
+      console.log("strategy markers response:", response);
+
+      if (!response?.success || !Array.isArray(response?.markers)) {
+        console.warn("No markers returned");
+        return;
+      }
+
+      // If API returned a symbol, ensure it matches the currently selected symbol.
+      if (response.symbol) {
+        const normalizeStr = (s) =>
+          String(s || "")
+            .replace(/[^a-z0-9]/gi, "")
+            .toUpperCase();
+        if (normalizeStr(response.symbol) !== normalizeStr(symbol)) {
+          console.log(
+            `Received markers for ${response.symbol} but active is ${symbol} — skipping`,
+          );
+          return;
+        }
+      }
+
+      const markers = response.markers
+        .map((marker) => ({
+          // marker.datetimeUTC is in seconds (UTC) — align with candle times (which use IST_OFFSET)
+          time: Number(marker.datetimeUTC) + IST_OFFSET,
+          position: marker.type === "BUY" ? "belowBar" : "aboveBar",
+          color: marker.type === "BUY" ? "#22ab94" : "#ef4444",
+          shape: marker.type === "BUY" ? "arrowUp" : "arrowDown",
+          text: marker.type,
+          size: 2,
+        }))
+        .filter((m) => Number.isFinite(m.time));
+
+      console.log("Strategy markers:", markers.length);
+
+      if (!strategyMarkersRef.current) {
+        strategyMarkersRef.current = createSeriesMarkers(
+          seriesRef.current,
+          markers,
+        );
+      } else {
+        strategyMarkersRef.current.setMarkers(markers);
+      }
+    } catch (error) {
+      console.error("Failed to fetch strategy markers:", error);
     }
-  } catch (error) {
-    console.error("Failed to fetch strategy markers:", error);
-  }
-};
+  };
 
-useEffect(() => {
-  markersLoadedRef.current = false;
+  useEffect(() => {
+    markersLoadedRef.current = false;
 
-  if (strategyMarkersRef.current) {
-    strategyMarkersRef.current.setMarkers([]);
-  }
-}, [selectedCurrency?.name]);
+    if (strategyMarkersRef.current) {
+      strategyMarkersRef.current.setMarkers([]);
+    }
+  }, [selectedCurrency?.name]);
 
   useEffect(() => {
     if (!selectedIndicator.length) return;
@@ -955,17 +923,20 @@ useEffect(() => {
 
   // RENDER INDICATOR VALUE
 
-  const renderValue = (indicator, value) => {
+  const renderValue = (id, type, value) => {
     if (value == null) return "--";
 
-    const showPercent = indicator === "AROON"; // Only show % for Aroon
+    const showPercent = type === "AROON"; // Only show % for Aroon
 
     /* ================= NUMBER VALUES ================= */
     if (typeof value === "number") {
       const style =
-        indicatorStyle?.[indicator]?.sma ||
-        indicatorStyle?.[indicator]?.ma ||
-        indicatorStyle?.[indicator]?.[indicator?.toLowerCase()];
+        indicatorStyle?.[id]?.sma ||
+        indicatorStyle?.[id]?.ma ||
+        indicatorStyle?.[id]?.[type?.toLowerCase()] ||
+        indicatorStyle?.[type]?.sma ||
+        indicatorStyle?.[type]?.ma ||
+        indicatorStyle?.[type]?.[type?.toLowerCase()];
 
       if (style?.visible === false) return null;
 
@@ -983,7 +954,7 @@ useEffect(() => {
     if (typeof value === "object") {
       let keysToShow;
 
-      switch (indicator) {
+      switch (type) {
         case "RSI":
           keysToShow = ["rsi", "smoothingMA", "bbUpper", "bbLower"];
           break;
@@ -1052,6 +1023,7 @@ useEffect(() => {
 
         case "SUPERTREND":
           keysToShow = ["upTrend", "downTrend", "bodyMiddle"];
+          break;
 
         default:
           keysToShow = Object.keys(value);
@@ -1059,13 +1031,13 @@ useEffect(() => {
 
       return keysToShow
         .filter((key) => {
-          const style = indicatorStyle?.[indicator]?.[key];
+          const style = indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
           if (style?.visible === false) return false;
           return value[key] != null;
         })
         .map((key) => {
           const val = value[key];
-          const color = indicatorStyle?.[indicator]?.[key]?.color || "#333";
+          const color = indicatorStyle?.[id]?.[key]?.color || indicatorStyle?.[type]?.[key]?.color || "#333";
 
           return (
             <span key={key} style={{ marginRight: 8, color }}>
@@ -1255,74 +1227,34 @@ useEffect(() => {
 
   const normalize = (s) => s?.replace(/\s+/g, " ").trim().toUpperCase();
 
-  // Main useEffect for chart type/data changes
-  useEffect(() => {
+  // Define dynamic vars used by handlers
+  const intervalSec = TIMEFRAME_TO_SECONDS[timeframeValue];
+
+  const emitRef = useRef(null);
+
+  const requestHistoricalData = useCallback(() => {
     if (!selectedCurrency || !timeframeValue) return;
-    let isMounted = true;
-    console.log("Socket object:", socket);
-    console.log("Connected:", socket.connected);
-    console.log("Socket ID:", socket.id);
-
-    socketRef.current = socket;
-
-    const intervalSec = TIMEFRAME_TO_SECONDS[timeframeValue];
-
-    const requestHistoricalData = () => {
-      const historicalPayload = {
-        symbol: selectedCurrency?.name,
-        interval: timeframeValue,
-        // TIMEFRAME_TO_SECONDS[timeframeValue] === 86400
-        //   ? "ONE_DAY"
-        //   : TIMEFRAME_TO_SECONDS[timeframeValue] === 3600
-        //     ? "ONE_HOUR"
-        //     : TIMEFRAME_TO_SECONDS[timeframeValue] === 900
-        //       ? "FIFTEEN_MINUTE"
-        //       : TIMEFRAME_TO_SECONDS[timeframeValue] === 300
-        //         ? "FIVE_MINUTE"
-        //         : "ONE_MINUTE",
-        fromDate: fromDate,
-        toDate: toDate,
-        // exchange: selectedCurrency?.segment || "NSE",
-      };
-
-      console.log("📬 getManualHistoricalData Payload:", historicalPayload);
-
-      socket.emit("getManualHistoricalData", historicalPayload);
+    const historicalPayload = {
+      symbol: selectedCurrency?.name,
+      interval: timeframeValue,
+      fromDate: fromDate,
+      toDate: toDate,
     };
-
-    if (socket.connected) {
-      requestHistoricalData();
-    } else {
-      socket.connect();
+    console.log("📬 getManualHistoricalData Payload:", historicalPayload);
+    if (emitRef.current) {
+      emitRef.current(EVENTS.CHART.GET, historicalPayload);
     }
+  }, [selectedCurrency, timeframeValue, fromDate, toDate]);
 
-    socket.on("connect", () => {
-      console.log("✅ SOCKET CONNECTED", socket);
+  // ── Central Socket Hook ──
+  const { emit, once, connect, connected, id } = useSocket({
+    connect: () => {
+      console.log("✅ SOCKET CONNECTED", connected);
       requestHistoricalData();
-    });
-
-    // ✅ Historical data response — replaces loadChart / fetchDataByCurrency
-    socket.on("historicalDataResponse", (response) => {
+    },
+    [EVENTS.CHART.RESPONSE]: (response) => {
       console.log("HISTORICAL DATA RESPONSE", response?.data);
-
-      if (!isMounted || !chartRef.current) return;
-
-      // NOTE: don't remove the existing chart series until we've verified
-      // the incoming response belongs to the currently selected symbol.
-
-      // const raw = response?.data || [];
-      // const symbolFromResponse = raw[0]?.symbol;
-
-      // const data = raw
-      //   .map((d) => ({
-      //     time: Number(d.time) + IST_OFFSET,
-      //     open: parseFloat(d.open),
-      //     high: parseFloat(d.high),
-      //     low: parseFloat(d.low),
-      //     close: parseFloat(d.close),
-      //     volume: parseFloat(d.volume || 0),
-      //   }))
-      //   .sort((a, b) => a.time - b.time); // ✅ Crucial sort like in Chart.jsx
+      if (!chartRef.current) return;
 
       const raw = response?.data || [];
       const symbolFromResponse = raw[0]?.symbol;
@@ -1337,7 +1269,6 @@ useEffect(() => {
           volume: parseFloat(d.volume || 0),
         }))
         .sort((a, b) => a.time - b.time)
-        // ✅ Remove duplicate timestamps — keep last occurrence
         .filter(
           (d, idx, arr) =>
             idx === arr.length - 1 || d.time !== arr[idx + 1].time,
@@ -1347,7 +1278,6 @@ useEffect(() => {
 
       if (!Array.isArray(data) || !data.length) return;
 
-      // 🔥 Update detailsList with fresh data for the specific stock in response
       const lastPoint = data[data.length - 1];
       const aggregateHigh = Math.max(...data.map((d) => d.high));
       const aggregateLow = Math.min(...data.map((d) => d.low));
@@ -1357,7 +1287,7 @@ useEffect(() => {
           (s) =>
             s.name === symbolFromResponse || s.symbol === symbolFromResponse,
         );
-        if (existingIdx === -1) return prev; // Don't add if not in list (or we can add it, but usually it should be there)
+        if (existingIdx === -1) return prev;
 
         const newList = [...prev];
         newList[existingIdx] = {
@@ -1369,24 +1299,23 @@ useEffect(() => {
         return newList;
       });
 
-      // ONLY update chart if the symbol matches the currently selected currency
       if (
-        symbolFromResponse !== selectedCurrency.name &&
-        symbolFromResponse !== selectedCurrency.symbol
+        symbolFromResponse !== selectedCurrency?.name &&
+        symbolFromResponse !== selectedCurrency?.symbol
       ) {
         console.log(
-          `Skipping chart update for ${symbolFromResponse} (Active: ${selectedCurrency.name})`,
+          `Skipping chart update for ${symbolFromResponse} (Active: ${selectedCurrency?.name})`,
         );
         return;
       }
 
-      // Now it's safe: remove previous series and mark loading false
       setMainChartLoading(false);
       if (seriesRef.current) {
         try {
           chartRef.current.removeSeries(seriesRef.current);
         } catch {}
         seriesRef.current = null;
+        customScriptMarkersRef.current = null;
       }
 
       switch (chartType) {
@@ -1398,7 +1327,6 @@ useEffect(() => {
           seriesRef.current.setData(
             data.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
-          // Plot markers after series is created and data is set
           fetchStrategyMarkers();
           break;
         case "bar":
@@ -1415,9 +1343,6 @@ useEffect(() => {
               close: d.close,
             })),
           );
-          // Plot markers after series is created and data is set
-          fetchStrategyMarkers();
-          // Plot markers after series is created and data is set
           fetchStrategyMarkers();
           break;
         case "area":
@@ -1478,9 +1403,15 @@ useEffect(() => {
           seriesReadyRef.current = true;
       }
 
+      if (lastDeployedMarkersRef.current && lastDeployedMarkersRef.current.length > 0 && seriesRef.current) {
+        customScriptMarkersRef.current = createSeriesMarkers(
+          seriesRef.current,
+          lastDeployedMarkersRef.current
+        );
+      }
+
       currentCandleRef.current = data[data.length - 1];
 
-      // ✅ Populate OHLCV display on load
       setTimeout(() => {
         const last = data[data.length - 1];
         if (last && ohlcvDisplayRef.current) {
@@ -1511,15 +1442,13 @@ useEffect(() => {
 
         chartRef.current?.timeScale().fitContent();
       }, 150);
-    });
-
-    socket.on("historicalDataError", (err) => {
+    },
+    [EVENTS.CHART.ERROR]: (err) => {
       toast.error(err.message || "Failed to fetch historical data");
       console.error("❌ Historical data error:", err);
-      if (isMounted) setMainChartLoading(false);
-    });
-
-    const handleChartLiveTick = (tickOrArray) => {
+      setMainChartLoading(false);
+    },
+    [EVENTS.CHART.LIVE_TICK]: (tickOrArray) => {
       const ticks = Array.isArray(tickOrArray) ? tickOrArray : [tickOrArray];
 
       ticks.forEach((tick) => {
@@ -1529,7 +1458,6 @@ useEffect(() => {
         if (tickSymbol !== activeSymbol) return;
         if (!seriesRef.current) return;
 
-        /* NORMALIZE TIME */
         let rawTickTime = tick?.data?.time;
         let tickTime = Number(rawTickTime);
 
@@ -1539,14 +1467,12 @@ useEffect(() => {
         if (tickTime > 10000000000) tickTime = Math.floor(tickTime / 1000);
         if (!Number.isFinite(tickTime)) return;
 
-        // Apply IST Offset if needed (19800s = 5.5h)
         const adjustedTime = tickTime + IST_OFFSET;
         const normalizedTime =
           Math.floor(adjustedTime / intervalSec) * intervalSec;
 
         if (!Number.isFinite(normalizedTime) || normalizedTime <= 0) return;
 
-        /* PRICE */
         const price = Number(
           tick.data.close ?? tick.data.price ?? tick.data.ltp,
         );
@@ -1577,10 +1503,6 @@ useEffect(() => {
           };
         }
 
-        // console.log(
-        //   `[LiveTick] RawTime: ${rawTickTime}, Normalized: ${normalizedTime} (${new Date(normalizedTime * 1000).toLocaleTimeString()})`,
-        // );
-
         currentCandleRef.current = updatedBar;
         const existingIndex = candlesRef.current.findIndex(
           (c) => c.time === updatedBar.time,
@@ -1595,7 +1517,6 @@ useEffect(() => {
           console.warn("[LiveTick] Series update failed:", e.message);
         }
 
-        /* UPDATE OHLC DISPLAY */
         if (ohlcvDisplayRef.current) {
           const el = ohlcvDisplayRef.current;
           const isUp = updatedBar.close >= updatedBar.open;
@@ -1621,7 +1542,6 @@ useEffect(() => {
           if (sellPrice) sellPrice.textContent = formattedClose;
         }
 
-        /* LIVE INDICATORS — emit once per type per tick */
         const activeIndicators = selectedIndicatorRef.current;
         if (activeIndicators?.length > 0) {
           const sentTypes = new Set();
@@ -1629,19 +1549,20 @@ useEffect(() => {
             const indType = typeof ind === "object" ? ind.type : ind;
             if (sentTypes.has(indType)) return;
             sentTypes.add(indType);
-            socket.emit("getLiveIndicatorUpdate", {
+            emit(EVENTS.INDICATOR.LIVE, {
               symbol: selectedCurrency?.name,
               interval: timeframeValue,
               type: indType,
-
               exchange: selectedCurrency?.segment,
             });
           });
         }
       });
-    };
-
-    const handleChartLiveIndicator = (payload) => {
+    },
+    [EVENTS.CHART.LIVETICKS]: (tickOrArray) => {
+      // Re-use logic since handlersRef ensures fresh closures
+    },
+    [EVENTS.INDICATOR.LIVE_RESPONSE]: (payload) => {
       if (!payload?.success || !payload?.type) return;
 
       console.log(`[LiveIndicator] Payload:`, payload);
@@ -1706,7 +1627,6 @@ useEffect(() => {
           try {
             series.update({ time: pointTime, value: Number(value) });
           } catch (e) {
-            // Silent catch for 'oldest data' errors to prevent console spam when backend lags
             if (!e.message.includes("oldest data")) {
               console.warn(
                 `Indicator update failed [${indicatorType}][${instId}]:`,
@@ -1716,34 +1636,44 @@ useEffect(() => {
           }
         });
       });
-    };
+    },
+    connect_error: (err) => console.log("❌ SOCKET ERROR:", err.message),
+  });
 
-    socket.on("liveTick", handleChartLiveTick);
-    socket.on("liveticks", handleChartLiveTick);
-    socket.on("liveIndicatorResponse", handleChartLiveIndicator);
+  // Keep emitRef and socketRef up to date
+  useEffect(() => {
+    emitRef.current = emit;
+    socketRef.current = { emit, once };
+  }, [emit, once]);
 
-    socket.on("connect_error", (err) =>
-      console.log("❌ SOCKET ERROR:", err.message),
-    );
+  // Main useEffect for chart type/data changes
+  useEffect(() => {
+    if (!selectedCurrency || !timeframeValue) return;
 
-    // 🔥 Show loader immediately while waiting for socket data
+    if (connected) {
+      if (selectedCurrency && timeframeValue) {
+        emit(EVENTS.CHART.GET, {
+          symbol: selectedCurrency?.name,
+          interval: timeframeValue,
+          fromDate: fromDate,
+          toDate: toDate,
+        });
+      }
+    } else {
+      connect();
+    }
+
     setMainChartLoading(true);
-
-    return () => {
-      isMounted = false;
-      console.log("🧹 SOCKET CLEANUP");
-      // ✅ Remove ALL listeners added in this effect to prevent stale handlers
-      // from firing after symbol/timeframe changes (which caused chart to disappear)
-      socket.off("connect", requestHistoricalData);
-      socket.off("historicalDataResponse");
-      socket.off("historicalDataError");
-      socket.off("liveTick", handleChartLiveTick);
-      socket.off("liveticks", handleChartLiveTick);
-      socket.off("liveIndicatorResponse", handleChartLiveIndicator);
-      socket.off("connect_error");
-      socketRef.current = null;
-    };
-  }, [selectedCurrency?.name, timeframeValue, chartType, fromDate, toDate]);
+  }, [
+    selectedCurrency,
+    timeframeValue,
+    chartType,
+    connect,
+    connected,
+    emit,
+    fromDate,
+    toDate,
+  ]);
 
   const zoomCharts = (delta) => {
     const charts = [
@@ -2149,60 +2079,72 @@ useEffect(() => {
                           </div>
                         </div>
 
-                          <div
-                            style={{ display: "flex", gap: "10px" }}
-                            ref={actionButtonsRef}
+                        <div
+                          style={{ display: "flex", gap: "10px" }}
+                          ref={actionButtonsRef}
+                        >
+                          <button
+                            onClick={() => {
+                              const price = currentCandleRef.current?.close;
+                              const state = {
+                                stock: selectedCurrency?.name,
+                                action: "BUY",
+                                price: price,
+                              };
+                              const key = `trade_${Date.now()}`;
+                              sessionStorage.setItem(
+                                key,
+                                JSON.stringify(state),
+                              );
+                              window.open(
+                                `/dashboard?tradeKey=${key}`,
+                                "_blank",
+                              );
+                            }}
+                            style={{
+                              padding: "10px 20px",
+                              border: "1px solid green",
+                              background: "rgba(16, 185, 129, 0.15)",
+                              color: "green",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                            }}
                           >
-                            <button
-                              onClick={() => {
-                                const price = currentCandleRef.current?.close;
-                                const state = {
-                                  stock: selectedCurrency?.name,
-                                  action: "BUY",
-                                  price: price,
-                                };
-                                const key = `trade_${Date.now()}`;
-                                sessionStorage.setItem(key, JSON.stringify(state));
-                                window.open(`/dashboard?tradeKey=${key}`, "_blank");
-                              }}
-                              style={{
-                                padding: "10px 20px",
-                                border: "1px solid green",
-                                background: "rgba(16, 185, 129, 0.15)",
-                                color: "green",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontWeight: "600",
-                              }}
-                            >
-                              Buy @<span data-buy-price>--</span>
-                            </button>
+                            Buy @<span data-buy-price>--</span>
+                          </button>
 
-                            <button
-                              onClick={() => {
-                                const price = currentCandleRef.current?.close;
-                                const state = {
-                                  stock: selectedCurrency?.name,
-                                  action: "SELL",
-                                  price: price,
-                                };
-                                const key = `trade_${Date.now()}`;
-                                sessionStorage.setItem(key, JSON.stringify(state));
-                                window.open(`/dashboard?tradeKey=${key}`, "_blank");
-                              }}
-                              style={{
-                                padding: "10px 20px",
-                                border: "1px solid red",
-                                background: "rgba(239, 68, 68, 0.15)",
-                                color: "red",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontWeight: "600",
-                              }}
-                            >
-                              Sell @<span data-sell-price>--</span>
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => {
+                              const price = currentCandleRef.current?.close;
+                              const state = {
+                                stock: selectedCurrency?.name,
+                                action: "SELL",
+                                price: price,
+                              };
+                              const key = `trade_${Date.now()}`;
+                              sessionStorage.setItem(
+                                key,
+                                JSON.stringify(state),
+                              );
+                              window.open(
+                                `/dashboard?tradeKey=${key}`,
+                                "_blank",
+                              );
+                            }}
+                            style={{
+                              padding: "10px 20px",
+                              border: "1px solid red",
+                              background: "rgba(239, 68, 68, 0.15)",
+                              color: "red",
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                            }}
+                          >
+                            Sell @<span data-sell-price>--</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* -----------------INDICATOR BAR------------------- */}
@@ -2284,7 +2226,7 @@ useEffect(() => {
                                       return `${len}${src ? " " + src : ""}`;
                                     })()}
                                     <span style={{ display: "flex", gap: 6 }}>
-                                      {renderValue(type, value)}
+                                      {renderValue(id, type, value)}
                                     </span>
                                   </span>
 
@@ -2477,7 +2419,6 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  {/* CODE EDITOR SIDE PANEL */}
                   {isCodeEditorOpen && (
                     <CodeEditorPanel
                       onClose={() => setIsCodeEditorOpen(false)}
@@ -2487,6 +2428,7 @@ useEffect(() => {
                       editorCode={editorCode}
                       setEditorCode={setEditorCode}
                       isDeployed={isDeployed}
+                      isDeploying={isDeploying}
                     />
                   )}
                 </div>
