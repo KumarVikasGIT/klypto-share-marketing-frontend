@@ -1,5 +1,5 @@
-import React from "react";
-import { FiX, FiTrash2, FiMaximize2 } from "react-icons/fi";
+import React, { useState } from "react";
+import { FiX, FiTrash2, FiMaximize2, FiSearch } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
 
 const LeftAlertListing = ({
@@ -9,6 +9,7 @@ const LeftAlertListing = ({
   setSelectedCurrency,
 }) => {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
   const styles = {
     container: {
       display: "flex",
@@ -46,6 +47,22 @@ const LeftAlertListing = ({
       padding: "4px 8px",
       borderRadius: "4px",
       transition: "background 0.2s",
+    },
+    searchInputContainer: {
+      padding: "8px 16px",
+      borderBottom: "1px solid var(--border-color)",
+      display: "flex",
+      alignItems: "center",
+      background: "var(--bg-secondary)",
+    },
+    searchInput: {
+      background: "transparent",
+      border: "none",
+      color: "var(--text-primary)",
+      outline: "none",
+      width: "100%",
+      fontSize: "0.85rem",
+      marginLeft: "8px",
     },
     listContainer: {
       flex: 1,
@@ -97,7 +114,9 @@ const LeftAlertListing = ({
   };
 
   const results = Array.isArray(alertResult) ? alertResult : [];
-  console.log("result",alertResult)
+  const filteredResults = results.filter((item) =>
+    item.symbol?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleItemClick = (item) => {
     if (setSelectedCurrency) {
@@ -155,8 +174,19 @@ const LeftAlertListing = ({
         </div>
       </div>
 
+      <div style={styles.searchInputContainer}>
+        <FiSearch color="var(--text-secondary)" size={14} />
+        <input
+          type="text"
+          placeholder="Search alerts..."
+          style={styles.searchInput}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <div className="custom-scrollbar" style={styles.listContainer}>
-        {results.length === 0 ? (
+        {filteredResults.length === 0 ? (
           <div style={styles.emptyState}>
             <div
               style={{ fontSize: "2rem", marginBottom: "12px", opacity: 0.5 }}
@@ -183,7 +213,7 @@ const LeftAlertListing = ({
             </p>
           </div>
         ) : (
-          results.map((item, idx) => (
+          filteredResults.map((item, idx) => (
             <div
               key={idx}
               className="alert-item-wrapper"

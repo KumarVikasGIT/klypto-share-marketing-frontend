@@ -65,12 +65,12 @@ export default function Signals() {
     }
   };
 
-  // useEffect(() => {
-  //   fetchSignals();
-  //   // Poll every 5 minutes (300000ms)
-  //   const intervalId = setInterval(fetchSignals, 300000);
-  //   return () => clearInterval(intervalId);
-  // }, []);
+  useEffect(() => {
+    fetchSignals();
+    // Poll every 5 minutes (300000ms)
+    const intervalId = setInterval(fetchSignals, 300000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const filteredSignals = signals.filter(signal => 
     signal.symbol.toLowerCase().includes(searchTerm.toLowerCase())

@@ -449,8 +449,8 @@ export default function Candlestick() {
     // Initial check
     checkMarketStatus();
 
-    // Update every minute
-    // const interval = setInterval(checkMarketStatus, 60000);
+    // Update every 5 minute
+    const interval = setInterval(checkMarketStatus, 300000);
 
     return () => clearInterval(interval);
   }, []);

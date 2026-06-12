@@ -698,7 +698,8 @@ const Overview = ({ selectedCurrency }) => {
         sentiment: stock.sentiment,
       }));
     },
-    [EVENTS.CHART.LIVE_TICK]: (tick) => {
+    [EVENTS.OVERVIEW.GET]: (tick) => {
+      console.log("[getliveTick] live tick:", tick);
       if (String(tick.token) !== String(selectedCurrency?.token)) {
         return;
       }
@@ -720,6 +721,10 @@ const Overview = ({ selectedCurrency }) => {
 
     setLoading(true);
     emit("getAllStocks");
+    const payload = { symbol: "ABB-EQ" };
+    console.log("payload of getLiveTick:", payload);
+    emit(EVENTS.CHART.GET_LIVE_TICK, payload);
+    
   }, [selectedCurrency?.token, emit]);
 
   const centered = {

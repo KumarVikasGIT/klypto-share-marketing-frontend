@@ -17,9 +17,6 @@ const EVENTS = {
   ALERTS: {
     TRIGGERED: "alertTriggered",
   },
-  SYSTEM: {
-    SYNC_STATUS: "syncStatus",
-  },
   BACKTEST: {
     DASHBOARD_RESPONSE: "backtestDashboardResponse",
   },
@@ -35,6 +32,10 @@ const EVENTS = {
     LIST: "live-options-list",
     GET: "set-filter",
     RESPONSE: "option-chain-data",
+  },
+  OVERVIEW: {
+    GET: "getLiveTick",
+    RESPONSE: "strategyLiveTick",
   },
 
   // --- INPUT EVENTS (Client to Server) ---
