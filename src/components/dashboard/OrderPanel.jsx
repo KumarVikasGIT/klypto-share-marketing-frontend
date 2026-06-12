@@ -203,38 +203,35 @@ const OrderPanel = ({
 
   // ── 1. Socket: master watchlist + live ticks ──
   const { emit } = useSocket({
-    [EVENTS.WATCHLIST.RESPONSE]: (data) => {
-      const equity = (data?.data?.equity || []).map((i) => ({
-        ...i,
-        category: "EQ",
-      }));
-      const futures = (data?.data?.futures || []).map((i) => ({
-        ...i,
-        category: "FUT",
-      }));
-      const options = (data?.data?.trendingOptions || []).map((i) => ({
-        ...i,
-        category: "OPT",
-      }));
-      const indices = (data?.data?.indices || []).map((i) => ({
-        ...i,
-        category: "IDX",
-      }));
+    handleWatchlistResponse: (data) => {
+      let equity = [], futures = [], options = [], indices = [];
+      
+      if (Array.isArray(data)) {
+         equity = data.map(i => ({...i, category: "EQ"}));
+      } else if (Array.isArray(data?.data)) {
+         equity = data.data.map(i => ({...i, category: "EQ"}));
+      } else {
+        equity = (data?.data?.equity || []).map((i) => ({ ...i, category: "EQ" }));
+        futures = (data?.data?.futures || []).map((i) => ({ ...i, category: "FUT" }));
+        options = (data?.data?.trendingOptions || []).map((i) => ({ ...i, category: "OPT" }));
+        indices = (data?.data?.indices || []).map((i) => ({ ...i, category: "IDX" }));
+      }
+      
       setStocks([...indices, ...equity, ...futures, ...options]);
     },
-    [EVENTS.STOCK_LIST.STOCK_UPDATE]: (upd) => {
+    handleStockUpdate: (upd) => {
       if (!upd?.token) return;
       setStocks((prev) =>
         prev.map((s) => (s.token === upd.token ? { ...s, ...upd } : s)),
       );
     },
-    [EVENTS.CHART.LIVE_TICK]: (upd) => {
+    handleLiveTick: (upd) => {
       if (!upd?.token) return;
       setStocks((prev) =>
         prev.map((s) => (s.token === upd.token ? { ...s, ...upd } : s)),
       );
     },
-    [EVENTS.OPTION_CHAIN.LIST]: (response) => {
+    handleOptionChainList: (response) => {
       // console.log("[OrderPanel] live-options-list raw response:", response);
 
       if (!response?.success && !Array.isArray(response?.data)) return;
@@ -297,7 +294,7 @@ const OrderPanel = ({
       setWsChain({ symbol: response?.symbol, chain: formattedChain });
       setRawChainData({ symbol: response?.symbol, chain: formattedChain });
     },
-    [EVENTS.OPTION_CHAIN.RESPONSE]: (response) => {
+    handleOptionChainResponse: (response) => {
       console.log("[OrderPanel] option-chain-data response:", response);
 
       const data = response?.data || response?.chain ? response : { chain: response };

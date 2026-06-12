@@ -132,65 +132,67 @@ export default function useAlerts() {
   };
 
   useSocket({
-    [EVENTS.STOCK_LIST.STOCKS_LIST]: (data) => {
-      const stocksArray = Array.isArray(data) ? data : data?.stocks || [];
-      stocksArray.forEach((s) => {
-        if (s.name && s.rsi != null) {
-          const rsiVal = Number(s.rsi);
-          valueMapRef.current[`${s.name}_RSI`] = rsiVal;
-          checkAlert(s.name, rsiVal, "RSI");
+    handleAlertTick: ({ type, data }) => {
+      if (type === EVENTS.STOCK_LIST.STOCKS_LIST) {
+        const stocksArray = Array.isArray(data) ? data : data?.stocks || [];
+        stocksArray.forEach((s) => {
+          if (s.name && s.rsi != null) {
+            const rsiVal = Number(s.rsi);
+            valueMapRef.current[`${s.name}_RSI`] = rsiVal;
+            checkAlert(s.name, rsiVal, "RSI");
+          }
+        });
+      } else if (type === EVENTS.STOCK_LIST.STOCK_UPDATE) {
+        const stock = data;
+        if (stock?.name && stock.rsi != null) {
+          const rsiVal = Number(stock.rsi);
+          valueMapRef.current[`${stock.name}_RSI`] = rsiVal;
+          checkAlert(stock.name, rsiVal, "RSI");
         }
-      });
-    },
-    [EVENTS.STOCK_LIST.STOCK_UPDATE]: (stock) => {
-      if (stock?.name && stock.rsi != null) {
-        const rsiVal = Number(stock.rsi);
-        valueMapRef.current[`${stock.name}_RSI`] = rsiVal;
-        checkAlert(stock.name, rsiVal, "RSI");
-      }
-    },
-    [EVENTS.CHART.LIVE_TICK]: (tick) => {
-      if (tick?.type && Array.isArray(tick?.data) && tick.data.length > 0) {
+      } else if (type === EVENTS.CHART.LIVE_TICK) {
+        const tick = data;
+        if (tick?.type && Array.isArray(tick?.data) && tick.data.length > 0) {
+          const sym = tick.symbol || tick.name;
+          const typeKey = tick.type.toLowerCase();
+          const val =
+            tick.data[0][typeKey] ??
+            tick.data[0][tick.type] ??
+            tick.data[0].value ??
+            tick.data[0].rsi ??
+            tick.data[0].RSI;
+          const indicatorVal = Number(val);
+  
+          if (sym && Number.isFinite(indicatorVal)) {
+            valueMapRef.current[`${sym}_${tick.type}`] = indicatorVal;
+            checkAlert(sym, indicatorVal, tick.type);
+          }
+          return;
+        }
+  
+        // Shape 2: flat { symbol, rsi } (fallback for legacy)
+        const sym = tick?.symbol || tick?.name;
+        if (sym && tick.rsi != null) {
+          const rsiVal = Number(tick.rsi);
+          valueMapRef.current[`${sym}_RSI`] = rsiVal;
+          checkAlert(sym, rsiVal, "RSI");
+        }
+      } else if (type === EVENTS.INDICATOR.LIVE_RESPONSE) {
+        const tick = data;
+        if (!tick?.success || !tick?.type) return;
         const sym = tick.symbol || tick.name;
         const typeKey = tick.type.toLowerCase();
         const val =
-          tick.data[0][typeKey] ??
-          tick.data[0][tick.type] ??
-          tick.data[0].value ??
-          tick.data[0].rsi ??
-          tick.data[0].RSI;
+          tick.data?.[0]?.[typeKey] ??
+          tick.data?.[0]?.[tick.type] ??
+          tick.data?.[0]?.value ??
+          tick.data?.[0]?.rsi ??
+          tick.data?.[0]?.RSI;
         const indicatorVal = Number(val);
-
+  
         if (sym && Number.isFinite(indicatorVal)) {
           valueMapRef.current[`${sym}_${tick.type}`] = indicatorVal;
           checkAlert(sym, indicatorVal, tick.type);
         }
-        return;
-      }
-
-      // Shape 2: flat { symbol, rsi } (fallback for legacy)
-      const sym = tick?.symbol || tick?.name;
-      if (sym && tick.rsi != null) {
-        const rsiVal = Number(tick.rsi);
-        valueMapRef.current[`${sym}_RSI`] = rsiVal;
-        checkAlert(sym, rsiVal, "RSI");
-      }
-    },
-    [EVENTS.INDICATOR.LIVE_RESPONSE]: (tick) => {
-      if (!tick?.success || !tick?.type) return;
-      const sym = tick.symbol || tick.name;
-      const typeKey = tick.type.toLowerCase();
-      const val =
-        tick.data?.[0]?.[typeKey] ??
-        tick.data?.[0]?.[tick.type] ??
-        tick.data?.[0]?.value ??
-        tick.data?.[0]?.rsi ??
-        tick.data?.[0]?.RSI;
-      const indicatorVal = Number(val);
-
-      if (sym && Number.isFinite(indicatorVal)) {
-        valueMapRef.current[`${sym}_${tick.type}`] = indicatorVal;
-        checkAlert(sym, indicatorVal, tick.type);
       }
     }
   });

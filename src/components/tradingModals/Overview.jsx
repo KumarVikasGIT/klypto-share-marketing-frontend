@@ -2,1353 +2,355 @@ import React, { useEffect, useState } from "react";
 import { Spinner } from "./Spinner";
 import useSocket from "../../util/useSocket";
 import EVENTS from "../../services/websocket/socketEvent";
-// ── helpers ──────────────────────────────────────────────────────────────────
-const fmt = (v, digits = 2) =>
-  v == null
-    ? "--"
-    : Number(v).toLocaleString("en-IN", {
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-      });
+import { FiBookOpen, FiBarChart2, FiTrendingUp, FiTrendingDown, FiShield, FiClock } from "react-icons/fi";
 
-const pct = (v) =>
-  v == null ? "--" : `${v > 0 ? "+" : ""}${Number(v).toFixed(2)}%`;
+// ── Helpers ───────────────────────────────────────────────────────────────
+const fmt = (v, digits = 2) => {
+  if (v == null || isNaN(Number(v))) return "--";
+  return Number(v).toLocaleString("en-IN", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+};
 
-function RangeBar({ low, high, current, label }) {
-  const clampedPct = Math.min(
-    100,
-    Math.max(0, ((current - low) / (high - low)) * 100),
-  );
+const pct = (v) => {
+  if (v == null || isNaN(Number(v))) return "--";
+  return `${Number(v) > 0 ? "+" : ""}${Number(v).toFixed(2)}%`;
+};
+
+// ── Components ────────────────────────────────────────────────────────────
+
+// Top Stat Item
+function TopStat({ label, value, color }) {
   return (
-    <div style={{ flex: 1 }}>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: "var(--text-primary)",
-          marginBottom: 10,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          position: "relative",
-          height: 6,
-          borderRadius: 4,
-          background:
-            "linear-gradient(to right,var(--danger-color),var(--success-color))",
-          marginBottom: 8,
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: `${clampedPct}%`,
-            transform: "translate(-50%,-50%)",
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            background: "#fff",
-            boxShadow:
-              "0 0 0 2px var(--bg-primary), 0 0 0 3px var(--text-secondary)",
-            zIndex: 1,
-          }}
-        />
-        {/* triangle pointer */}
-        <div
-          style={{
-            position: "absolute",
-            top: -10,
-            left: `${clampedPct}%`,
-            transform: "translateX(-50%)",
-            width: 0,
-            height: 0,
-            borderLeft: "5px solid transparent",
-            borderRight: "5px solid transparent",
-            borderTop: "6px solid var(--text-secondary)",
-          }}
-        />
-      </div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 12,
-          color: "var(--text-secondary)",
-        }}
-      >
-        <span>
-          <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
-            {fmt(low, 2)}
-          </span>
-          <br />
-          <span>Low</span>
-        </span>
-        <span style={{ textAlign: "right" }}>
-          <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
-            {fmt(high, 2)}
-          </span>
-          <br />
-          <span>High</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function StatItem({ label, value, color }) {
-  return (
-    <div
-      style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 90 }}
-    >
-      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: 14,
-          fontWeight: 600,
-          color: color || "var(--text-primary)",
-        }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, textAlign: "center" }}>
+      <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{label}</span>
+      <span style={{ fontSize: 16, fontWeight: 600, color: color || "var(--text-primary)" }}>
         {value}
       </span>
     </div>
   );
 }
 
-function SectionCard({ title, children }) {
+// Info Row in Market Information
+function InfoRow({ label, value, color }) {
   return (
-    <div
-      style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--border-color)",
-        borderRadius: 10,
-        padding: "16px 20px",
-        marginBottom: 16,
-      }}
-    >
-      {title && (
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "var(--text-primary)",
-            marginBottom: 14,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}
-        >
-          {title}
-        </div>
-      )}
-      {children}
-    </div>
-  );
-}
-
-// ── static analyst / fundamental data (not in API) ──────────────────────────
-const STATIC_ANALYST = {
-  targetPrice: 6183.33,
-  expectedProfit: -15.62,
-  analystCount: 6,
-  buy: 33,
-  hold: 50,
-  sell: 16,
-};
-
-const STATIC_FUNDAMENTALS = {
-  valuation: { peRatio: 90.06, pbv: 19.84, pegRatio: null, roe: 21.3 },
-  growth: {
-    revenueGrowth: 18.4,
-    earningsGrowth: 22.1,
-    salesGrowth: 15.6,
-    profitGrowth: 24.3,
-  },
-  financial: {
-    debtToEquity: 0.02,
-    currentRatio: 1.8,
-    netMargin: 8.4,
-    operatingMargin: 11.2,
-  },
-  dividend: {
-    dividendYield: 0.35,
-    dividendPayout: 31.5,
-    dividendPerShare: 25.5,
-  },
-};
-
-const STATIC_PERFORMANCE = {
-  sectorRank: 6,
-  cap: "LARGE CAP",
-  sector: "ELECTRIC EQUIPMENT",
-  shortTerm: "Mildly Positive",
-  longTerm: "Mildly Positive",
-  marketCap: "1,52,754",
-  oneYearReturn: 35.14,
-  sectorReturn: 48.13,
-  marketReturn: -1.37,
-  quality: {
-    label: "EXCELLENT",
-    score: "5/5",
-    capitalStructure: "Excellent",
-    growth: "Excellent",
-    managementRisk: "Good",
-  },
-  valuation: { label: "EXPENSIVE", score: "2/5" },
-  financial: { label: "EXPENSIVE", score: "2/5" },
-  insights: [
-    "Excellent quality company basis long term financial performance.",
-    "Largest company in Electric Equipment sector",
-  ],
-};
-
-// ── RatingBar ────────────────────────────────────────────────────────────────
-function RatingBar({ label, pct: p, color }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 4,
-        }}
-      >
-        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-          {label}
-        </span>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: "var(--text-primary)",
-          }}
-        >
-          {p}%
-        </span>
-      </div>
-      <div
-        style={{
-          height: 5,
-          borderRadius: 3,
-          background: "var(--border-color)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${p}%`,
-            height: "100%",
-            background: color,
-            borderRadius: 3,
-            transition: "width 0.6s ease",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── FundamentalRatios ────────────────────────────────────────────────────────
-const TABS = ["Valuation Ratio", "Growth", "Financial", "Dividend"];
-
-function FundamentalRatios() {
-  const [activeTab, setActiveTab] = useState(0);
-
-  const tabData = [
-    [
-      { label: "PE Ratio", value: fmt(STATIC_FUNDAMENTALS.valuation.peRatio) },
-      {
-        label: "Price to Book Value",
-        value: fmt(STATIC_FUNDAMENTALS.valuation.pbv),
-      },
-      {
-        label: "PEG Ratio",
-        value: STATIC_FUNDAMENTALS.valuation.pegRatio ?? "-",
-      },
-      { label: "ROE (Latest)", value: `${STATIC_FUNDAMENTALS.valuation.roe}%` },
-    ],
-    [
-      {
-        label: "Revenue Growth (YoY)",
-        value: `${STATIC_FUNDAMENTALS.growth.revenueGrowth}%`,
-      },
-      {
-        label: "Earnings Growth (YoY)",
-        value: `${STATIC_FUNDAMENTALS.growth.earningsGrowth}%`,
-      },
-      {
-        label: "Sales Growth (YoY)",
-        value: `${STATIC_FUNDAMENTALS.growth.salesGrowth}%`,
-      },
-      {
-        label: "Profit Growth (YoY)",
-        value: `${STATIC_FUNDAMENTALS.growth.profitGrowth}%`,
-      },
-    ],
-    [
-      {
-        label: "Debt to Equity",
-        value: fmt(STATIC_FUNDAMENTALS.financial.debtToEquity),
-      },
-      {
-        label: "Current Ratio",
-        value: fmt(STATIC_FUNDAMENTALS.financial.currentRatio),
-      },
-      {
-        label: "Net Margin",
-        value: `${STATIC_FUNDAMENTALS.financial.netMargin}%`,
-      },
-      {
-        label: "Operating Margin",
-        value: `${STATIC_FUNDAMENTALS.financial.operatingMargin}%`,
-      },
-    ],
-    [
-      {
-        label: "Dividend Yield",
-        value: `${STATIC_FUNDAMENTALS.dividend.dividendYield}%`,
-      },
-      {
-        label: "Dividend Payout",
-        value: `${STATIC_FUNDAMENTALS.dividend.dividendPayout}%`,
-      },
-      {
-        label: "Dividend Per Share",
-        value: `₹${STATIC_FUNDAMENTALS.dividend.dividendPerShare}`,
-      },
-    ],
-  ];
-
-  return (
-    <div style={{ flex: 1 }}>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: "var(--text-primary)",
-          marginBottom: 14,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        Fundamental Ratios
-      </div>
-      <div
-        style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}
-      >
-        {TABS.map((t, i) => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(i)}
-            style={{
-              padding: "5px 12px",
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              border: "none",
-              background:
-                activeTab === i ? "var(--accent-color)" : "var(--border-color)",
-              color: activeTab === i ? "#fff" : "var(--text-secondary)",
-              transition: "all 0.2s",
-            }}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <div
-        style={{
-          background: "var(--bg-primary)",
-          borderRadius: 8,
-          padding: "14px 16px",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "14px 20px",
-        }}
-      >
-        {tabData[activeTab].map(({ label, value }) => (
-          <div key={label}>
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--text-secondary)",
-                marginBottom: 3,
-              }}
-            >
-              {label}
-            </div>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: "var(--text-primary)",
-              }}
-            >
-              {value}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── ScoreBadge ───────────────────────────────────────────────────────────────
-function ScoreBadge({ label, score, color }) {
-  return (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        marginBottom: 4,
-      }}
-    >
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          padding: "2px 8px",
-          borderRadius: 4,
-          background: color + "22",
-          color: color,
-          border: `1px solid ${color}44`,
-          letterSpacing: "0.04em",
-        }}
-      >
-        {label}
-      </span>
-      <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-        {score}
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0" }}>
+      <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 500, color: color || "var(--text-primary)", textAlign: "right" }}>
+        {value}
       </span>
     </div>
   );
 }
 
-// ── MarketDepth ──────────────────────────────────────────────────────────────
-function MarketDepth({ buy = [], sell = [] }) {
-  const maxQty = Math.max(...[...buy, ...sell].map((o) => o.quantity), 1);
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 12 }}>
-        {/* Buy side */}
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              padding: "0 4px 6px",
-              borderBottom: "1px solid var(--border-color)",
-              marginBottom: 4,
-            }}
-          >
-            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-              ORDERS
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--text-secondary)",
-                textAlign: "right",
-              }}
-            >
-              QTY
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--success-color)",
-                textAlign: "right",
-              }}
-            >
-              BID
-            </span>
-          </div>
-          {buy.map((b, i) => (
-            <div key={i} style={{ position: "relative", marginBottom: 2 }}>
-              <div
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: `${(b.quantity / maxQty) * 100}%`,
-                  background: "var(--success-color)20",
-                  borderRadius: 3,
-                }}
-              />
-              <div
-                style={{
-                  position: "relative",
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  padding: "4px",
-                }}
-              >
-                <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                  {b.orders}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-primary)",
-                    textAlign: "right",
-                  }}
-                >
-                  {b.quantity}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--success-color)",
-                    textAlign: "right",
-                    fontWeight: 600,
-                  }}
-                >
-                  {fmt(b.price)}
-                </span>
-              </div>
-            </div>
-          ))}
-          <div
-            style={{
-              borderTop: "1px solid var(--border-color)",
-              marginTop: 4,
-              paddingTop: 4,
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-            }}
-          >
-            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-              Total
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--success-color)",
-                textAlign: "right",
-                fontWeight: 600,
-              }}
-            >
-              {buy.reduce((s, b) => s + b.quantity, 0)}
-            </span>
-            <span />
-          </div>
-        </div>
+// Depth Row
+function DepthRow({ price, quantity, orders, maxQty, isBuy }) {
+  const color = isBuy ? "var(--success-color)" : "var(--danger-color)";
+  const width = maxQty > 0 ? `${(quantity / maxQty) * 100}%` : "0%";
 
-        {/* Sell side */}
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              padding: "0 4px 6px",
-              borderBottom: "1px solid var(--border-color)",
-              marginBottom: 4,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--danger-color)",
-                textAlign: "left",
-              }}
-            >
-              ASK
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--text-secondary)",
-                textAlign: "right",
-              }}
-            >
-              QTY
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--text-secondary)",
-                textAlign: "right",
-              }}
-            >
-              ORDERS
-            </span>
-          </div>
-          {sell.map((s, i) => (
-            <div key={i} style={{ position: "relative", marginBottom: 2 }}>
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: `${(s.quantity / maxQty) * 100}%`,
-                  background: "var(--danger-color)20",
-                  borderRadius: 3,
-                }}
-              />
-              <div
-                style={{
-                  position: "relative",
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  padding: "4px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--danger-color)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {fmt(s.price)}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-primary)",
-                    textAlign: "right",
-                  }}
-                >
-                  {s.quantity}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-secondary)",
-                    textAlign: "right",
-                  }}
-                >
-                  {s.orders}
-                </span>
-              </div>
-            </div>
-          ))}
-          <div
-            style={{
-              borderTop: "1px solid var(--border-color)",
-              marginTop: 4,
-              paddingTop: 4,
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-            }}
-          >
-            <span />
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--danger-color)",
-                textAlign: "right",
-                fontWeight: 600,
-              }}
-            >
-              {sell.reduce((s, b) => s + b.quantity, 0)}
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--text-secondary)",
-                textAlign: "right",
-              }}
-            >
-              Total
-            </span>
-          </div>
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", position: "relative" }}>
+      {/* Background Bar */}
+      <div style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        [isBuy ? "right" : "left"]: 0,
+        width,
+        background: `${color}20`,
+        zIndex: 0,
+        borderRadius: "2px"
+      }} />
+
+      <div style={{ flex: 1, color, fontWeight: 500, fontSize: 13, zIndex: 1, textAlign: isBuy ? "left" : "right" }}>
+        {fmt(price)}
+      </div>
+      <div style={{ flex: 1, color: "var(--text-primary)", fontSize: 13, zIndex: 1, textAlign: "center" }}>
+        {quantity}
+      </div>
+      <div style={{ flex: 1, color: "var(--text-secondary)", fontSize: 13, zIndex: 1, textAlign: isBuy ? "right" : "left" }}>
+        {orders}
+      </div>
+    </div>
+  );
+}
+
+// Range Bar (for Day and 52W Range)
+function RangeWidget({ title, low, high, current, icon: Icon }) {
+  let clampedPct = 50;
+  if (low != null && high != null && current != null && high !== low) {
+    clampedPct = Math.min(100, Math.max(0, ((current - low) / (high - low)) * 100));
+  }
+
+  return (
+    <div style={{ background: "var(--bg-secondary)", borderRadius: 8, padding: 16, border: "1px solid var(--border-color)", flex: 1, display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 8, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", color: "#3b82f6" }}>
+        <Icon size={20} />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>{title}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>
+          {fmt(low, 2)} - {fmt(high, 2)}
+        </div>
+        <div style={{ position: "relative", height: 4, background: "var(--border-color)", borderRadius: 2 }}>
+          <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${clampedPct}%`, background: "var(--success-color)", borderRadius: 2 }} />
+          <div style={{ position: "absolute", top: "50%", left: `${clampedPct}%`, transform: "translate(-50%, -50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderBottom: "6px solid #fff" }} />
         </div>
       </div>
     </div>
   );
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
+// Badge Widget
+function BadgeWidget({ title, value, icon: Icon, iconColor, valueColor }) {
+  return (
+    <div style={{ background: "var(--bg-secondary)", borderRadius: 8, padding: 16, border: "1px solid var(--border-color)", flex: 1, display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 8, background: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", color: iconColor }}>
+        <Icon size={20} />
+      </div>
+      <div>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>{title}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: valueColor || "var(--text-primary)" }}>
+          {value}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────
+
 const Overview = ({ selectedCurrency }) => {
-  const [overview, setOverview] = useState(null);
+  const [dataPayload, setDataPayload] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const { emit } = useSocket({
-    [EVENTS.STOCK_LIST.STOCKS_LIST]: (data) => {
-      const stocks = Array.isArray(data) ? data : data?.stocks || [];
+    handleLiveTick: (payload) => {
+      // payload from strategyLiveTick
+      console.log(`[Overview Response] Event: ${EVENTS.OVERVIEW.RESPONSE}`, "Payload:", payload);
+      const symbol = payload?.symbol || payload?.raw?.tradingSymbol || payload?.name;
+      const targetSymbol = selectedCurrency?.name || selectedCurrency?.symbol;
+      if (String(symbol) !== String(targetSymbol)) return;
 
-      const selectedStock = stocks.find(
-        (s) => String(s.token) === String(selectedCurrency?.token),
-      );
-
-      if (selectedStock) {
-        setOverview(selectedStock);
-        setLoading(false);
-      }
-    },
-    [EVENTS.STOCK_LIST.STOCK_UPDATE]: (stock) => {
-      if (String(stock.token) !== String(selectedCurrency?.token)) {
-        return;
-      }
-
-      setOverview((prev) => ({
-        ...prev,
-        ltp: Number(stock.ltp),
-        change: Number(stock.change),
-        percent_change: Number(stock.percent_change),
-        sentiment: stock.sentiment,
-      }));
-    },
-    [EVENTS.OVERVIEW.GET]: (tick) => {
-      console.log("[getliveTick] live tick:", tick);
-      if (String(tick.token) !== String(selectedCurrency?.token)) {
-        return;
-      }
-
-      setOverview((prev) => ({
-        ...prev,
-        open: tick?.data?.open,
-        high: tick?.data?.high,
-        low: tick?.data?.low,
-        close: tick?.data?.close,
-        volume: tick?.data?.volume,
-        time: tick?.data?.time,
-      }));
+      setDataPayload(payload);
+      setLoading(false);
     }
   });
 
   useEffect(() => {
-    if (!selectedCurrency?.token) return;
-
+    if (!selectedCurrency?.name && !selectedCurrency?.symbol) return;
     setLoading(true);
+    console.log(selectedCurrency, "nmaeeee",selectedCurrency?.symbol, "symbolll")
+    // Request initial data using the symbol
+    const targetSymbol = selectedCurrency?.name || selectedCurrency?.symbol;
     emit("getAllStocks");
-    const payload = { symbol: "ABB-EQ" };
-    console.log("payload of getLiveTick:", payload);
-    emit(EVENTS.CHART.GET_LIVE_TICK, payload);
     
-  }, [selectedCurrency?.token, emit]);
+    const payload = { symbol: targetSymbol };
+    console.log(`[Overview Emit] Event: ${EVENTS.OVERVIEW.GET}`, "Payload:", payload);
+    emit(EVENTS.OVERVIEW.GET, payload);
+  }, [selectedCurrency, emit]);
 
-  const centered = {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "var(--bg-primary)",
-  };
-
-  if (!selectedCurrency)
+  if (!selectedCurrency) {
     return (
-      <div style={centered} className="text-muted">
-        Select a stock to view its overview
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}>
+        Select a currency/stock to view details.
       </div>
     );
-  if (loading)
+  }
+
+  if (loading) {
     return (
-      <div style={centered}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Spinner />
       </div>
     );
-  if (error)
+  }
+
+  if (!dataPayload) {
     return (
-      <div style={{ ...centered, color: "var(--danger-color)" }}>{error}</div>
-    );
-  if (!overview)
-    return (
-      <div style={centered} className="text-muted">
-        No overview data available.
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}>
+        Waiting for live data...
       </div>
     );
+  }
 
-  // ── derived values ───────────────────────────────────────────────────────
-  const ltp = overview?.ltp ?? overview?.close;
-
-  const netChange = overview?.change;
-
-  const pctChange = overview?.percent_change;
-
+  const raw = dataPayload.raw || {};
+  const tick = dataPayload.tick || {};
+  
+  // Use tick as fallback for basic fields if raw is empty
+  const ltp = raw.ltp ?? tick.close ?? "--";
+  const netChange = raw.netChange ?? 0;
+  const percentChange = raw.percentChange ?? 0;
+  const open = raw.open ?? tick.open ?? "--";
+  const high = raw.high ?? tick.high ?? "--";
+  const low = raw.low ?? tick.low ?? "--";
+  const close = raw.close ?? tick.close ?? "--";
+  
   const isPositive = Number(netChange) >= 0;
+  const changeColor = isPositive ? "var(--success-color)" : "var(--danger-color)";
 
-  const changeColor = isPositive
-    ? "var(--success-color)"
-    : "var(--danger-color)";
+  // Depth Parsing
+  const buyDepth = raw?.depth?.buy || [];
+  const sellDepth = raw?.depth?.sell || [];
+  const maxBuyQty = Math.max(...buyDepth.map(b => Number(b.quantity)), 0);
+  const maxSellQty = Math.max(...sellDepth.map(s => Number(s.quantity)), 0);
+  
+  const bestBuy = buyDepth.length > 0 ? buyDepth[0]?.price : null;
+  const bestSell = sellDepth.length > 0 ? sellDepth[0]?.price : null;
+  const spread = (bestSell != null && bestBuy != null) ? (bestSell - bestBuy) : null;
 
   return (
-    <div
-      style={{
-        background: "var(--bg-primary)",
-        color: "var(--text-primary)",
-        height: "100%",
-        overflowY: "auto",
-        padding: "20px 20px 32px",
-      }}
-    >
-      {/* ── Header ── */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 20,
-          flexWrap: "wrap",
-          gap: 12,
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              style={{
-                fontSize: 22,
-                fontWeight: 800,
-                color: "var(--text-primary)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {overview.symbol || selectedCurrency.name}
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: 4,
-                background: "var(--border-color)",
-                color: "var(--text-secondary)",
-                letterSpacing: "0.05em",
-              }}
-            >
-              {overview.exchange || selectedCurrency.segment}
-            </span>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 20, background: "var(--bg-primary)", color: "var(--text-primary)", overflowY: "auto", gap: 16 }}>
+      
+      {/* ── HEADER ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Logo Placeholder */}
+          <div style={{ width: 48, height: 48, background: "#fff", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "#d32f2f", fontWeight: 800, fontSize: 18 }}>
+            {raw.tradingSymbol ? raw.tradingSymbol.substring(0, 3).toUpperCase() : "SYM"}
           </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: "var(--text-secondary)",
-              marginTop: 3,
-            }}
-          >
-            {selectedCurrency.fullName || ""}
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+              {raw.tradingSymbol || selectedCurrency?.name}
+            </div>
+            <div style={{ fontSize: 13, color: "var(--success-color)", fontWeight: 500 }}>
+              {raw.exchange || "NSE"}
+            </div>
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div
-            style={{
-              fontSize: 26,
-              fontWeight: 800,
-              color: changeColor,
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <div style={{ fontSize: 28, fontWeight: 700 }}>
             {fmt(ltp)}
           </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: changeColor,
-              fontWeight: 600,
-              marginTop: 2,
-            }}
-          >
-            {netChange != null ? (netChange > 0 ? "▲" : "▼") : ""}{" "}
-            {fmt(Math.abs(netChange ?? 0))} ({pct(pctChange)})
+          <div style={{ fontSize: 14, color: changeColor, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
+            {isPositive ? "▲" : "▼"} {fmt(Math.abs(netChange))} ({pct(percentChange)})
           </div>
         </div>
       </div>
 
-      {/* ── Activity + Price Details ── */}
-      <SectionCard>
-        <div style={{ display: "flex", gap: 0, flexWrap: "wrap" }}>
-          {/* Activity */}
-          <div
-            style={{
-              flex: "1 1 200px",
-              paddingRight: 24,
-              borderRight: "1px solid var(--border-color)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: "var(--text-secondary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                marginBottom: 12,
-              }}
-            >
-              Activity
-            </div>
-            <div style={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <StatItem label="Open" value={fmt(overview?.open)} />
-              <StatItem
-                label="High"
-                value={fmt(overview?.high)}
-                color="var(--success-color)"
-              />
-              <StatItem
-                label="Low"
-                value={fmt(overview?.low)}
-                color="var(--danger-color)"
-              />
-              <StatItem label="Close" value={fmt(overview?.close)} />
-            </div>
+      {/* ── TOP STATS ROW ── */}
+      <div style={{ display: "flex", background: "var(--bg-secondary)", borderRadius: 10, padding: "16px 20px", border: "1px solid var(--border-color)", justifyContent: "space-between" }}>
+        <TopStat label="Open" value={fmt(open)} />
+        <div style={{ width: 1, background: "var(--border-color)" }} />
+        <TopStat label="High" value={fmt(high)} color="var(--success-color)" />
+        <div style={{ width: 1, background: "var(--border-color)" }} />
+        <TopStat label="Low" value={fmt(low)} color="var(--danger-color)" />
+        <div style={{ width: 1, background: "var(--border-color)" }} />
+        <TopStat label="Prev Close" value={fmt(close)} />
+        <div style={{ width: 1, background: "var(--border-color)" }} />
+        <TopStat label="Avg Price" value={fmt(raw.avgPrice)} />
+        <div style={{ width: 1, background: "var(--border-color)" }} />
+        <TopStat label="Volume" value={fmt(raw.tradeVolume, 0)} />
+        <div style={{ width: 1, background: "var(--border-color)" }} />
+        <TopStat label="OI" value={fmt(raw.opnInterest, 0)} />
+      </div>
+
+      {/* ── MIDDLE PANELS ── */}
+      <div style={{ display: "flex", gap: 16 }}>
+        
+        {/* MARKET INFORMATION */}
+        <div style={{ flex: 1, background: "var(--bg-secondary)", borderRadius: 10, padding: 20, border: "1px solid var(--border-color)" }}>
+          <div style={{ fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <FiTrendingUp color="#3b82f6" /> Market Information
           </div>
-          {/* Price Details */}
-          <div style={{ flex: "1 1 280px", paddingLeft: 24 }}>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: "var(--text-secondary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                marginBottom: 12,
-              }}
-            >
-              Price Details
+          <div style={{ display: "flex", gap: 32 }}>
+            <div style={{ flex: 1 }}>
+              <InfoRow label="Exchange" value={raw.exchange || "NSE"} />
+              <InfoRow label="Trading Symbol" value={raw.tradingSymbol || dataPayload.symbol || "--"} />
+              <InfoRow label="Symbol Token" value={raw.symbolToken || "--"} />
+              <InfoRow label="Last Traded Price (LTP)" value={fmt(ltp)} color="var(--success-color)" />
+              <InfoRow label="Net Change" value={fmt(netChange)} color={changeColor} />
+              <InfoRow label="Percent Change" value={pct(percentChange)} color={changeColor} />
+              <InfoRow label="Last Trade Quantity" value={fmt(raw.lastTradeQty, 0)} />
+              <InfoRow label="Trade Volume" value={fmt(raw.tradeVolume, 0)} />
+              <InfoRow label="Open Interest" value={fmt(raw.opnInterest, 0)} />
             </div>
-            {/* <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-              <StatItem
-                label="Average Price"
-                value={fmt(priceDetails?.averagePrice)}
-              />
-              <StatItem
-                label="Volume"
-                value={
-                  priceDetails?.volume != null
-                    ? Number(priceDetails.volume).toLocaleString("en-IN")
-                    : "--"
-                }
-              />
-              <StatItem
-                label="Open Interest"
-                value={
-                  priceDetails?.openInterest != null
-                    ? Number(priceDetails.openInterest).toLocaleString("en-IN")
-                    : "--"
-                }
-              />
-              <StatItem
-                label="Bid / Ask"
-                value={`${fmt(priceDetails?.bid)} / ${fmt(priceDetails?.ask)}`}
-              />
-            </div> */}
+            <div style={{ flex: 1 }}>
+              <InfoRow label="Exchange Feed Time" value={raw.exchFeedTime} />
+              <InfoRow label="Exchange Trade Time" value={raw.exchTradeTime} />
+              <div style={{ height: 16 }} /> {/* Spacer */}
+              <InfoRow label="Lower Circuit" value={fmt(raw.lowerCircuit)} color="var(--danger-color)" />
+              <InfoRow label="Upper Circuit" value={fmt(raw.upperCircuit)} color="var(--success-color)" />
+              <div style={{ height: 16 }} /> {/* Spacer */}
+              <InfoRow label="52 Week Low" value={fmt(raw["52WeekLow"])} color="var(--danger-color)" />
+              <InfoRow label="52 Week High" value={fmt(raw["52WeekHigh"])} color="var(--success-color)" />
+              <div style={{ height: 16 }} /> {/* Spacer */}
+              <InfoRow label="Total Buy Quantity" value={fmt(raw.totBuyQuan, 0)} />
+              <InfoRow label="Total Sell Quantity" value={fmt(raw.totSellQuan, 0)} />
+            </div>
           </div>
         </div>
-      </SectionCard>
 
-      {/* ── Circuit + 52W ── */}
-      {/* <SectionCard>
-        <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
-          {circuitLimits && (
-            <RangeBar
-              low={circuitLimits.lower}
-              high={circuitLimits.upper}
-              current={ltp}
-              label="Lower Circuit / Upper Circuit"
-            />
-          )}
-          {fiftyTwoWeek && (
-            <RangeBar
-              low={fiftyTwoWeek.low}
-              high={fiftyTwoWeek.high}
-              current={ltp}
-              label="52 Week Low / High"
-            />
-          )}
-        </div>
-      </SectionCard> */}
+        {/* MARKET DEPTH */}
+        <div style={{ flex: 1, background: "var(--bg-secondary)", borderRadius: 10, padding: 20, border: "1px solid var(--border-color)" }}>
+          <div style={{ fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <FiBookOpen color="#3b82f6" /> Market Depth (Top 5)
+          </div>
+          
+          <div style={{ display: "flex", gap: 24 }}>
+            {/* BUY ORDERS */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--success-color)", marginBottom: 12 }}>BUY ORDERS</div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid var(--border-color)" }}>
+                <span style={{ flex: 1, textAlign: "left" }}>Price</span>
+                <span style={{ flex: 1, textAlign: "center" }}>Quantity</span>
+                <span style={{ flex: 1, textAlign: "right" }}>Orders</span>
+              </div>
+              <div>
+                {buyDepth.map((b, i) => (
+                  <DepthRow key={i} price={b?.price} quantity={b?.quantity} orders={b?.orders} maxQty={maxBuyQty} isBuy={true} />
+                ))}
+              </div>
+            </div>
 
-      {/* ── Analyst + Fundamentals (side by side) ── */}
-      <div
-        style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}
-      >
-        {/* Analyst Ratings */}
-        <div
-          style={{
-            flex: "1 1 240px",
-            background: "var(--bg-secondary)",
-            border: "1px solid var(--border-color)",
-            borderRadius: 10,
-            padding: "16px 20px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              marginBottom: 4,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}
-          >
-            Analyst Ratings
+            <div style={{ width: 1, background: "var(--border-color)" }} />
+
+            {/* SELL ORDERS */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--danger-color)", marginBottom: 12 }}>SELL ORDERS</div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid var(--border-color)" }}>
+                <span style={{ flex: 1, textAlign: "left" }}>Price</span>
+                <span style={{ flex: 1, textAlign: "center" }}>Quantity</span>
+                <span style={{ flex: 1, textAlign: "right" }}>Orders</span>
+              </div>
+              <div>
+                {sellDepth.map((s, i) => (
+                  <DepthRow key={i} price={s?.price} quantity={s?.quantity} orders={s?.orders} maxQty={maxSellQty} isBuy={false} />
+                ))}
+              </div>
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--text-secondary)",
-              marginBottom: 14,
-            }}
-          >
-            *Based on the review of {STATIC_ANALYST.analystCount} analyst(s) in
-            the last 1 year(s)
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: 14,
-            }}
-          >
+
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--border-color)" }}>
             <div>
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 800,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {fmt(STATIC_ANALYST.targetPrice)}
-              </div>
-              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-                Target Price
-              </div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Best Buy</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--success-color)" }}>{fmt(bestBuy)}</div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Spread</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(spread)}</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 800,
-                  color:
-                    STATIC_ANALYST.expectedProfit >= 0
-                      ? "var(--success-color)"
-                      : "var(--danger-color)",
-                }}
-              >
-                {pct(STATIC_ANALYST.expectedProfit)}
-              </div>
-              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-                Expected Profit
-              </div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Best Sell</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--danger-color)" }}>{fmt(bestSell)}</div>
             </div>
-          </div>
-          <RatingBar
-            label="BUY"
-            pct={STATIC_ANALYST.buy}
-            color="var(--success-color)"
-          />
-          <RatingBar label="HOLD" pct={STATIC_ANALYST.hold} color="#f0b90b" />
-          <RatingBar
-            label="SELL"
-            pct={STATIC_ANALYST.sell}
-            color="var(--danger-color)"
-          />
-          <div
-            style={{
-              fontSize: 10,
-              color: "var(--text-secondary)",
-              marginTop: 10,
-            }}
-          >
-            powered by{" "}
-            <strong style={{ color: "var(--text-secondary)" }}>Trendlyn</strong>
           </div>
         </div>
 
-        {/* Fundamental Ratios */}
-        <div
-          style={{
-            flex: "1 1 280px",
-            background: "var(--bg-secondary)",
-            border: "1px solid var(--border-color)",
-            borderRadius: 10,
-            padding: "16px 20px",
-          }}
-        >
-          <FundamentalRatios />
-        </div>
       </div>
 
-      {/* ── Performance Overview ── */}
-      <SectionCard title="Performance Overview">
-        {/* Sector Trend row */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 12,
-              color: "var(--text-secondary)",
-              marginRight: 4,
-            }}
-          >
-            Sector Trend{" "}
-            <span style={{ color: "var(--accent-color)", fontWeight: 700 }}>
-              (#{STATIC_PERFORMANCE.sectorRank})
-            </span>
-          </span>
-          {[STATIC_PERFORMANCE.cap, STATIC_PERFORMANCE.sector].map((tag) => (
-            <span
-              key={tag}
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: 4,
-                background: "var(--border-color)",
-                color: "var(--text-secondary)",
-                letterSpacing: "0.05em",
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 20,
-            flexWrap: "wrap",
-            marginBottom: 18,
-          }}
-        >
-          {[
-            {
-              label: "Short Term",
-              val: STATIC_PERFORMANCE.shortTerm,
-              c: "#f0b90b",
-            },
-            {
-              label: "Long Term",
-              val: STATIC_PERFORMANCE.longTerm,
-              c: "#f0b90b",
-            },
-          ].map(({ label, val, c }) => (
-            <div
-              key={label}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
-            >
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: c,
-                  display: "inline-block",
-                }}
-              />
-              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                {label}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: c }}>
-                {val}
-              </span>
-            </div>
-          ))}
-          <StatItem
-            label="Market Cap"
-            value={`₹${STATIC_PERFORMANCE.marketCap} Cr`}
-          />
-          <StatItem
-            label="1 Year Return"
-            value={pct(STATIC_PERFORMANCE.oneYearReturn)}
-            color="var(--success-color)"
-          />
-          <StatItem
-            label="Sector Return"
-            value={pct(STATIC_PERFORMANCE.sectorReturn)}
-            color="var(--success-color)"
-          />
-          <StatItem
-            label="Market Return"
-            value={pct(STATIC_PERFORMANCE.marketReturn)}
-            color="var(--danger-color)"
-          />
-        </div>
+      {/* ── BOTTOM WIDGETS ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <RangeWidget title="Day Range" low={low} high={high} current={ltp} icon={FiBarChart2} />
+        <RangeWidget title="52 Week Range" low={raw["52WeekLow"]} high={raw["52WeekHigh"]} current={ltp} icon={FiTrendingUp} />
+        <BadgeWidget title="Lower Circuit" value={fmt(raw.lowerCircuit)} icon={FiShield} iconColor="#eab308" valueColor="var(--danger-color)" />
+        
+        <BadgeWidget title="Upper Circuit" value={fmt(raw.upperCircuit)} icon={FiShield} iconColor="#22c55e" valueColor="var(--success-color)" />
+        <BadgeWidget title="Total Buy Qty" value={fmt(raw.totBuyQuan, 0)} icon={FiClock} iconColor="#3b82f6" valueColor="var(--success-color)" />
+        <BadgeWidget title="Total Sell Qty" value={fmt(raw.totSellQuan, 0)} icon={FiClock} iconColor="#ef4444" valueColor="var(--danger-color)" />
+      </div>
 
-        {/* Quality / Valuation / Financial + Insights */}
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 130 }}>
-            <div style={{ marginBottom: 10 }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--text-secondary)",
-                  marginBottom: 4,
-                }}
-              >
-                Quality
-              </div>
-              <ScoreBadge
-                label={STATIC_PERFORMANCE.quality.label}
-                score={STATIC_PERFORMANCE.quality.score}
-                color="var(--success-color)"
-              />
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--text-secondary)",
-                  marginBottom: 4,
-                }}
-              >
-                Valuation
-              </div>
-              <ScoreBadge
-                label={STATIC_PERFORMANCE.valuation.label}
-                score={STATIC_PERFORMANCE.valuation.score}
-                color="#f0b90b"
-              />
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--text-secondary)",
-                  marginBottom: 4,
-                }}
-              >
-                Financial
-              </div>
-              <ScoreBadge
-                label={STATIC_PERFORMANCE.financial.label}
-                score={STATIC_PERFORMANCE.financial.score}
-                color="#f0b90b"
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              flex: 1,
-              minWidth: 200,
-              borderLeft: "1px solid var(--border-color)",
-              paddingLeft: 20,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: 24,
-                marginBottom: 14,
-                flexWrap: "wrap",
-              }}
-            >
-              {[
-                {
-                  key: "Capital Structure",
-                  val: STATIC_PERFORMANCE.quality.capitalStructure,
-                },
-                { key: "Growth", val: STATIC_PERFORMANCE.quality.growth },
-                {
-                  key: "Management Risk",
-                  val: STATIC_PERFORMANCE.quality.managementRisk,
-                },
-              ].map(({ key, val }) => (
-                <div key={key}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      marginBottom: 2,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: "50%",
-                        background: "var(--success-color)",
-                        display: "inline-block",
-                      }}
-                    />
-                    <span
-                      style={{ fontSize: 12, color: "var(--text-secondary)" }}
-                    >
-                      {key}
-                    </span>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: "var(--success-color)",
-                      paddingLeft: 12,
-                    }}
-                  >
-                    {val}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--text-secondary)",
-                  marginBottom: 8,
-                  fontWeight: 700,
-                }}
-              >
-                Insights to Look For
-              </div>
-              {STATIC_PERFORMANCE.insights.map((ins, i) => (
-                <div
-                  key={i}
-                  style={{ display: "flex", gap: 8, marginBottom: 5 }}
-                >
-                  <span
-                    style={{
-                      color: "var(--accent-color)",
-                      fontSize: 12,
-                      marginTop: 1,
-                    }}
-                  >
-                    •
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--text-primary)" }}>
-                    {ins}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-
-      {/* ── Market Depth ── */}
-      <SectionCard title="Market Depth">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
-          {/* <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            Total Buy Qty:{" "}
-            <span style={{ color: "var(--success-color)", fontWeight: 700 }}>
-              {Number(raw_data?.totBuyQuan ?? 0).toLocaleString("en-IN")}
-            </span>
-          </div>
-          <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            Total Sell Qty:{" "}
-            <span style={{ color: "var(--danger-color)", fontWeight: 700 }}>
-              {Number(raw_data?.totSellQuan ?? 0).toLocaleString("en-IN")}
-            </span>
-          </div> */}
-        </div>
-        {/* <MarketDepth buy={depth.buy || []} sell={depth.sell || []} /> */}
-      </SectionCard>
     </div>
   );
 };

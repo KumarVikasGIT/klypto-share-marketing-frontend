@@ -10,35 +10,27 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const { emit } = useSocket({
-    [EVENTS.WATCHLIST.RESPONSE]: (data) => {
-      // console.log("stocks event", data);
-
-      const equity = (data?.data?.equity || []).map((item) => ({
-        ...item,
-        category: "EQ",
-      }));
-
-      const futures = (data?.data?.futures || []).map((item) => ({
-        ...item,
-        category: "FUT",
-      }));
-
-      const options = (data?.data?.trendingOptions || []).map((item) => ({
-        ...item,
-        category: "OPT",
-      }));
-
-      const indices = (data?.data?.indices || []).map((item) => ({
-        ...item,
-        category: "IDX",
-      }));
+    handleWatchlistResponse: (data) => {
+      // Handle both nested {data: {equity: ...}} and flat array structures
+      let equity = [], futures = [], options = [], indices = [];
+      
+      if (Array.isArray(data)) {
+         equity = data.map(item => ({...item, category: "EQ"}));
+      } else if (Array.isArray(data?.data)) {
+         equity = data.data.map(item => ({...item, category: "EQ"}));
+      } else {
+         equity = (data?.data?.equity || []).map((item) => ({ ...item, category: "EQ" }));
+         futures = (data?.data?.futures || []).map((item) => ({ ...item, category: "FUT" }));
+         options = (data?.data?.trendingOptions || []).map((item) => ({ ...item, category: "OPT" }));
+         indices = (data?.data?.indices || []).map((item) => ({ ...item, category: "IDX" }));
+      }
 
       const combined = [...indices, ...equity, ...futures, ...options];
 
       setStocksData(combined);
       setIsLoading(false);
     },
-    [EVENTS.STOCK_LIST.STOCK_UPDATE]: (updatedStock) => {
+    handleStockUpdate: (updatedStock) => {
       if (!updatedStock?.token) return;
 
       setStocksData((prev) =>
@@ -49,7 +41,7 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
         ),
       );
     },
-    [EVENTS.CHART.LIVE_TICK]: (tick) => {
+    handleLiveTick: (tick) => {
       if (!tick?.token) return;
 
       setStocksData((prev) =>

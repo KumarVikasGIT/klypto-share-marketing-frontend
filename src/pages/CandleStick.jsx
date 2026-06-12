@@ -1248,11 +1248,11 @@ export default function Candlestick() {
 
   // ── Central Socket Hook ──
   const { emit, once, connect, connected, id } = useSocket({
-    connect: () => {
+    handleConnect: () => {
       console.log("✅ SOCKET CONNECTED", connected);
       requestHistoricalData();
     },
-    [EVENTS.CHART.RESPONSE]: (response) => {
+    handleHistoricalData: (response) => {
       console.log("HISTORICAL DATA RESPONSE", response?.data);
       if (!chartRef.current) return;
 
@@ -1443,12 +1443,12 @@ export default function Candlestick() {
         chartRef.current?.timeScale().fitContent();
       }, 150);
     },
-    [EVENTS.CHART.ERROR]: (err) => {
+    handleHistoricalError: (err) => {
       toast.error(err.message || "Failed to fetch historical data");
       console.error("❌ Historical data error:", err);
       setMainChartLoading(false);
     },
-    [EVENTS.CHART.LIVE_TICK]: (tickOrArray) => {
+    handleLiveTick: (tickOrArray) => {
       const ticks = Array.isArray(tickOrArray) ? tickOrArray : [tickOrArray];
 
       ticks.forEach((tick) => {
@@ -1559,10 +1559,9 @@ export default function Candlestick() {
         }
       });
     },
-    [EVENTS.CHART.LIVETICKS]: (tickOrArray) => {
-      // Re-use logic since handlersRef ensures fresh closures
-    },
-    [EVENTS.INDICATOR.LIVE_RESPONSE]: (payload) => {
+    // Note: We've combined liveTick logic into a single handleLiveTick, 
+    // so we don't need a separate array-specific handler if the new centralized one supports both (and it does not need to care, as it just passes through).
+    handleLiveIndicator: (payload) => {
       if (!payload?.success || !payload?.type) return;
 
       console.log(`[LiveIndicator] Payload:`, payload);
@@ -1636,8 +1635,7 @@ export default function Candlestick() {
           }
         });
       });
-    },
-    connect_error: (err) => console.log("❌ SOCKET ERROR:", err.message),
+    }
   });
 
   // Keep emitRef and socketRef up to date

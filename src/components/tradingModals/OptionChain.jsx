@@ -48,7 +48,7 @@ const OptionChain = ({ onSymbolChange }) => {
   // Fetch metadata from REST API
   useEffect(() => {
     axios
-      .get("http://192.168.1.11:3000/api/historical-metadata")
+      .get("http://192.168.1.3:3000/api/historical-metadata")
       .then((res) => {
         const data = res.data;
         console.log("[OptionChain] historical-metadata response:", data);
