@@ -3,7 +3,6 @@ const EVENTS = {
     GET: "getManualHistoricalData",
     RESPONSE: "historicalDataResponse",
     ERROR: "historicalDataError",
-    LIVE_TICK: "liveTick",
     LIVETICKS: "liveticks",
   },
   INDICATOR: {
@@ -37,6 +36,12 @@ const EVENTS = {
     GET: "getLiveTick",
     RESPONSE: "strategyLiveTick",
   },
+  STRATEGY: {
+    PROGRESS: "scannerProgress",
+    NEW_SIGNAL: "newScannerSignal",
+    COMPLETE: "scannerComplete",
+    ERROR:"scannerError"
+  }
 
   // --- INPUT EVENTS (Client to Server) ---
   // GET_HISTORICAL_DATA: "getManualHistoricalData",

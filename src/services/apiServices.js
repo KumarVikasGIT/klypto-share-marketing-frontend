@@ -4,7 +4,7 @@ import { getToken } from "../pages/auth/protected";
 // 🔹 Create axios instance
 const api = axios.create({
   // baseURL: "https://loiteringly-homeliest-breana.ngrok-free.dev",
-  baseURL: "http://192.168.1.3:9000", // change to your API
+  baseURL: "http://192.168.1.6:8000", // change to your API
   // baseURL: "http://localhost:9000", // change to your API
 
   timeout: 600000, // 1 min
@@ -19,6 +19,11 @@ api.interceptors.request.use((config) => {
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  if (config.url.includes("scanner-dashboard")) {
+    console.log(`🚀 [API] Request to ${config.url}`);
+    console.log(`🔑 [API] Attached Token:`, token ? "VALID_TOKEN_PRESENT" : "NULL/MISSING_TOKEN");
   }
 
   return config;

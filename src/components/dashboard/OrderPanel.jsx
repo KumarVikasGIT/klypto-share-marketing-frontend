@@ -295,7 +295,7 @@ const OrderPanel = ({
       setRawChainData({ symbol: response?.symbol, chain: formattedChain });
     },
     handleOptionChainResponse: (response) => {
-      console.log("[OrderPanel] option-chain-data response:", response);
+      // console.log("[OrderPanel] option-chain-data response:", response);
 
       const data = response?.data || response?.chain ? response : { chain: response };
 

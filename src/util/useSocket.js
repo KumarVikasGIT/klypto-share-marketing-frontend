@@ -34,7 +34,7 @@ const useSocket = (props = {}) => {
       },
       
       [EVENTS.WATCHLIST.RESPONSE]: (res) => {
-        console.log("WATCHLIST RESPONSE:", res);
+        console.log("masterWatchlistResponse:", res);
         globalCache.watchList = res?.data || res;
         if (propsRef.current.handleWatchlistResponse) propsRef.current.handleWatchlistResponse(res);
       },
@@ -56,9 +56,10 @@ const useSocket = (props = {}) => {
         if (propsRef.current.handleHistoricalError) propsRef.current.handleHistoricalError(err);
       },
       
-      [EVENTS.CHART.LIVE_TICK]: (tick) => {
+      [EVENTS.CHART.LIVETICKS]: (tick) => {
+        console.log(`[SOCKET] ${EVENTS.CHART.LIVETICKS} received:`, tick);
         if (propsRef.current.handleLiveTick) propsRef.current.handleLiveTick(tick);
-        if (propsRef.current.handleAlertTick) propsRef.current.handleAlertTick({ type: EVENTS.CHART.LIVE_TICK, data: tick });
+        if (propsRef.current.handleAlertTick) propsRef.current.handleAlertTick({ type: EVENTS.CHART.LIVETICKS, data: tick });
       },
       
       [EVENTS.OVERVIEW.RESPONSE]: (tick) => {
@@ -82,6 +83,21 @@ const useSocket = (props = {}) => {
         globalCache.backtestDashboard = res;
         if (propsRef.current.setBacktestDashboard) propsRef.current.setBacktestDashboard(res);
       },
+      
+      [EVENTS.STRATEGY.PROGRESS]: (data) => {
+        console.log(`[SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`, data);
+        if (propsRef.current.handleScannerProgress) propsRef.current.handleScannerProgress(data);
+      },
+      
+      [EVENTS.STRATEGY.NEW_SIGNAL]: (signalData) => {
+        console.log(`[SOCKET] ${EVENTS.STRATEGY.NEW_SIGNAL} Payload:`, signalData);
+        if (propsRef.current.handleNewScannerSignal) propsRef.current.handleNewScannerSignal(signalData);
+      },
+      
+      [EVENTS.STRATEGY.COMPLETE]: (response) => {
+        console.log(`[SOCKET] ${EVENTS.STRATEGY.COMPLETE} Payload:`, response);
+        if (propsRef.current.handleScannerComplete) propsRef.current.handleScannerComplete(response);
+      },
 
       "connect": () => {
          if (propsRef.current.handleConnect) propsRef.current.handleConnect();
@@ -93,9 +109,16 @@ const useSocket = (props = {}) => {
 
     const unsubscribers = [];
 
-    // Register all centralized handlers
+    // Register all centralized handlers with try-catch wrapper
     Object.keys(handlers).forEach((eventName) => {
-      const unsub = socketManager.subscribe(eventName, handlers[eventName]);
+      const wrappedHandler = (...args) => {
+        try {
+          handlers[eventName](...args);
+        } catch (error) {
+          console.error(`[SOCKET ERROR] Event '${eventName}' threw an exception:`, error);
+        }
+      };
+      const unsub = socketManager.subscribe(eventName, wrappedHandler);
       unsubscribers.push(unsub);
     });
 

@@ -149,7 +149,7 @@ export default function useAlerts() {
           valueMapRef.current[`${stock.name}_RSI`] = rsiVal;
           checkAlert(stock.name, rsiVal, "RSI");
         }
-      } else if (type === EVENTS.CHART.LIVE_TICK) {
+      } else if (type === EVENTS.CHART.LIVETICKS) {
         const tick = data;
         if (tick?.type && Array.isArray(tick?.data) && tick.data.length > 0) {
           const sym = tick.symbol || tick.name;

@@ -15,6 +15,10 @@ class SocketManager {
     this.handlers = new Map();
     this.socket = socket;
     
+    // Pre-populate standard events so `subscribe` doesn't attach duplicate socket listeners
+    const standardEvents = ["connect", "disconnect", "connect_error"];
+    standardEvents.forEach(event => this.handlers.set(event, new Set()));
+
     // Setup connection listeners
     this.socket.on("connect", () => {
       console.log("[SocketManager] Socket connected");
@@ -78,7 +82,6 @@ class SocketManager {
     });
   }
 
-  // Hook entrypoint
   subscribe(eventName, callback) {
     if (!this.handlers.has(eventName)) {
       this.handlers.set(eventName, new Set());

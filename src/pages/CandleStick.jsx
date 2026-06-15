@@ -58,6 +58,7 @@ import {
   PANE_INDICATORS,
 } from "../util/indicatorFunctions";
 import { io } from "socket.io-client";
+import { getStrategySocket } from "../services/websocket/socket";
 import { toast } from "react-toastify";
 import useAlerts from "../util/useAlerts";
 import { Link } from "react-router-dom";
@@ -89,8 +90,8 @@ export default function Candlestick() {
   const [isDeployed, setIsDeployed] = useState(false);
   const [isPyodideReady, setIsPyodideReady] = useState(false);
 
-  const { matchedCoins, addAlert, clearAllCoins, scanner, removeCoin } =
-    useAlerts();
+  const { matchedCoins, addAlert, clearAllCoins, scanner, removeCoin } = useAlerts();
+  
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsList, setDetailsList] = useState([]);
@@ -113,7 +114,7 @@ export default function Candlestick() {
   });
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 1);
+    d.setDate(d.getDate() - 90); // At least 3 months default for 5m
     return d.toISOString().split("T")[0];
   });
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
@@ -125,7 +126,9 @@ export default function Candlestick() {
   const [liveIndicatorData, setLiveIndicatorData] = useState({});
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
   const [editorCode, setEditorCode] = useState(
-    "import pandas as pd\n\n# Example user code\n",
+   `markers = []
+# user strategy here
+plot_markers(markers)`
   );
   const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
   const [customSignals, setCustomSignals] = useState([]);
@@ -213,13 +216,9 @@ export default function Candlestick() {
     setIsDeployed(false);
   }, []);
 
-  // 1. Polling Effect
+  // 1. Initial Dashboard Fetch (Replaces Polling)
   useEffect(() => {
     if (!isDeployed || !deployedStrategyCode) {
-      if (scannerIntervalRef.current) {
-        clearInterval(scannerIntervalRef.current);
-        scannerIntervalRef.current = null;
-      }
       return;
     }
 
@@ -232,33 +231,90 @@ export default function Candlestick() {
         console.error("Failed to fetch dashboard signals:", err);
       }
     };
-
-    if (scannerIntervalRef.current) clearInterval(scannerIntervalRef.current);
-    
-    if (scannerIntervalRef.current) clearInterval(scannerIntervalRef.current);
     
     // Fetch immediately on deploy to show existing dashboard results
     fetchDashboard();
 
-    scannerIntervalRef.current = setInterval(async () => {
-      try {
-        console.log("Background 5m interval: Running scanner trigger...");
-        const payload = { strategy_code: `${deployedStrategyCode}` };
+  }, [isDeployed, deployedStrategyCode]);
+
+  // Dedicated Strategy Socket Handlers
+  const signalBufferRef = useRef([]);
+
+  // Flush buffer to state every 500ms to avoid freezing the UI on mass updates
+  useEffect(() => {
+    const flushInterval = setInterval(() => {
+      if (signalBufferRef.current.length > 0) {
+        const newSignals = [...signalBufferRef.current];
+        signalBufferRef.current = []; // Clear immediately
         
-        // Fire and forget trigger
-        apiService.post(`/api/strategy/run-scanner`, JSON.stringify(payload)).catch(e => console.error(e));
-        
-        // Fetch dashboard for latest results
-        await fetchDashboard();
-      } catch (err) {
-        console.error("Background 5m interval failed:", err);
+        setDashboardSignals(prev => [...prev, ...newSignals]);
       }
-    }, 300000);
+    }, 500);
+
+    return () => clearInterval(flushInterval);
+  }, []);
+
+  useEffect(() => {
+    const strategySocket = getStrategySocket();
+
+    const handleScannerProgress = (data) => {
+      try {
+        console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`, data);
+        let percentage = data.total > 0 ? ((data.processed / data.total) * 100).toFixed(1) : 0;
+        toast.update("compiling", {
+          render: `Scanning... ${percentage}% completed. Current: ${data.current_stock || "..."}`,
+          type: "info",
+          isLoading: true
+        });
+      } catch (err) {
+        console.error(`[STRATEGY SOCKET ERROR] PROGRESS handler failed:`, err);
+      }
+    };
+
+    const handleScannerComplete = (response) => {
+      try {
+        console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.COMPLETE} Payload:`, response);
+        toast.dismiss("compiling");
+        toast.success(response?.message || "Scanner triggered successfully! Waiting for results...");
+        setIsDeploying(false);
+      } catch (err) {
+        console.error(`[STRATEGY SOCKET ERROR] COMPLETE handler failed:`, err);
+      }
+    };
+
+    const handleNewScannerSignal = (signalData) => {
+      try {
+        console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.NEW_SIGNAL} Payload:`, signalData);
+        signalBufferRef.current.push(signalData);
+      } catch (err) {
+        console.error(`[STRATEGY SOCKET ERROR] NEW_SIGNAL handler failed:`, err);
+      }
+    };
+
+    const handleScannerError = (errPayload) => {
+      try {
+        console.error(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.ERROR} Payload:`, errPayload);
+        toast.warn(`Error on ${errPayload?.symbol || "Unknown"}: ${errPayload?.error || "Scanning failed"}`, {
+          autoClose: 3000,
+          position: "top-right",
+        });
+      } catch (err) {
+        console.error(`[STRATEGY SOCKET ERROR] ERROR handler failed:`, err);
+      }
+    };
+
+    strategySocket.on(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
+    strategySocket.on(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
+    strategySocket.on(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
+    strategySocket.on(EVENTS.STRATEGY.ERROR, handleScannerError);
 
     return () => {
-      if (scannerIntervalRef.current) clearInterval(scannerIntervalRef.current);
+      strategySocket.off(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
+      strategySocket.off(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
+      strategySocket.off(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
+      strategySocket.off(EVENTS.STRATEGY.ERROR, handleScannerError);
     };
-  }, [isDeployed, deployedStrategyCode]);
+  }, []);
 
   // 2. Reactive Plotting Effect
   useEffect(() => {
@@ -356,6 +412,233 @@ export default function Candlestick() {
 
       setIsDeploying(true);
 
+      // 1.2 Basic Frontend Security Check (Warning: This is NOT a substitute for backend sandboxing)
+      const dangerousPatterns = [
+        /\beval\s*\(/, /\bexec\s*\(/, /\b__import__\s*\(/, /\bopen\s*\(/, 
+        /import\s+os\b/, /import\s+subprocess\b/, /import\s+sys\b/, /from\s+os\b/, /from\s+subprocess\b/
+      ];
+
+      for (let pattern of dangerousPatterns) {
+        if (pattern.test(code)) {
+          Swal.fire({
+            icon: "error",
+            title: "Security Violation",
+            text: "Your code contains restricted keywords or functions (e.g., eval, exec, os).",
+            background: "var(--bg-secondary)",
+            color: "var(--text-primary)",
+          });
+          setIsDeploying(false);
+          return;
+        }
+      }
+
+      // 1.5 Validate Python Syntax on Frontend before API Call
+      if (!pyodideRef.current) {
+        Swal.fire({
+          icon: "warning",
+          title: "Engine Loading",
+          text: "The Python validation engine is still loading. Please wait a moment before deploying.",
+          background: "var(--bg-secondary)",
+          color: "var(--text-primary)",
+        });
+        setIsDeploying(false);
+        return;
+      }
+
+      try {
+        const sanitizedCode = code.replace(/\u00A0/g, " ");
+        pyodideRef.current.globals.set("__code_to_validate", sanitizedCode);
+        const resultJson = await pyodideRef.current.runPythonAsync(`
+import pandas as pd
+import numpy as np
+import sys
+import io
+import time
+import ast
+import json
+import traceback
+
+result = { "success": True, "error_type": None, "error_message": None, "output": "", "markers": [] }
+
+class StrategyValidator(ast.NodeVisitor):
+    def __init__(self):
+        self.used_vars = set()
+        self.overridden_vars = set()
+        self.forbidden_imports = set()
+        self.reserved = {'df', 'open', 'high', 'low', 'close', 'volume', 'datetime', 'plot_markers'}
+        
+    def visit_Name(self, node):
+        if isinstance(node.ctx, ast.Load) and node.id in self.reserved:
+            self.used_vars.add(node.id)
+        elif isinstance(node.ctx, ast.Store) and node.id in self.reserved:
+            self.overridden_vars.add(node.id)
+        self.generic_visit(node)
+        
+    def visit_Import(self, node):
+        for alias in node.names:
+            if alias.name in ['os', 'sys', 'subprocess']:
+                self.forbidden_imports.add(alias.name)
+        self.generic_visit(node)
+        
+    def visit_ImportFrom(self, node):
+        if node.module in ['os', 'sys', 'subprocess']:
+            self.forbidden_imports.add(node.module)
+        self.generic_visit(node)
+
+# Step 1: AST Validation
+try:
+    tree = ast.parse(__code_to_validate)
+    validator = StrategyValidator()
+    validator.visit(tree)
+    
+    if len(validator.used_vars) == 0:
+        raise ValueError("Invalid Strategy: You must use at least one engine variable (df, open, high, low, close, volume, datetime, plot_markers).")
+    
+    if len(validator.overridden_vars) > 0:
+        raise ValueError(f"Security Error: You are not allowed to override engine variables or functions: {', '.join(validator.overridden_vars)}")
+        
+    if len(validator.forbidden_imports) > 0:
+        raise ValueError(f"Security Error: Forbidden imports detected: {', '.join(validator.forbidden_imports)}")
+except Exception as e:
+    result["success"] = False
+    result["error_type"] = type(e).__name__
+    if isinstance(e, SyntaxError):
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        result["error_message"] = "".join(tb_lines).strip()
+    else:
+        result["error_message"] = str(e)
+
+if result["success"]:
+    # Step 2: Setup Globals
+    np.random.seed(42)
+    closes = np.random.normal(0, 1, 300).cumsum() + 100
+    df = pd.DataFrame({
+        'open': closes + np.random.normal(0, 0.5, 300),
+        'high': closes + np.random.uniform(0.1, 1.5, 300),
+        'low': closes - np.random.uniform(0.1, 1.5, 300),
+        'close': closes,
+        'volume': np.random.randint(100, 1000, 300),
+        'datetime': pd.date_range(start='1/1/2026', periods=300, freq='D')
+    })
+    open = df['open']
+    high = df['high']
+    low = df['low']
+    close = df['close']
+    volume = df['volume']
+    datetime = df['datetime']
+    def plot_markers(m): pass
+
+    # Step 3: Execution and Sandboxing
+    old_stdout = sys.stdout
+    new_stdout = io.StringIO()
+    sys.stdout = new_stdout
+
+    sys.setrecursionlimit(100)
+    start_time = time.time()
+
+    def trace_calls(frame, event, arg):
+        if time.time() - start_time > 300.0:
+            raise TimeoutError("Execution timed out (infinite loop or heavy computation detected). Limit is 5 minutes.")
+        return trace_calls
+
+    try:
+        sys.settrace(trace_calls)
+        exec(__code_to_validate)
+        sys.settrace(None)
+        
+        # Extract markers
+        if 'markers' in globals() and isinstance(markers, list):
+            # Only keep dict markers to avoid json.dumps crashing
+            clean_markers = [m for m in markers if isinstance(m, dict)]
+            result["markers"] = clean_markers
+        else:
+            result["markers"] = []
+
+    except Exception as e:
+        sys.settrace(None)
+        result["success"] = False
+        result["error_type"] = type(e).__name__
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        result["error_message"] = "".join(tb_lines[-2:]).strip()
+    finally:
+        sys.stdout = old_stdout
+        result["output"] = new_stdout.getvalue()
+
+def json_default(obj):
+    if hasattr(obj, 'isoformat'): return obj.isoformat()
+    if isinstance(obj, np.integer): return int(obj)
+    if isinstance(obj, np.floating): return float(obj)
+    if isinstance(obj, np.ndarray): return obj.tolist()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+json.dumps(result, default=json_default)
+        `);
+
+        const result = JSON.parse(resultJson);
+        const capturedOutput = result.output;
+        
+        if (capturedOutput && capturedOutput.trim() !== "") {
+          Swal.fire({
+            toast: true,
+            position: 'bottom-end',
+            icon: 'info',
+            title: 'Console Output',
+            html: `<pre style="text-align: left; background: var(--bg-primary); padding: 5px; border-radius: 5px; color: var(--text-primary); max-height: 200px; overflow-y: auto;">${capturedOutput}</pre>`,
+            showConfirmButton: false,
+            timer: 5000,
+            background: "var(--bg-secondary)",
+            color: "var(--text-primary)",
+          });
+        }
+
+        if (!result.success) {
+          Swal.fire({
+            icon: "error",
+            title: `Execution Error (${result.error_type})`,
+            text: result.error_message,
+            background: "var(--bg-secondary)",
+            color: "var(--text-primary)",
+          });
+          setIsDeploying(false);
+          return;
+        }
+
+        const markersList = result.markers || [];
+        const isStructurallyValid = markersList.every(m => 
+          typeof m === "object" && m !== null && "time" in m && "text" in m && "position" in m
+        );
+
+        if (markersList.length === 0 || !isStructurallyValid) {
+          Swal.fire({
+            icon: "warning",
+            title: "Invalid Markers",
+            text: "Your strategy ran successfully, but it did not generate any valid markers. Ensure you append valid dictionaries containing 'time', 'text', and 'position'.",
+            background: "var(--bg-secondary)",
+            color: "var(--text-primary)",
+          });
+          setIsDeploying(false);
+          return;
+        }
+
+      } catch (err) {
+        console.error("Syntax Validation Error:", err);
+        const lines = err.message ? err.message.split('\n') : [];
+        // Extract the last few lines which contain the actual SyntaxError
+        const shortError = lines.slice(-4).join('\n').trim() || "Invalid Python syntax.";
+        
+        Swal.fire({
+          icon: "error",
+          title: "Syntax Error",
+          text: shortError,
+          background: "var(--bg-secondary)",
+          color: "var(--text-primary)",
+        });
+        setIsDeploying(false);
+        return;
+      }
+
       try {
         const closes = candlesRef?.current?.map((c) => c.close) || [];
         if (closes.length < 4) {
@@ -378,37 +661,40 @@ export default function Candlestick() {
         if (typeof setIsCodeEditorOpen === 'function') {
           setIsCodeEditorOpen(false);
         }
+        
 
-        // Use the backend API to evaluate the Python code
         const payload = {
-          // symbol: `${selectedCurrency?.name}`,
-          // symbol: "RELIANCE",
-          // interval: "FIVE_MINUTE",
-          // limit: 100,
           strategy_code: `${code}`,
+          use_historical_only: !isMarketOpen,
         };
-        console.log("Python Deploy Payload:", payload);
+        const localUser = JSON.parse(localStorage.getItem("session") || "{}");
+        const userId = localUser?.user?.id || localUser?.user?._id || "123";
+
+        console.log("🚀 [API] Triggering run-scanner API...");
+        console.log("📦 [API] Payload:", payload);
+        console.log("👤 Active User ID (from auth):", userId);
 
         const response = await apiService.post(
-          `/api/strategy/run-scanner`, // setinterval of 5 mins
+          `/api/strategy/run-scanner`, 
           JSON.stringify(payload),
         );
+
+        
 
 
         // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
         setDeployedStrategyCode(code);
         setIsDeployed(true);
-        toast.success("Scanner triggered successfully! Waiting for results...");
+        // Note: toast success and setIsDeploying(false) are now handled in handleScannerComplete socket event
       } catch (err) {
-        console.error("Python Execution API error:", err);
+        console.error("Python Execution Error:", err);
         Swal.fire({
           icon: "error",
           title: "Python Execution Error",
-          text: err?.response?.data?.message || err.message,
+          text: err?.message || "An error occurred",
           background: "var(--bg-secondary)",
           color: "var(--text-primary)",
         });
-      } finally {
         setIsDeploying(false);
       }
     },
@@ -458,14 +744,14 @@ export default function Candlestick() {
   // Update fromDate dynamically to optimize load times when timeframe changes
   useEffect(() => {
     const d = new Date();
-    if (["1", "3", "5"].includes(timeframeValue)) {
-      d.setDate(d.getDate() - 1); // 1 day for 1m-5m
-    } else if (["15", "30"].includes(timeframeValue)) {
-      d.setDate(d.getDate() - 5); // 5 days for 15m-30m
-    } else if (["60", "120", "240"].includes(timeframeValue)) {
-      d.setDate(d.getDate() - 30); // 30 days for hourly
+    if (["1m", "3m", "5m"].includes(timeframeValue)) {
+      d.setDate(d.getDate() - 90); // 3 months for 1m-5m
+    } else if (["15m", "30m"].includes(timeframeValue)) {
+      d.setDate(d.getDate() - 120); // 4 months for 15m-30m
+    } else if (["1h", "2h", "4h", "60m", "120m", "240m"].includes(timeframeValue)) {
+      d.setDate(d.getDate() - 365); // 1 year for hourly
     } else {
-      d.setFullYear(d.getFullYear() - 1); // 1 year for daily/weekly
+      d.setFullYear(d.getFullYear() - 5); // 5 years for daily/weekly
     }
     setFromDate(d.toISOString().split("T")[0]);
   }, [timeframeValue]);
@@ -1688,8 +1974,8 @@ export default function Candlestick() {
     });
   };
 
-  const zoomIn = () => zoomCharts(1);
-  const zoomOut = () => zoomCharts(-1);
+  const zoomIn = () => zoomCharts(10);
+  const zoomOut = () => zoomCharts(-10);
   const resetZoom = () => {
     const charts = [
       chartRef.current,

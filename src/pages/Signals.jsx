@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import apiService from "../services/apiServices";
+import { getStrategySocket } from "../services/websocket/socket";
+import EVENTS from "../services/websocket/socketEvent";
 import {
   FiActivity,
   FiTrendingUp,
@@ -65,11 +67,45 @@ export default function Signals() {
     }
   };
 
+  const signalBufferRef = useRef([]);
+
+  // Flush buffer to state every 500ms to prevent UI freezing
+  useEffect(() => {
+    const flushInterval = setInterval(() => {
+      if (signalBufferRef.current.length > 0) {
+        const newBatch = [...signalBufferRef.current];
+        signalBufferRef.current = []; // Clear immediately
+        
+        // Reverse so the newest signal in the batch appears at the absolute top
+        setSignals(prev => [...newBatch.reverse(), ...prev]);
+      }
+    }, 500);
+
+    return () => clearInterval(flushInterval);
+  }, []);
+
+  useEffect(() => {
+    const strategySocket = getStrategySocket();
+    
+    const handleNewScannerSignal = (signalData) => {
+      try {
+        console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.NEW_SIGNAL} Payload:`, signalData);
+        signalBufferRef.current.push(signalData);
+      } catch (err) {
+        console.error(`[STRATEGY SOCKET ERROR] NEW_SIGNAL handler failed:`, err);
+      }
+    };
+
+    strategySocket.on(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
+
+    return () => {
+      strategySocket.off(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
+    };
+  }, []);
+
   useEffect(() => {
     fetchSignals();
-    // Poll every 5 minutes (300000ms)
-    const intervalId = setInterval(fetchSignals, 300000);
-    return () => clearInterval(intervalId);
+    // Polling removed
   }, []);
 
   const filteredSignals = signals.filter(signal => 
@@ -276,8 +312,9 @@ export default function Signals() {
                         </td>
                         
                         <td style={{ padding: "16px 20px", fontSize: 13, color: "var(--text-secondary)" }}>
-                          <div style={{ marginBottom: 4 }}>Index: <span style={{ color: "var(--text-primary)" }}>{indicatorVals?.index || "--"}</span></div>
-                          <div>Type: <span style={{ color: isBuy ? "#22c55e" : "#ef4444", fontWeight: 500 }}>{indicatorVals?.type || "--"}</span></div>
+                          {/* <div style={{ marginBottom: 4 }}>Time: <span style={{ color: "var(--text-primary)" }}>{indicatorVals?.time || "--"}</span></div> */}
+                          <div style={{ marginBottom: 4 }}>Position: <span style={{ color: "var(--text-primary)" }}>{indicatorVals?.position || "--"}</span></div>
+                          <div>Text: <span style={{ color: isBuy ? "#22c55e" : "#ef4444", fontWeight: 500 }}>{indicatorVals?.text || "--"}</span></div>
                         </td>
                         
                         <td style={{ padding: "16px 20px", fontSize: 13, color: "var(--text-secondary)" }}>

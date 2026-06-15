@@ -63,13 +63,13 @@ function DepthRow({ price, quantity, orders, maxQty, isBuy }) {
         borderRadius: "2px"
       }} />
 
-      <div style={{ flex: 1, color, fontWeight: 500, fontSize: 13, zIndex: 1, textAlign: isBuy ? "left" : "right" }}>
+      <div style={{ flex: 1, color, fontWeight: 500, fontSize: 13, zIndex: 1, textAlign: "left" }}>
         {fmt(price)}
       </div>
       <div style={{ flex: 1, color: "var(--text-primary)", fontSize: 13, zIndex: 1, textAlign: "center" }}>
         {quantity}
       </div>
-      <div style={{ flex: 1, color: "var(--text-secondary)", fontSize: 13, zIndex: 1, textAlign: isBuy ? "right" : "left" }}>
+      <div style={{ flex: 1, color: "var(--text-secondary)", fontSize: 13, zIndex: 1, textAlign: "right" }}>
         {orders}
       </div>
     </div>
