@@ -20,6 +20,7 @@ import Navbar from "../components/layout/Navbar";
 import LeftWatchlist from "../components/layout/LeftWatchlist";
 import RightSidebar from "../components/layout/RightSidebar";
 import ChartTabs from "../components/layout/ChartTabs";
+import LeftDepth from "../components/layout/LeftDepth";
 import useSocket from "../util/useSocket";
 import EVENTS from "../services/websocket/socketEvent";
 
@@ -94,6 +95,8 @@ export default function Candlestick() {
   
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isDepthOpen, setIsDepthOpen] = useState(false);
+  const [predictResultData, setPredictResultData] = useState([]);
   const [detailsList, setDetailsList] = useState([]);
   const [activeTab, setActiveTab] = useState("Chart");
   const [timeframeValue, setTimeframeValue] = useState("5m");
@@ -125,6 +128,7 @@ export default function Candlestick() {
   const [liveOhlcv, setLiveOhlcv] = useState({});
   const [liveIndicatorData, setLiveIndicatorData] = useState({});
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+  const [mainChartLoading, setMainChartLoading] = useState(false);
   const [editorCode, setEditorCode] = useState(
    `markers = []
 # user strategy here
@@ -135,6 +139,40 @@ plot_markers(markers)`
   const [isDeploying, setIsDeploying] = useState(false);
   const [dashboardSignals, setDashboardSignals] = useState([]);
   const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
+
+  const handleStrategyClick = async () => {
+    try {
+      const resp = await apiService.get("http://localhost:3000/api/predictResult");
+      const data = Array.isArray(resp) ? resp : (resp?.data || []);
+      const filtered = data.filter(item => item.symbol && item.response);
+      setPredictResultData(filtered);
+      
+      // Plot markers by adding them to dashboardSignals
+      const mappedSignals = filtered.map(f => {
+        let timeStr = f.tick?.datetime || f.response?.entry_time || new Date().toISOString();
+        timeStr = timeStr.replace(" ", "T"); // Fix parsing for 'YYYY-MM-DD HH:mm:ss'
+        
+        return {
+          symbol: f.symbol,
+          signalType: f.response?.type === "CALL" ? "BUY" : f.response?.type === "PUT" ? "SELL" : "BUY",
+          timestamp: timeStr,
+          segment: "SCRIPT",
+        };
+      });
+      setDashboardSignals(prev => [...prev, ...mappedSignals]);
+      
+      // We must set isDeployed to true so the markers useEffect triggers and plots them
+      setIsDeployed(true);
+      setDeployedStrategyCode("API_PREDICTION");
+      
+      setIsDepthOpen(true);
+      setIsWatchlistOpen(false);
+      setIsDetailsOpen(false);
+      if (activeTab === "Alerts") setActiveTab("Chart");
+    } catch (err) {
+      console.error("Failed to fetch predict result:", err);
+    }
+  };
 
   //code editor
   useEffect(() => {
@@ -367,7 +405,7 @@ plot_markers(markers)`
       markersToSet.sort((a, b) => a.time - b.time);
 
       // Auto-open Alerts panel if we have signals
-      if (newSignals.length > 0) {
+      if (newSignals.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
         if (typeof setActiveTab === 'function') {
           setActiveTab("Alerts");
         }
@@ -390,7 +428,7 @@ plot_markers(markers)`
     }
 
     setCustomSignals(newSignals);
-  }, [dashboardSignals, isDeployed, selectedCurrency]);
+  }, [dashboardSignals, isDeployed, selectedCurrency, mainChartLoading, chartType]);
 
   const handleDeployCode = useCallback(
     async (code) => {
@@ -778,7 +816,6 @@ json.dumps(result, default=json_default)
   const [showAlertForm, setShowAlertForm] = useState(false);
   const [indicatorProperty, setIndicatorProperty] = useState(false);
   const [indicatorLoading, setIndicatorLoading] = useState(false);
-  const [mainChartLoading, setMainChartLoading] = useState(false);
   const [showSourcePanel, setShowSourcePanel] = useState(false);
   const [activeSourceIndicator, setActiveSourceIndicator] = useState(null);
   const [indicatorVisibility, setIndicatorVisibility] = useState({});
@@ -1986,7 +2023,7 @@ json.dumps(result, default=json_default)
 
   return (
     <>
-      <Navbar setSelectedCurrency={setSelectedCurrency} />
+      <Navbar setSelectedCurrency={setSelectedCurrency} predictCount={predictResultData.length} />
       <section
         className="trading-view-wrapper overflow-hidden"
         style={{
@@ -2003,8 +2040,8 @@ json.dumps(result, default=json_default)
             {/* Left Panel (Watchlist or Details) */}
             <div
               style={{
-                width: isWatchlistOpen || isDetailsOpen ? "300px" : "0px",
-                opacity: isWatchlistOpen || isDetailsOpen ? 1 : 0,
+                width: isWatchlistOpen || isDetailsOpen || isDepthOpen ? "300px" : "0px",
+                opacity: isWatchlistOpen || isDetailsOpen || isDepthOpen ? 1 : 0,
                 overflow: "hidden",
                 height: "100%",
                 transition:
@@ -2066,6 +2103,21 @@ json.dumps(result, default=json_default)
                     openScannerTrigger={openScannerTrigger}
                   />
                 </div>
+                <div
+                  style={{
+                    display:
+                      activeTab !== "Alerts" && isDepthOpen
+                        ? "block"
+                        : "none",
+                    height: "100%",
+                  }}
+                >
+                  <LeftDepth
+                    onClose={() => setIsDepthOpen(false)}
+                    predictResults={predictResultData}
+                    setSelectedCurrency={setSelectedCurrency}
+                  />
+                </div>
               </div>
             </div>
 
@@ -2075,7 +2127,7 @@ json.dumps(result, default=json_default)
                 flex: 1,
                 minWidth: 0, // important to prevent flex items from overflowing
                 borderLeft:
-                  isWatchlistOpen || isDetailsOpen
+                  isWatchlistOpen || isDetailsOpen || isDepthOpen
                     ? "1px solid var(--border-color)"
                     : "none",
                 borderRight: "1px solid var(--border-color)",
@@ -2089,6 +2141,7 @@ json.dumps(result, default=json_default)
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 onCodeClick={() => setIsCodeEditorOpen((prev) => !prev)}
+                onStrategyClick={handleStrategyClick}
               />
 
               <div
@@ -2783,6 +2836,7 @@ json.dumps(result, default=json_default)
                   />
                 )}
               </div>
+              
             </div>
 
             {/* Right Sidebar */}
@@ -2794,15 +2848,17 @@ json.dumps(result, default=json_default)
                     activeTab === "Alerts" ? true : !isWatchlistOpen;
                   if (activeTab === "Alerts") setActiveTab("Chart");
                   setIsWatchlistOpen(willOpen);
-                  if (willOpen) setIsDetailsOpen(false); // close others
+                  if (willOpen) {
+                    setIsDetailsOpen(false); // close others
+                    setIsDepthOpen(false);
+                  }
                 }}
                 isDetailsOpen={isDetailsOpen}
                 toggleDetails={() => {
-                  const willOpen = !isDetailsOpen;
-                  setIsDetailsOpen(willOpen);
-                  if (willOpen) {
-                    setIsWatchlistOpen(false); // close others
-                    if (activeTab === "Alerts") setActiveTab("Chart");
+                  setIsDetailsOpen((prev) => !prev);
+                  if (!isDetailsOpen) {
+                    setIsWatchlistOpen(false);
+                    setIsDepthOpen(false);
                   }
                 }}
                 isAlertsOpen={activeTab === "Alerts"}
@@ -2812,6 +2868,17 @@ json.dumps(result, default=json_default)
                   } else {
                     setActiveTab("Alerts");
                     // Close left panels when alerts opens
+                    setIsWatchlistOpen(false);
+                    setIsDetailsOpen(false);
+                    setIsDepthOpen(false);
+                  }
+                }}
+                isDepthOpen={activeTab !== "Alerts" && isDepthOpen}
+                toggleDepth={() => {
+                  const willOpen = !isDepthOpen;
+                  if (activeTab === "Alerts") setActiveTab("Chart");
+                  setIsDepthOpen(willOpen);
+                  if (willOpen) {
                     setIsWatchlistOpen(false);
                     setIsDetailsOpen(false);
                   }

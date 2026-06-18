@@ -5,7 +5,7 @@ import apiService from "../../services/apiServices";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated, logout, getUser } from "../../pages/auth/protected";
 
-const Navbar = ({ setSelectedCurrency }) => {
+const Navbar = ({ setSelectedCurrency, predictCount = 0 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showRecent, setShowRecent] = useState(false);
   const [stocks, setStocks] = useState([]);
@@ -509,8 +509,24 @@ const Navbar = ({ setSelectedCurrency }) => {
             paddingLeft: "20px",
           }}
         >
-          <button style={styles.iconButton}>
+          <button style={{ ...styles.iconButton, position: "relative" }}>
             <BsBell />
+            {predictCount > 0 && (
+              <span style={{
+                position: "absolute",
+                top: "0px",
+                right: "0px",
+                background: "#ef5350",
+                color: "white",
+                borderRadius: "50%",
+                padding: "2px 5px",
+                fontSize: "10px",
+                fontWeight: "bold",
+                lineHeight: "1"
+              }}>
+                {predictCount}
+              </span>
+            )}
           </button>
           
           {/* Theme Toggle */}
