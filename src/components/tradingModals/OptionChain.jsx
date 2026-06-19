@@ -2,7 +2,10 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { SOCKET_URL } from "../../services/websocket/socket";
+import {
+  OPTION_CHAIN_BASE_URL,
+  SOCKET_URL,
+} from "../../services/websocket/socket";
 
 const OptionChain = ({ onSymbolChange }) => {
   const navigate = useNavigate();
@@ -48,7 +51,7 @@ const OptionChain = ({ onSymbolChange }) => {
   // Fetch metadata from REST API
   useEffect(() => {
     axios
-      .get("http://192.168.1.6:3000/api/historical-metadata")
+      .get(`${OPTION_CHAIN_BASE_URL}/api/historical-metadata`)
       .then((res) => {
         const data = res.data;
         console.log("[OptionChain] historical-metadata response:", data);

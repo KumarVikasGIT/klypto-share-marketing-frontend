@@ -1,10 +1,13 @@
 import axios from "axios";
 import { getToken } from "../pages/auth/protected";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://192.168.1.7:5000";
+
 // 🔹 Create axios instance
 const api = axios.create({
   // baseURL: "https://loiteringly-homeliest-breana.ngrok-free.dev",
-  baseURL: "http://192.168.1.7:5000", // change to your API
+  baseURL: API_BASE_URL, // keeps the existing local base as fallback
   // baseURL: "http://localhost:9000", // change to your API
 
   timeout: 600000, // 1 min

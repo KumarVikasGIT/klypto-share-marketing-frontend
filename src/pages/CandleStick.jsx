@@ -23,6 +23,7 @@ import ChartTabs from "../components/layout/ChartTabs";
 import LeftDepth from "../components/layout/LeftDepth";
 import useSocket from "../util/useSocket";
 import EVENTS from "../services/websocket/socketEvent";
+import { OPTION_CHAIN_BASE_URL } from "../services/websocket/socket";
 
 // import SEO from "../components/SEO";
 import {
@@ -160,7 +161,9 @@ plot_markers(markers)`
       setIsDetailsOpen(false);
       if (activeTab === "Alerts") setActiveTab("Chart");
 
-      const resp = await apiService.get("http://localhost:3000/api/predictResult");
+      const resp = await apiService.get(
+        `${OPTION_CHAIN_BASE_URL}/api/predictResult`,
+      );
       console.log("predictResult API Raw Response:", resp);
       
       const data = Array.isArray(resp) ? resp : (resp?.data || []);
