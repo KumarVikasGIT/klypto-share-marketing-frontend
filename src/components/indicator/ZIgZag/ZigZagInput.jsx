@@ -1,3 +1,5 @@
+import { createSeriesMarkers } from "lightweight-charts";
+
 export default function ZIGZAGInput(
   response,
   indicatorSeriesRef,
@@ -61,7 +63,15 @@ export default function ZIGZAGInput(
 
   // ✅ Update markers
   try {
-    zigzagSeries.setMarkers(markers);
+    const group = indicatorSeriesRef.current?.[instanceId || "ZIGZAG"];
+    if (group) {
+      if (!group.markersPlugin) {
+        group.markersPlugin = createSeriesMarkers(zigzagSeries, markers);
+        zigzagSeries.attachPrimitive(group.markersPlugin);
+      } else {
+        group.markersPlugin.setMarkers(markers);
+      }
+    }
   } catch (e) {
     console.warn("ZIGZAG markers error:", e);
   }

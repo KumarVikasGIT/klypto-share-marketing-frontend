@@ -57,7 +57,7 @@ const useSocket = (props = {}) => {
       },
       
       [EVENTS.CHART.LIVETICKS]: (tick) => {
-        console.log(`[SOCKET] ${EVENTS.CHART.LIVETICKS} received:`, tick);
+        // console.log(`[SOCKET] ${EVENTS.CHART.LIVETICKS} received:`, tick);
         if (propsRef.current.handleLiveTick) propsRef.current.handleLiveTick(tick);
         if (propsRef.current.handleAlertTick) propsRef.current.handleAlertTick({ type: EVENTS.CHART.LIVETICKS, data: tick });
       },
@@ -85,17 +85,17 @@ const useSocket = (props = {}) => {
       },
       
       [EVENTS.STRATEGY.PROGRESS]: (data) => {
-        console.log(`[SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`, data);
+        // console.log(`[SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`, data);
         if (propsRef.current.handleScannerProgress) propsRef.current.handleScannerProgress(data);
       },
       
       [EVENTS.STRATEGY.NEW_SIGNAL]: (signalData) => {
-        console.log(`[SOCKET] ${EVENTS.STRATEGY.NEW_SIGNAL} Payload:`, signalData);
+        // console.log(`[SOCKET] ${EVENTS.STRATEGY.NEW_SIGNAL} Payload:`, signalData);
         if (propsRef.current.handleNewScannerSignal) propsRef.current.handleNewScannerSignal(signalData);
       },
       
       [EVENTS.STRATEGY.COMPLETE]: (response) => {
-        console.log(`[SOCKET] ${EVENTS.STRATEGY.COMPLETE} Payload:`, response);
+        // console.log(`[SOCKET] ${EVENTS.STRATEGY.COMPLETE} Payload:`, response);
         if (propsRef.current.handleScannerComplete) propsRef.current.handleScannerComplete(response);
       },
 

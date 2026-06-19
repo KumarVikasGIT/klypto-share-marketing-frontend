@@ -1,7 +1,8 @@
 import React from "react";
-import { FiX } from "react-icons/fi";
+import { FiX, FiSettings } from "react-icons/fi";
+import { Spinner } from "../tradingModals/Spinner";
 
-const LeftDepth = ({ onClose, predictResults, setSelectedCurrency }) => {
+const LeftDepth = ({ onClose, predictResults, setSelectedCurrency, isPredicting }) => {
   const styles = {
     container: {
       display: "flex",
@@ -72,8 +73,12 @@ const LeftDepth = ({ onClose, predictResults, setSelectedCurrency }) => {
         <span>Results</span>
         <FiX style={{ cursor: "pointer" }} onClick={onClose} />
       </div>
-      <div style={styles.listContainer}>
-        {predictResults && predictResults.length > 0 ? (
+      <div className="custom-scrollbar" style={styles.listContainer}>
+        {isPredicting ? (
+          <div style={{ display: "flex", height: "100%", justifyContent: "center", alignItems: "center" }}>
+            <Spinner />
+          </div>
+        ) : predictResults && predictResults.length > 0 ? (
           predictResults.map((item, idx) => {
             const type = item.response?.type || "UNKNOWN";
             const isCall = type.toUpperCase() === "CALL";

@@ -123,7 +123,7 @@ const ChartTabs = ({ activeTab, setActiveTab, onCodeClick, onStrategyClick }) =>
           <FaCode />
           CODE EDITOR
         </button>
-        <button
+        {/* <button
           style={{...styles.actionsGroup, borderRadius: "4px", border: "1px solid #999", padding: "6px 12px", color: "#999", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }}
           onClick={() => navigate('/backtest')}
           onMouseEnter={(e) => {
@@ -134,7 +134,7 @@ const ChartTabs = ({ activeTab, setActiveTab, onCodeClick, onStrategyClick }) =>
           }}
         >
           <SiVitest size={14} /> BACKTEST
-        </button>
+        </button> */}
       </div>
     </div>
   );

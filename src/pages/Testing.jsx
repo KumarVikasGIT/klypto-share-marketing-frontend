@@ -173,6 +173,7 @@ json.dumps(trades, default=str)
           candleSeriesRef.current,
           markers
         );
+        candleSeriesRef.current.attachPrimitive(markerApiRef.current);
       } else {
         markerApiRef.current.setMarkers(markers);
       }

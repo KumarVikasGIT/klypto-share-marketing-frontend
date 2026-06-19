@@ -29,6 +29,8 @@
     "react-router-dom": "^7.14.2",
     "react-select": "^5.10.2",
     "react-toastify": "^11.1.0",
+    "react-virtualized-auto-sizer": "^2.0.3",
+    "react-window": "^2.2.7",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "sweetalert2": "^11.26.24"

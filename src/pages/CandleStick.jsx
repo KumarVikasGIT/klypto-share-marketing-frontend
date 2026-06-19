@@ -91,11 +91,22 @@ export default function Candlestick() {
   const [isDeployed, setIsDeployed] = useState(false);
   const [isPyodideReady, setIsPyodideReady] = useState(false);
 
+  const normalize = (s) => s?.replace(/\s+/g, " ").trim().toUpperCase();
+  const isSameSymbolName = (s1, s2) => {
+    if (!s1 || !s2) return false;
+    const n1 = normalize(s1).split("-")[0];
+    const n2 = normalize(s2).split("-")[0];
+    return n1 === n2;
+  };
+
+  const isSameSymbol = (a, b) => a?.symbol === b?.symbol && a?.token === b?.token;
+
   const { matchedCoins, addAlert, clearAllCoins, scanner, removeCoin } = useAlerts();
   
-  const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
+  const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isDepthOpen, setIsDepthOpen] = useState(false);
+  const [isDepthOpen, setIsDepthOpen] = useState(true);
+  const [isPredicting, setIsPredicting] = useState(false);
   const [predictResultData, setPredictResultData] = useState([]);
   const [detailsList, setDetailsList] = useState([]);
   const [activeTab, setActiveTab] = useState("Chart");
@@ -142,9 +153,20 @@ plot_markers(markers)`
 
   const handleStrategyClick = async () => {
     try {
+      setIsPredicting(true);
+      // Immediately open Results tab to show the spinner
+      setIsDepthOpen(true);
+      setIsWatchlistOpen(false);
+      setIsDetailsOpen(false);
+      if (activeTab === "Alerts") setActiveTab("Chart");
+
       const resp = await apiService.get("http://localhost:3000/api/predictResult");
+      console.log("predictResult API Raw Response:", resp);
+      
       const data = Array.isArray(resp) ? resp : (resp?.data || []);
       const filtered = data.filter(item => item.symbol && item.response);
+      console.log("Filtered predictResult Data:", filtered);
+      
       setPredictResultData(filtered);
       
       // Plot markers by adding them to dashboardSignals
@@ -159,18 +181,18 @@ plot_markers(markers)`
           segment: "SCRIPT",
         };
       });
+      console.log("Mapped Signals for Dashboard:", mappedSignals);
+      
       setDashboardSignals(prev => [...prev, ...mappedSignals]);
       
       // We must set isDeployed to true so the markers useEffect triggers and plots them
       setIsDeployed(true);
       setDeployedStrategyCode("API_PREDICTION");
       
-      setIsDepthOpen(true);
-      setIsWatchlistOpen(false);
-      setIsDetailsOpen(false);
-      if (activeTab === "Alerts") setActiveTab("Chart");
     } catch (err) {
       console.error("Failed to fetch predict result:", err);
+    } finally {
+      setIsPredicting(false);
     }
   };
 
@@ -362,6 +384,9 @@ plot_markers(markers)`
     const newSignals = [];
 
     if (dashboardSignals && dashboardSignals.length > 0) {
+      console.log("Processing dashboardSignals for markers:", dashboardSignals);
+      console.log("Currently selected stock:", selectedCurrency);
+      
       dashboardSignals.forEach((item) => {
         const type = item.signalType;
         const utcStr = item.timestamp || item.createdAt || item.updatedAt;
@@ -379,7 +404,7 @@ plot_markers(markers)`
           const chartTime = Number(utcTime) + 19800; // IST_OFFSET
 
           // Only plot marker if the signal is for the CURRENTLY selected stock
-          const isCurrentStock = item.symbol === selectedCurrency?.name || item.symbol === selectedCurrency?.symbol;
+          const isCurrentStock = isSameSymbolName(item.symbol, selectedCurrency?.name) || isSameSymbolName(item.symbol, selectedCurrency?.symbol);
           
           if (isCurrentStock) {
             markersToSet.push({
@@ -390,6 +415,8 @@ plot_markers(markers)`
               text: isBuy ? "BUY" : "SELL",
               size: 1,
             });
+          } else {
+            console.log(`Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`);
           }
 
           newSignals.unshift({
@@ -403,6 +430,7 @@ plot_markers(markers)`
         }
       });
       markersToSet.sort((a, b) => a.time - b.time);
+      console.log("Final markersToSet to plot on chart:", markersToSet);
 
       // Auto-open Alerts panel if we have signals
       if (newSignals.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
@@ -416,10 +444,8 @@ plot_markers(markers)`
 
     if (markersToSet.length > 0 && seriesRef.current) {
       if (!customScriptMarkersRef.current) {
-        customScriptMarkersRef.current = createSeriesMarkers(
-          seriesRef.current,
-          markersToSet,
-        );
+        customScriptMarkersRef.current = createSeriesMarkers(seriesRef.current, markersToSet);
+        seriesRef.current.attachPrimitive(customScriptMarkersRef.current);
       } else {
         customScriptMarkersRef.current.setMarkers(markersToSet);
       }
@@ -938,10 +964,8 @@ json.dumps(result, default=json_default)
       console.log("Strategy markers:", markers.length);
 
       if (!strategyMarkersRef.current) {
-        strategyMarkersRef.current = createSeriesMarkers(
-          seriesRef.current,
-          markers,
-        );
+        strategyMarkersRef.current = createSeriesMarkers(seriesRef.current, markers);
+        seriesRef.current.attachPrimitive(strategyMarkersRef.current);
       } else {
         strategyMarkersRef.current.setMarkers(markers);
       }
@@ -1548,8 +1572,6 @@ json.dumps(result, default=json_default)
     return () => detachHandlers.forEach((d) => d());
   }, [indicatorSeriesRef.current, timeframeValue]);
 
-  const normalize = (s) => s?.replace(/\s+/g, " ").trim().toUpperCase();
-
   // Define dynamic vars used by handlers
   const intervalSec = TIMEFRAME_TO_SECONDS[timeframeValue];
 
@@ -1623,8 +1645,8 @@ json.dumps(result, default=json_default)
       });
 
       if (
-        symbolFromResponse !== selectedCurrency?.name &&
-        symbolFromResponse !== selectedCurrency?.symbol
+        !isSameSymbolName(symbolFromResponse, selectedCurrency?.name) &&
+        !isSameSymbolName(symbolFromResponse, selectedCurrency?.symbol)
       ) {
         console.log(
           `Skipping chart update for ${symbolFromResponse} (Active: ${selectedCurrency?.name})`,
@@ -1639,6 +1661,7 @@ json.dumps(result, default=json_default)
         } catch {}
         seriesRef.current = null;
         customScriptMarkersRef.current = null;
+        strategyMarkersRef.current = null;
       }
 
       switch (chartType) {
@@ -1727,10 +1750,12 @@ json.dumps(result, default=json_default)
       }
 
       if (lastDeployedMarkersRef.current && lastDeployedMarkersRef.current.length > 0 && seriesRef.current) {
-        customScriptMarkersRef.current = createSeriesMarkers(
-          seriesRef.current,
-          lastDeployedMarkersRef.current
-        );
+        if (!customScriptMarkersRef.current) {
+          customScriptMarkersRef.current = createSeriesMarkers(seriesRef.current, lastDeployedMarkersRef.current);
+          seriesRef.current.attachPrimitive(customScriptMarkersRef.current);
+        } else {
+          customScriptMarkersRef.current.setMarkers(lastDeployedMarkersRef.current);
+        }
       }
 
       currentCandleRef.current = data[data.length - 1];
@@ -1778,8 +1803,8 @@ json.dumps(result, default=json_default)
         const activeSymbol = normalize(selectedCurrency?.name);
         const tickSymbol = normalize(tick.symbol);
 
-        if (tickSymbol !== activeSymbol) return;
-        if (!seriesRef.current) return;
+        if (!isSameSymbolName(tickSymbol, activeSymbol)) return;
+        if (!seriesRef.current || !seriesReadyRef.current) return;
 
         let rawTickTime = tick?.data?.time;
         let tickTime = Number(rawTickTime);
@@ -1971,27 +1996,29 @@ json.dumps(result, default=json_default)
   useEffect(() => {
     if (!selectedCurrency || !timeframeValue) return;
 
-    if (connected) {
-      if (selectedCurrency && timeframeValue) {
-        emit(EVENTS.CHART.GET, {
-          symbol: selectedCurrency?.name,
-          interval: timeframeValue,
-          fromDate: fromDate,
-          toDate: toDate,
-        });
-      }
-    } else {
-      connect();
+    seriesReadyRef.current = false; // Prevent live ticks from squishing the old chart data
+
+    if (connected && selectedCurrency && timeframeValue) {
+      emit(EVENTS.CHART.GET, {
+        symbol: selectedCurrency?.name,
+        interval: timeframeValue,
+        fromDate: fromDate,
+        toDate: toDate,
+      });
     }
 
     setMainChartLoading(true);
+
+    const timeout = setTimeout(() => {
+      setMainChartLoading(false);
+    }, 10000);
+
+    return () => clearTimeout(timeout);
   }, [
     selectedCurrency,
     timeframeValue,
     chartType,
-    connect,
     connected,
-    emit,
     fromDate,
     toDate,
   ]);
@@ -2116,6 +2143,7 @@ json.dumps(result, default=json_default)
                     onClose={() => setIsDepthOpen(false)}
                     predictResults={predictResultData}
                     setSelectedCurrency={setSelectedCurrency}
+                    isPredicting={isPredicting}
                   />
                 </div>
               </div>

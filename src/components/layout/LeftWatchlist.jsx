@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FiSearch, FiSettings, FiX, FiPlus, FiMaximize2 } from "react-icons/fi";
+import { List } from "react-window";
+import { AutoSizer } from "react-virtualized-auto-sizer";
 import useSocket from "../../util/useSocket";
 import EVENTS from "../../services/websocket/socketEvent";
 import { Spinner } from "../tradingModals/Spinner";
@@ -242,100 +244,101 @@ const LeftWatchlist = ({ onClose, setSelectedCurrency }) => {
             <Spinner />
           </div>
         ) : (
-          stocksData
-            .filter(
-              (s) => (s.name || s.symbol || "").toLowerCase().includes(searchTerm.toLowerCase()),
-            )
-            .map((stock, idx) => {
-            const pChange = parseFloat(stock.percent_change);
-            const rawChange = parseFloat(stock.change);
-            const isPositive =
-              (!isNaN(pChange) ? pChange : !isNaN(rawChange) ? rawChange : 0) >=
-              0;
-            const color = isPositive
-              ? "var(--success-color)"
-              : "var(--danger-color)"; // TradingView green/red
-            const Arrow = isPositive ? "▲" : "▼";
+          <AutoSizer>
+            {({ height, width }) => {
+              const filteredStocks = stocksData.filter((s) =>
+                (s.name || s.symbol || "").toLowerCase().includes(searchTerm.toLowerCase()),
+              );
 
-            return (
-              <div
-                key={idx}
-                style={styles.listItem}
-                onClick={() =>
-                  setSelectedCurrency({
-                    symbol: stock.symbol,
-                    name: stock.name,
-                    token: stock.token,
-                    segment: stock.segment || "NSE",
-                    type: stock.type || "currency",
-                    userCode: stock.userCode,
-                  })
-                }
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor =
-                    "var(--border-color)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = "transparent")
-                }
-              >
-                <div style={styles.stockLeft}>
-                  <div style={styles.stockName}>
-                    {/* CATEGORY CIRCLE */}
-                    <div
-                      style={{
-                        width: 22,
-                        height: 22,
-                        minWidth: 22,
-                        borderRadius: "50%",
-                        background:
-                          stock.category === "EQ"
-                            ? "#2563eb"
-                            : stock.category === "FUT"
-                              ? "#7c3aed"
-                              : stock.category === "OPT"
-                                ? "#ea580c"
-                                : "#475569",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "9px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {stock.category}
-                    </div>
+              return (
+                <List
+                  className="custom-scrollbar"
+                  style={{ height, width }}
+                  rowCount={filteredStocks.length}
+                  rowHeight={56}
+                  rowProps={{ data: filteredStocks }}
+                  rowComponent={({ index, style, data }) => {
+                    const stock = data[index];
+                    const pChange = parseFloat(stock.percent_change);
+                    const rawChange = parseFloat(stock.change);
+                    const isPositive =
+                      (!isNaN(pChange) ? pChange : !isNaN(rawChange) ? rawChange : 0) >= 0;
+                    const color = isPositive
+                      ? "var(--success-color)"
+                      : "var(--danger-color)"; // TradingView green/red
+                    const Arrow = isPositive ? "▲" : "▼";
 
-                    {/* SYMBOL */}
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                      }}
-                    >
-                      <span>
-                        {/* {stock?.symbol} */}
-                        {stock?.name}
-                      </span>
+                    return (
+                      <div
+                        style={{ ...style, ...styles.listItem, borderBottom: "1px solid var(--bg-secondary)" }}
+                        onClick={() =>
+                          setSelectedCurrency({
+                            symbol: stock.symbol,
+                            name: stock.name,
+                            token: stock.token,
+                            segment: stock.segment || "NSE",
+                            type: stock.type || "currency",
+                            userCode: stock.userCode,
+                          })
+                        }
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor = "var(--border-color)")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor = "transparent")
+                        }
+                      >
+                        <div style={styles.stockLeft}>
+                          <div style={styles.stockName}>
+                            {/* CATEGORY CIRCLE */}
+                            <div
+                              style={{
+                                width: 22,
+                                height: 22,
+                                minWidth: 22,
+                                borderRadius: "50%",
+                                background:
+                                  stock.category === "EQ"
+                                    ? "#2563eb"
+                                    : stock.category === "FUT"
+                                      ? "#7c3aed"
+                                      : stock.category === "OPT"
+                                        ? "#ea580c"
+                                        : "#475569",
+                                color: "#fff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "9px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {stock.category}
+                            </div>
 
-                      {/* <span style={styles.segment}>{stock?.segment}</span> */}
-                    </div>
-                  </div>
-                </div>
-                <div style={styles.stockRight}>
-                  <div style={{ ...styles.ltp, color }}>
-                    {stock?.ltp} <span> {Arrow} </span>
-                  </div>
-                  <div style={{ ...styles.changeData, color }}>
-                    {stock?.change} (
-                    {isPositive && stock.percent_change > 0 ? "+" : ""}
-                    {stock.percent_change}%)
-                  </div>
-                </div>
-              </div>
-            );
-          })
+                            {/* SYMBOL */}
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                              <span>{stock?.name}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={styles.stockRight}>
+                          <div style={{ ...styles.ltp, color }}>
+                            {stock?.ltp} <span> {Arrow} </span>
+                          </div>
+                          <div style={{ ...styles.changeData, color }}>
+                            {stock?.change} (
+                            {isPositive && stock.percent_change > 0 ? "+" : ""}
+                            {stock.percent_change}%)
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+              );
+            }}
+          </AutoSizer>
         )}
       </div>
 
