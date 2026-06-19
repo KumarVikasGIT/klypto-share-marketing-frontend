@@ -100,10 +100,12 @@ export default function Candlestick() {
     return n1 === n2;
   };
 
-  const isSameSymbol = (a, b) => a?.symbol === b?.symbol && a?.token === b?.token;
+  const isSameSymbol = (a, b) =>
+    a?.symbol === b?.symbol && a?.token === b?.token;
 
-  const { matchedCoins, addAlert, clearAllCoins, scanner, removeCoin } = useAlerts();
-  
+  const { matchedCoins, addAlert, clearAllCoins, scanner, removeCoin } =
+    useAlerts();
+
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isDepthOpen, setIsDepthOpen] = useState(true);
@@ -142,9 +144,9 @@ export default function Candlestick() {
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
   const [mainChartLoading, setMainChartLoading] = useState(false);
   const [editorCode, setEditorCode] = useState(
-   `markers = []
+    `markers = []
 # user strategy here
-plot_markers(markers)`
+plot_markers(markers)`,
   );
   const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
   const [customSignals, setCustomSignals] = useState([]);
@@ -161,36 +163,44 @@ plot_markers(markers)`
       setIsDetailsOpen(false);
       if (activeTab === "Alerts") setActiveTab("Chart");
 
-      const apiUrl = import.meta.env.VITE_METADATA_API_URL || "http://localhost:3000";
+      const apiUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://192.168.1.6:3000";
       const resp = await apiService.get(`${apiUrl}/api/predictResult`);
       console.log("predictResult API Raw Response:", resp);
-      
-      const data = Array.isArray(resp) ? resp : (resp?.data || []);
-      const filtered = data.filter(item => item.symbol && item.response);
+
+      const data = Array.isArray(resp) ? resp : resp?.data || [];
+      const filtered = data.filter((item) => item.symbol && item.response);
       console.log("Filtered predictResult Data:", filtered);
-      
+
       setPredictResultData(filtered);
-      
+
       // Plot markers by adding them to dashboardSignals
-      const mappedSignals = filtered.map(f => {
-        let timeStr = f.tick?.datetime || f.response?.entry_time || new Date().toISOString();
+      const mappedSignals = filtered.map((f) => {
+        let timeStr =
+          f.tick?.datetime ||
+          f.response?.entry_time ||
+          new Date().toISOString();
         timeStr = timeStr.replace(" ", "T"); // Fix parsing for 'YYYY-MM-DD HH:mm:ss'
-        
+
         return {
           symbol: f.symbol,
-          signalType: f.response?.type === "CALL" ? "BUY" : f.response?.type === "PUT" ? "SELL" : "BUY",
+          signalType:
+            f.response?.type === "CALL"
+              ? "BUY"
+              : f.response?.type === "PUT"
+                ? "SELL"
+                : "BUY",
           timestamp: timeStr,
           segment: "SCRIPT",
         };
       });
       console.log("Mapped Signals for Dashboard:", mappedSignals);
-      
-      setDashboardSignals(prev => [...prev, ...mappedSignals]);
-      
+
+      setDashboardSignals((prev) => [...prev, ...mappedSignals]);
+
       // We must set isDeployed to true so the markers useEffect triggers and plots them
       setIsDeployed(true);
       setDeployedStrategyCode("API_PREDICTION");
-      
     } catch (err) {
       console.error("Failed to fetch predict result:", err);
     } finally {
@@ -266,7 +276,7 @@ plot_markers(markers)`
       } catch (e) {}
     }
     lastDeployedMarkersRef.current = null;
-    
+
     if (scannerIntervalRef.current) {
       clearInterval(scannerIntervalRef.current);
       scannerIntervalRef.current = null;
@@ -280,23 +290,28 @@ plot_markers(markers)`
 
   // 1. Initial Dashboard Fetch (Replaces Polling)
   useEffect(() => {
-    if (!isDeployed || !deployedStrategyCode || deployedStrategyCode === "API_PREDICTION") {
+    if (
+      !isDeployed ||
+      !deployedStrategyCode ||
+      deployedStrategyCode === "API_PREDICTION"
+    ) {
       return;
     }
 
     const fetchDashboard = async () => {
       try {
         const resp = await apiService.get(`/api/strategy/scanner-dashboard`);
-        const data = Array.isArray(resp) ? resp : (resp?.data?.data || resp?.data || []);
+        const data = Array.isArray(resp)
+          ? resp
+          : resp?.data?.data || resp?.data || [];
         setDashboardSignals(data);
       } catch (err) {
         console.error("Failed to fetch dashboard signals:", err);
       }
     };
-    
+
     // Fetch immediately on deploy to show existing dashboard results
     fetchDashboard();
-
   }, [isDeployed, deployedStrategyCode]);
 
   // Dedicated Strategy Socket Handlers
@@ -308,8 +323,8 @@ plot_markers(markers)`
       if (signalBufferRef.current.length > 0) {
         const newSignals = [...signalBufferRef.current];
         signalBufferRef.current = []; // Clear immediately
-        
-        setDashboardSignals(prev => [...prev, ...newSignals]);
+
+        setDashboardSignals((prev) => [...prev, ...newSignals]);
       }
     }, 500);
 
@@ -321,12 +336,16 @@ plot_markers(markers)`
 
     const handleScannerProgress = (data) => {
       try {
-        console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`, data);
-        let percentage = data.total > 0 ? ((data.processed / data.total) * 100).toFixed(1) : 0;
+        console.log(
+          `[STRATEGY SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`,
+          data,
+        );
+        let percentage =
+          data.total > 0 ? ((data.processed / data.total) * 100).toFixed(1) : 0;
         toast.update("compiling", {
           render: `Scanning... ${percentage}% completed. Current: ${data.current_stock || "..."}`,
           type: "info",
-          isLoading: true
+          isLoading: true,
         });
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] PROGRESS handler failed:`, err);
@@ -335,9 +354,15 @@ plot_markers(markers)`
 
     const handleScannerComplete = (response) => {
       try {
-        console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.COMPLETE} Payload:`, response);
+        console.log(
+          `[STRATEGY SOCKET] ${EVENTS.STRATEGY.COMPLETE} Payload:`,
+          response,
+        );
         toast.dismiss("compiling");
-        toast.success(response?.message || "Scanner triggered successfully! Waiting for results...");
+        toast.success(
+          response?.message ||
+            "Scanner triggered successfully! Waiting for results...",
+        );
         setIsDeploying(false);
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] COMPLETE handler failed:`, err);
@@ -346,20 +371,32 @@ plot_markers(markers)`
 
     const handleNewScannerSignal = (signalData) => {
       try {
-        console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.NEW_SIGNAL} Payload:`, signalData);
+        console.log(
+          `[STRATEGY SOCKET] ${EVENTS.STRATEGY.NEW_SIGNAL} Payload:`,
+          signalData,
+        );
         signalBufferRef.current.push(signalData);
       } catch (err) {
-        console.error(`[STRATEGY SOCKET ERROR] NEW_SIGNAL handler failed:`, err);
+        console.error(
+          `[STRATEGY SOCKET ERROR] NEW_SIGNAL handler failed:`,
+          err,
+        );
       }
     };
 
     const handleScannerError = (errPayload) => {
       try {
-        console.error(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.ERROR} Payload:`, errPayload);
-        toast.warn(`Error on ${errPayload?.symbol || "Unknown"}: ${errPayload?.error || "Scanning failed"}`, {
-          autoClose: 3000,
-          position: "top-right",
-        });
+        console.error(
+          `[STRATEGY SOCKET] ${EVENTS.STRATEGY.ERROR} Payload:`,
+          errPayload,
+        );
+        toast.warn(
+          `Error on ${errPayload?.symbol || "Unknown"}: ${errPayload?.error || "Scanning failed"}`,
+          {
+            autoClose: 3000,
+            position: "top-right",
+          },
+        );
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] ERROR handler failed:`, err);
       }
@@ -388,14 +425,14 @@ plot_markers(markers)`
     if (dashboardSignals && dashboardSignals.length > 0) {
       console.log("Processing dashboardSignals for markers:", dashboardSignals);
       console.log("Currently selected stock:", selectedCurrency);
-      
+
       dashboardSignals.forEach((item) => {
         const type = item.signalType;
         const utcStr = item.timestamp || item.createdAt || item.updatedAt;
 
         if (utcStr && type) {
           const isBuy = type.toUpperCase() === "BUY";
-          
+
           // Use unix_timestamp if available, else convert ISO
           let utcTime;
           if (item.unix_timestamp) {
@@ -406,11 +443,13 @@ plot_markers(markers)`
           const chartTime = Number(utcTime) + 19800; // IST_OFFSET
 
           // Only plot marker if the signal is for the CURRENTLY selected stock
-          const isCurrentStock = isSameSymbolName(item.symbol, selectedCurrency?.name) || isSameSymbolName(item.symbol, selectedCurrency?.symbol);
-          
+          const isCurrentStock =
+            isSameSymbolName(item.symbol, selectedCurrency?.name) ||
+            isSameSymbolName(item.symbol, selectedCurrency?.symbol);
+
           if (isCurrentStock) {
             markersToSet.push({
-              time: chartTime, 
+              time: chartTime,
               position: isBuy ? "belowBar" : "aboveBar",
               color: isBuy ? "#22c55e" : "#ef4444",
               shape: isBuy ? "arrowUp" : "arrowDown",
@@ -418,7 +457,9 @@ plot_markers(markers)`
               size: 1,
             });
           } else {
-            console.log(`Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`);
+            console.log(
+              `Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`,
+            );
           }
 
           newSignals.unshift({
@@ -436,17 +477,20 @@ plot_markers(markers)`
 
       // Auto-open Alerts panel if we have signals
       if (newSignals.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
-        if (typeof setActiveTab === 'function') {
+        if (typeof setActiveTab === "function") {
           setActiveTab("Alerts");
         }
       }
     }
-    
+
     lastDeployedMarkersRef.current = markersToSet;
 
     if (markersToSet.length > 0 && seriesRef.current) {
       if (!customScriptMarkersRef.current) {
-        customScriptMarkersRef.current = createSeriesMarkers(seriesRef.current, markersToSet);
+        customScriptMarkersRef.current = createSeriesMarkers(
+          seriesRef.current,
+          markersToSet,
+        );
         seriesRef.current.attachPrimitive(customScriptMarkersRef.current);
       } else {
         customScriptMarkersRef.current.setMarkers(markersToSet);
@@ -480,8 +524,15 @@ plot_markers(markers)`
 
       // 1.2 Basic Frontend Security Check (Warning: This is NOT a substitute for backend sandboxing)
       const dangerousPatterns = [
-        /\beval\s*\(/, /\bexec\s*\(/, /\b__import__\s*\(/, /\bopen\s*\(/, 
-        /import\s+os\b/, /import\s+subprocess\b/, /import\s+sys\b/, /from\s+os\b/, /from\s+subprocess\b/
+        /\beval\s*\(/,
+        /\bexec\s*\(/,
+        /\b__import__\s*\(/,
+        /\bopen\s*\(/,
+        /import\s+os\b/,
+        /import\s+subprocess\b/,
+        /import\s+sys\b/,
+        /from\s+os\b/,
+        /from\s+subprocess\b/,
       ];
 
       for (let pattern of dangerousPatterns) {
@@ -644,13 +695,13 @@ json.dumps(result, default=json_default)
 
         const result = JSON.parse(resultJson);
         const capturedOutput = result.output;
-        
+
         if (capturedOutput && capturedOutput.trim() !== "") {
           Swal.fire({
             toast: true,
-            position: 'bottom-end',
-            icon: 'info',
-            title: 'Console Output',
+            position: "bottom-end",
+            icon: "info",
+            title: "Console Output",
             html: `<pre style="text-align: left; background: var(--bg-primary); padding: 5px; border-radius: 5px; color: var(--text-primary); max-height: 200px; overflow-y: auto;">${capturedOutput}</pre>`,
             showConfirmButton: false,
             timer: 5000,
@@ -672,8 +723,13 @@ json.dumps(result, default=json_default)
         }
 
         const markersList = result.markers || [];
-        const isStructurallyValid = markersList.every(m => 
-          typeof m === "object" && m !== null && "time" in m && "text" in m && "position" in m
+        const isStructurallyValid = markersList.every(
+          (m) =>
+            typeof m === "object" &&
+            m !== null &&
+            "time" in m &&
+            "text" in m &&
+            "position" in m,
         );
 
         if (markersList.length === 0 || !isStructurallyValid) {
@@ -687,13 +743,13 @@ json.dumps(result, default=json_default)
           setIsDeploying(false);
           return;
         }
-
       } catch (err) {
         console.error("Syntax Validation Error:", err);
-        const lines = err.message ? err.message.split('\n') : [];
+        const lines = err.message ? err.message.split("\n") : [];
         // Extract the last few lines which contain the actual SyntaxError
-        const shortError = lines.slice(-4).join('\n').trim() || "Invalid Python syntax.";
-        
+        const shortError =
+          lines.slice(-4).join("\n").trim() || "Invalid Python syntax.";
+
         Swal.fire({
           icon: "error",
           title: "Syntax Error",
@@ -724,10 +780,9 @@ json.dumps(result, default=json_default)
         });
 
         // Close Code Editor if open
-        if (typeof setIsCodeEditorOpen === 'function') {
+        if (typeof setIsCodeEditorOpen === "function") {
           setIsCodeEditorOpen(false);
         }
-        
 
         const payload = {
           strategy_code: `${code}`,
@@ -741,12 +796,9 @@ json.dumps(result, default=json_default)
         console.log("👤 Active User ID (from auth):", userId);
 
         const response = await apiService.post(
-          `/api/strategy/run-scanner`, 
+          `/api/strategy/run-scanner`,
           JSON.stringify(payload),
         );
-
-        
-
 
         // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
         setDeployedStrategyCode(code);
@@ -814,7 +866,9 @@ json.dumps(result, default=json_default)
       d.setDate(d.getDate() - 90); // 3 months for 1m-5m
     } else if (["15m", "30m"].includes(timeframeValue)) {
       d.setDate(d.getDate() - 120); // 4 months for 15m-30m
-    } else if (["1h", "2h", "4h", "60m", "120m", "240m"].includes(timeframeValue)) {
+    } else if (
+      ["1h", "2h", "4h", "60m", "120m", "240m"].includes(timeframeValue)
+    ) {
       d.setDate(d.getDate() - 365); // 1 year for hourly
     } else {
       d.setFullYear(d.getFullYear() - 5); // 5 years for daily/weekly
@@ -966,7 +1020,10 @@ json.dumps(result, default=json_default)
       console.log("Strategy markers:", markers.length);
 
       if (!strategyMarkersRef.current) {
-        strategyMarkersRef.current = createSeriesMarkers(seriesRef.current, markers);
+        strategyMarkersRef.current = createSeriesMarkers(
+          seriesRef.current,
+          markers,
+        );
         seriesRef.current.attachPrimitive(strategyMarkersRef.current);
       } else {
         strategyMarkersRef.current.setMarkers(markers);
@@ -1380,13 +1437,17 @@ json.dumps(result, default=json_default)
 
       return keysToShow
         .filter((key) => {
-          const style = indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
+          const style =
+            indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
           if (style?.visible === false) return false;
           return value[key] != null;
         })
         .map((key) => {
           const val = value[key];
-          const color = indicatorStyle?.[id]?.[key]?.color || indicatorStyle?.[type]?.[key]?.color || "#333";
+          const color =
+            indicatorStyle?.[id]?.[key]?.color ||
+            indicatorStyle?.[type]?.[key]?.color ||
+            "#333";
 
           return (
             <span key={key} style={{ marginRight: 8, color }}>
@@ -1604,7 +1665,8 @@ json.dumps(result, default=json_default)
       if (!chartRef.current) return;
 
       const raw = response?.data || [];
-      const symbolFromResponse = response?.symbol || raw[0]?.symbol || selectedCurrency?.name;
+      const symbolFromResponse =
+        response?.symbol || raw[0]?.symbol || selectedCurrency?.name;
 
       const parsedData = new Array(raw.length);
       for (let i = 0; i < raw.length; i++) {
@@ -1755,15 +1817,24 @@ json.dumps(result, default=json_default)
           );
           seriesRef.current.setData(data);
       }
-      
+
       seriesReadyRef.current = true;
 
-      if (lastDeployedMarkersRef.current && lastDeployedMarkersRef.current.length > 0 && seriesRef.current) {
+      if (
+        lastDeployedMarkersRef.current &&
+        lastDeployedMarkersRef.current.length > 0 &&
+        seriesRef.current
+      ) {
         if (!customScriptMarkersRef.current) {
-          customScriptMarkersRef.current = createSeriesMarkers(seriesRef.current, lastDeployedMarkersRef.current);
+          customScriptMarkersRef.current = createSeriesMarkers(
+            seriesRef.current,
+            lastDeployedMarkersRef.current,
+          );
           seriesRef.current.attachPrimitive(customScriptMarkersRef.current);
         } else {
-          customScriptMarkersRef.current.setMarkers(lastDeployedMarkersRef.current);
+          customScriptMarkersRef.current.setMarkers(
+            lastDeployedMarkersRef.current,
+          );
         }
       }
 
@@ -1798,7 +1869,7 @@ json.dumps(result, default=json_default)
         }
 
         chartRef.current?.timeScale().fitContent();
-        
+
         // Remove loader ONLY after chart is fully rendered and fit to content
         setMainChartLoading(false);
       }, 150);
@@ -1919,7 +1990,7 @@ json.dumps(result, default=json_default)
         }
       });
     },
-    // Note: We've combined liveTick logic into a single handleLiveTick, 
+    // Note: We've combined liveTick logic into a single handleLiveTick,
     // so we don't need a separate array-specific handler if the new centralized one supports both (and it does not need to care, as it just passes through).
     handleLiveIndicator: (payload) => {
       if (!payload?.success || !payload?.type) return;
@@ -1995,7 +2066,7 @@ json.dumps(result, default=json_default)
           }
         });
       });
-    }
+    },
   });
 
   // Keep emitRef and socketRef up to date
@@ -2062,7 +2133,10 @@ json.dumps(result, default=json_default)
 
   return (
     <>
-      <Navbar setSelectedCurrency={setSelectedCurrency} predictCount={predictResultData.length} />
+      <Navbar
+        setSelectedCurrency={setSelectedCurrency}
+        predictCount={predictResultData.length}
+      />
       <section
         className="trading-view-wrapper overflow-hidden"
         style={{
@@ -2079,8 +2153,12 @@ json.dumps(result, default=json_default)
             {/* Left Panel (Watchlist or Details) */}
             <div
               style={{
-                width: isWatchlistOpen || isDetailsOpen || isDepthOpen ? "300px" : "0px",
-                opacity: isWatchlistOpen || isDetailsOpen || isDepthOpen ? 1 : 0,
+                width:
+                  isWatchlistOpen || isDetailsOpen || isDepthOpen
+                    ? "300px"
+                    : "0px",
+                opacity:
+                  isWatchlistOpen || isDetailsOpen || isDepthOpen ? 1 : 0,
                 overflow: "hidden",
                 height: "100%",
                 transition:
@@ -2145,9 +2223,7 @@ json.dumps(result, default=json_default)
                 <div
                   style={{
                     display:
-                      activeTab !== "Alerts" && isDepthOpen
-                        ? "block"
-                        : "none",
+                      activeTab !== "Alerts" && isDepthOpen ? "block" : "none",
                     height: "100%",
                   }}
                 >
@@ -2885,7 +2961,6 @@ json.dumps(result, default=json_default)
                   />
                 )}
               </div>
-              
             </div>
 
             {/* Right Sidebar */}
