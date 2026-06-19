@@ -164,7 +164,7 @@ plot_markers(markers)`,
       if (activeTab === "Alerts") setActiveTab("Chart");
 
       const apiUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://192.168.1.6:3000";
+        import.meta.env.VITE_STRATEGY_API_URL || "http://192.168.1.6:3000";
       const resp = await apiService.get(`${apiUrl}/api/predictResult`);
       console.log("predictResult API Raw Response:", resp);
 
