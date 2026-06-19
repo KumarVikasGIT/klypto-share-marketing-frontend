@@ -135,15 +135,36 @@ const Overview = ({ selectedCurrency }) => {
 
       setDataPayload(payload);
       setLoading(false);
+
+      try {
+        const cacheKey = `overview_${targetSymbol}`;
+        localStorage.setItem(cacheKey, JSON.stringify(payload));
+      } catch (e) {
+        console.warn("Failed to cache overview data", e);
+      }
     }
   });
 
   useEffect(() => {
     if (!selectedCurrency?.name && !selectedCurrency?.symbol) return;
-    setLoading(true);
-    console.log(selectedCurrency, "nmaeeee",selectedCurrency?.symbol, "symbolll")
-    // Request initial data using the symbol
     const targetSymbol = selectedCurrency?.name || selectedCurrency?.symbol;
+
+    const cacheKey = `overview_${targetSymbol}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        setDataPayload(JSON.parse(cached));
+        setLoading(false);
+      } else {
+        setDataPayload(null);
+        setLoading(true);
+      }
+    } catch (e) {
+      setDataPayload(null);
+      setLoading(true);
+    }
+
+    // Request initial data using the symbol
     emit("getAllStocks");
     
     const payload = { symbol: targetSymbol };

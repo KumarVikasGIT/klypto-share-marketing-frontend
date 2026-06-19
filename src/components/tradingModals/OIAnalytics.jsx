@@ -126,7 +126,25 @@ const OIAnalytics = ({ selectedCurrency }) => {
   useEffect(() => {
     if (!currentSymbol) return;
 
-    setLoading(true);
+    const cacheKey = `oiAnalytics_${currentSymbol}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.data) setData(parsed.data);
+        if (parsed.metrics) setMetrics(parsed.metrics);
+        setLoading(false);
+      } else {
+        setData([]);
+        setMetrics({});
+        setLoading(true);
+      }
+    } catch (e) {
+      setData([]);
+      setMetrics({});
+      setLoading(true);
+    }
+
     const s = io(SOCKET_URL);
 
     const fetchAndSubscribe = async () => {
@@ -214,28 +232,41 @@ const OIAnalytics = ({ selectedCurrency }) => {
           const overallPCR =
             totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : 0;
 
-          setMetrics((prev) => ({
-            ...prev,
-            highestCallOI: {
-              strike: highestCall.strike,
-              value: (highestCall.value / 100000).toFixed(1) + "L",
-            },
-            highestPutOI: {
-              strike: highestPut.strike,
-              value: (highestPut.value / 100000).toFixed(1) + "L",
-            },
-            totalOICE: (totalCallOI / 100000).toFixed(2) + " L",
-            totalOIPE: (totalPutOI / 100000).toFixed(2) + " L",
-            pcrOI: overallPCR,
-            expiryDate: chainData[0]?.expiry_date || "-",
-            spotPrice:
-              response.spotPrice || chainData[0]?.ltp || prev.spotPrice || "-",
-            ...response.metrics,
-          }));
-
           formattedData = Object.values(grouped).sort(
             (a, b) => a.strikePrice - b.strikePrice,
           );
+
+          setMetrics((prev) => {
+            const newMetrics = {
+              ...prev,
+              highestCallOI: {
+                strike: highestCall.strike,
+                value: (highestCall.value / 100000).toFixed(1) + "L",
+              },
+              highestPutOI: {
+                strike: highestPut.strike,
+                value: (highestPut.value / 100000).toFixed(1) + "L",
+              },
+              totalOICE: (totalCallOI / 100000).toFixed(2) + " L",
+              totalOIPE: (totalPutOI / 100000).toFixed(2) + " L",
+              pcrOI: overallPCR,
+              expiryDate: chainData[0]?.expiry_date || "-",
+              spotPrice:
+                response.spotPrice || chainData[0]?.ltp || prev.spotPrice || "-",
+              ...response.metrics,
+            };
+
+            try {
+              localStorage.setItem(`oiAnalytics_${currentSymbol}`, JSON.stringify({
+                data: formattedData,
+                metrics: newMetrics
+              }));
+            } catch (e) {
+              console.warn("Failed to cache OI Analytics data", e);
+            }
+
+            return newMetrics;
+          });
         } else {
           formattedData = chainData.map((item) => ({
             strikePrice:
@@ -244,6 +275,16 @@ const OIAnalytics = ({ selectedCurrency }) => {
             putOI: item.putOI || item.PE_OI || item.pe_oi || 0,
             pcr: item.pcr || item.PCR || 0,
           }));
+
+          setMetrics((prev) => {
+            try {
+              localStorage.setItem(`oiAnalytics_${currentSymbol}`, JSON.stringify({
+                data: formattedData,
+                metrics: prev
+              }));
+            } catch (e) {}
+            return prev;
+          });
         }
 
         setData(formattedData);

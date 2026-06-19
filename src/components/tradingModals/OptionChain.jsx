@@ -7,13 +7,15 @@ import {
   SOCKET_URL,
 } from "../../services/websocket/socket";
 
-const OptionChain = ({ onSymbolChange }) => {
+const OptionChain = ({ selectedCurrency, onSymbolChange }) => {
   const navigate = useNavigate();
 
   // ── Dropdown state ──
   const [liveContractsList, setLiveContractsList] = useState([]);
   const [metadata, setMetadata] = useState({});
-  const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [selectedSymbol, setSelectedSymbol] = useState(
+    selectedCurrency?.name || selectedCurrency?.symbol || ""
+  );
   const [selectedContract, setSelectedContract] = useState(null);
   const [expiriesList, setExpiriesList] = useState([]);
   const [activeExpiry, setActiveExpiry] = useState("");
@@ -84,7 +86,7 @@ const OptionChain = ({ onSymbolChange }) => {
       return expiries[0] || "";
     });
 
-    // Reset chain on symbol change
+    // Reset chain temporarily to empty until the cache effect runs
     setStrikes([]);
     setSpotPrice(null);
     setAtmStrike(null);
@@ -148,6 +150,18 @@ const OptionChain = ({ onSymbolChange }) => {
   useEffect(() => {
     if (!localSocket || !selectedSymbol || !activeExpiry) return;
 
+    const cacheKey = `optionChain_${selectedSymbol}_${activeExpiry}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.strikes) setStrikes(parsed.strikes);
+        if (parsed.spotPrice) setSpotPrice(parsed.spotPrice);
+        if (parsed.atmStrike) setAtmStrike(parsed.atmStrike);
+        if (parsed.pcr) setPcr(parsed.pcr);
+      }
+    } catch (e) {}
+
     const subscribe = () => {
       const payload = { symbol: selectedSymbol, expiry_date: activeExpiry };
       console.log("[OptionChain] set-filters:", payload);
@@ -180,6 +194,9 @@ const OptionChain = ({ onSymbolChange }) => {
         });
       }
 
+      let currentSpot = null;
+      let currentAtm = null;
+
       if (response?.spotPrice != null && response.spotPrice !== "") {
         const newSpot = Number(response.spotPrice);
         if (!isNaN(newSpot)) {
@@ -188,9 +205,13 @@ const OptionChain = ({ onSymbolChange }) => {
           }
           prevSpotRef.current = newSpot;
           setSpotPrice(newSpot);
+          currentSpot = newSpot;
         }
       }
-      if (response?.atmStrike != null) setAtmStrike(response.atmStrike);
+      if (response?.atmStrike != null) {
+        setAtmStrike(response.atmStrike);
+        currentAtm = response.atmStrike;
+      }
 
       if (chainData.length > 0) {
         let finalStrikes = chainData;
@@ -215,6 +236,7 @@ const OptionChain = ({ onSymbolChange }) => {
           );
           if (newAtmSpot) {
             setSpotPrice(newAtmSpot);
+            currentSpot = newAtmSpot;
             let closest = null,
               minDiff = Infinity;
             finalStrikes.forEach((s) => {
@@ -224,7 +246,10 @@ const OptionChain = ({ onSymbolChange }) => {
                 closest = s.strike;
               }
             });
-            if (closest) setAtmStrike(closest);
+            if (closest) {
+              setAtmStrike(closest);
+              currentAtm = closest;
+            }
           }
         }
 
@@ -237,7 +262,20 @@ const OptionChain = ({ onSymbolChange }) => {
           (sum, row) => sum + (Number(row.pe?.oi || row.put?.oi) || 0),
           0,
         );
-        setPcr(totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : null);
+        const newPcr = totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : null;
+        setPcr(newPcr);
+
+        try {
+          const cacheKey = `optionChain_${selectedSymbol}_${activeExpiry}`;
+          localStorage.setItem(cacheKey, JSON.stringify({
+            strikes: finalStrikes,
+            spotPrice: currentSpot,
+            atmStrike: currentAtm,
+            pcr: newPcr
+          }));
+        } catch (e) {
+          console.warn("Failed to cache option chain data", e);
+        }
       }
     };
 

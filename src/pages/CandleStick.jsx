@@ -1252,18 +1252,10 @@ json.dumps(result, default=json_default)
       (key) => key === paneKey,
     );
     if (stillUsed) return;
-    try {
-      /* REMOVE DOM ELEMENT */
-      if (pane.div && pane.div.parentNode) {
-        pane.div.parentNode.removeChild(pane.div);
-      }
-      /* REMOVE SPLITTER */
-      if (pane.splitter && pane.splitter.parentNode) {
-        pane.splitter.parentNode.removeChild(pane.splitter);
-      }
-    } catch (e) {
-      console.error("Pane cleanup error:", e);
-    }
+    
+    // In Lightweight Charts v5, removing all series from a pane automatically removes the pane
+    // and its splitter. Manual DOM manipulation here causes the library to lose track of
+    // elements and leaves orphan splitters/blank spaces behind.
     delete panesRef.current[paneKey];
   }
 
@@ -2941,6 +2933,7 @@ json.dumps(result, default=json_default)
                 }}
               >
                 <OptionChain
+                  selectedCurrency={selectedCurrency}
                   onSymbolChange={useCallback((sym) => {
                     setSelectedCurrency((prev) => {
                       if (prev?.name !== sym) {
