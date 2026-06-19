@@ -2,10 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
-import {
-  OPTION_CHAIN_BASE_URL,
-  SOCKET_URL,
-} from "../../services/websocket/socket";
+import { METADATA_API_URL, SOCKET_URL } from "../../services/websocket/socket";
 
 const OptionChain = ({ onSymbolChange }) => {
   const navigate = useNavigate();

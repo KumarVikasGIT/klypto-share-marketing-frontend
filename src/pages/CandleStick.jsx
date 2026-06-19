@@ -23,7 +23,7 @@ import ChartTabs from "../components/layout/ChartTabs";
 import LeftDepth from "../components/layout/LeftDepth";
 import useSocket from "../util/useSocket";
 import EVENTS from "../services/websocket/socketEvent";
-import { OPTION_CHAIN_BASE_URL } from "../services/websocket/socket";
+import { METADATA_API_URL } from "../services/websocket/socket";
 
 // import SEO from "../components/SEO";
 import {
