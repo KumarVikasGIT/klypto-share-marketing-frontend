@@ -91,7 +91,7 @@ const spotPriceLinePlugin = {
   },
 };
 
-const OIAnalytics = ({ selectedCurrency }) => {
+const OIAnalytics = () => {
   const [theme, setTheme] = useState(
     document.documentElement.getAttribute("data-theme") || "dark",
   );
@@ -115,13 +115,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
   const [metrics, setMetrics] = useState({});
   const [loading, setLoading] = useState(true);
 
-  let currentSymbol = selectedCurrency?.name || selectedCurrency;
-  if (currentSymbol) {
-    currentSymbol =
-      typeof currentSymbol === "string" ? currentSymbol : currentSymbol.name;
-  } else {
-    currentSymbol = "NIFTY";
-  }
+  let currentSymbol = "";
 
   useEffect(() => {
     if (!currentSymbol) return;

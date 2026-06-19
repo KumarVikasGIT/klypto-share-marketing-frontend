@@ -4,15 +4,13 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import { METADATA_API_URL, SOCKET_URL } from "../../services/websocket/socket";
 
-const OptionChain = ({ selectedCurrency, onSymbolChange }) => {
+const OptionChain = ({ onSymbolChange }) => {
   const navigate = useNavigate();
 
   // ── Dropdown state ──
   const [liveContractsList, setLiveContractsList] = useState([]);
   const [metadata, setMetadata] = useState({});
-  const [selectedSymbol, setSelectedSymbol] = useState(
-    selectedCurrency?.name || selectedCurrency?.symbol || ""
-  );
+  const [selectedSymbol, setSelectedSymbol] = useState("");
   const [selectedContract, setSelectedContract] = useState(null);
   const [expiriesList, setExpiriesList] = useState([]);
   const [activeExpiry, setActiveExpiry] = useState("");

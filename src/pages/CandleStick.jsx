@@ -2932,17 +2932,7 @@ json.dumps(result, default=json_default)
                   height: "100%",
                 }}
               >
-                <OptionChain
-                  selectedCurrency={selectedCurrency}
-                  onSymbolChange={useCallback((sym) => {
-                    setSelectedCurrency((prev) => {
-                      if (prev?.name !== sym) {
-                        return { ...prev, name: sym, symbol: sym };
-                      }
-                      return prev;
-                    });
-                  }, [])}
-                />
+                <OptionChain />
               </div>
 
               <div
@@ -2960,10 +2950,7 @@ json.dumps(result, default=json_default)
                 }}
               >
                 {activeTab === "OI Analytics" && (
-                  <OIAnalytics
-                    key={selectedCurrency?.name}
-                    selectedCurrency={selectedCurrency}
-                  />
+                  <OIAnalytics />
                 )}
               </div>
             </div>
