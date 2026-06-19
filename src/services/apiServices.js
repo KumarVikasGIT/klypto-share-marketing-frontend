@@ -6,7 +6,7 @@ const API_BASE_URL =
 
 // 🔹 Create axios instance
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 
   timeout: 600000, // 1 min
   headers: {
@@ -24,12 +24,17 @@ api.interceptors.request.use((config) => {
 
   // Route strategy endpoints to the dedicated strategy backend
   if (config.url && config.url.includes("/api/strategy")) {
-    config.baseURL = import.meta.env.VITE_STRATEGY_API_URL || import.meta.env.VITE_API_URL;
+    config.baseURL =
+      import.meta.env.VITE_STRATEGY_API_URL ||
+      import.meta.env.VITE_API_BASE_URL;
   }
-  
+
   if (config.url.includes("scanner-dashboard")) {
     console.log(`🚀 [API] Request to ${config.url}`);
-    console.log(`🔑 [API] Attached Token:`, token ? "VALID_TOKEN_PRESENT" : "NULL/MISSING_TOKEN");
+    console.log(
+      `🔑 [API] Attached Token:`,
+      token ? "VALID_TOKEN_PRESENT" : "NULL/MISSING_TOKEN",
+    );
   }
 
   return config;

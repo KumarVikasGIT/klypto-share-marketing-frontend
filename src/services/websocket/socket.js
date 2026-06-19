@@ -13,7 +13,7 @@ const getUserId = () => {
 };
 
 // 🔹 Backend Connection
-const socket = io(import.meta.env.VITE_API_URL, {
+const socket = io(import.meta.env.VITE_API_BASE_URL, {
   transports: ["websocket", "polling"],
   reconnection: true,
 });
@@ -41,5 +41,6 @@ export const reconnectSocket = () => {
 
 console.log("SOCKET FILE LOADED");
 
-export const SOCKET_URL = import.meta.env.VITE_METADATA_API_URL || "http://192.168.1.6:3000";
+export const SOCKET_URL =
+  import.meta.env.VITE_METADATA_API_URL || "http://192.168.1.6:3000";
 export default socket;
