@@ -50,7 +50,8 @@ const OptionChain = ({ onSymbolChange }) => {
 
   // Fetch metadata from REST API
   useEffect(() => {
-    const metadataUrl = import.meta.env.VITE_METADATA_API_URL || "http://192.168.1.6:3000";
+    const metadataUrl =
+      import.meta.env.VITE_API_BASE_URL || "http://192.168.1.6:3000";
     axios
       .get(`${metadataUrl}/api/historical-metadata`)
       .then((res) => {
