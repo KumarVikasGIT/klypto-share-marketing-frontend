@@ -109,11 +109,20 @@ const useSocket = (props = {}) => {
 
     const unsubscribers = [];
 
+    const eventsToLog = [
+      EVENTS.OPTION_CHAIN?.LIST,
+      EVENTS.OPTION_CHAIN?.GET,
+      EVENTS.OPTION_CHAIN?.RESPONSE,
+      EVENTS.CHART?.LIVETICKS
+    ];
+
     // Register all centralized handlers with try-catch wrapper
     Object.keys(handlers).forEach((eventName) => {
       const wrappedHandler = (...args) => {
         try {
-          console.log(`[SOCKET EVENT] ${eventName} received:`, ...args);
+          if (eventsToLog.includes(eventName)) {
+            console.log(`[SOCKET EVENT] ${eventName} received:`, ...args);
+          }
           handlers[eventName](...args);
         } catch (error) {
           console.error(`[SOCKET ERROR] Event '${eventName}' threw an exception:`, error);
