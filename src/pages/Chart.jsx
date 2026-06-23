@@ -429,9 +429,9 @@ const GoldChart = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#020617] text-slate-200 font-sans overflow-hidden relative">
+    <div className="flex flex-col md:flex-row h-screen bg-[#020617] text-slate-200 font-sans overflow-hidden relative">
       {/* Sidebar */}
-      <aside className="w-72 border-r border-slate-800/50 flex flex-col bg-slate-900/20 backdrop-blur-xl z-20">
+      <aside className="hidden md:flex w-72 border-r border-slate-800/50 flex-col bg-slate-900/20 backdrop-blur-xl z-20">
         <div className="p-6 border-b border-slate-800/50 text-center">
           <h2 className="text-xl font-black bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent uppercase tracking-tight">
             Klypto Scanner

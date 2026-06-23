@@ -8,6 +8,7 @@ import { isAuthenticated, logout, getUser } from "../../pages/auth/protected";
 const Navbar = ({ setSelectedCurrency, predictCount = 0 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showRecent, setShowRecent] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -300,10 +301,17 @@ const Navbar = ({ setSelectedCurrency, predictCount = 0 }) => {
       {/* Left */}
       <div style={styles.leftSection}>
         <div style={styles.logoContainer}>
+          <button 
+            className="d-md-none" 
+            onClick={() => setIsMobileMenuOpen(true)} 
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.5rem', marginRight: '8px', padding: 0 }}
+          >
+            ☰
+          </button>
           <BsGrid style={styles.logoIcon} />
           <span>Algo</span>
         </div>
-        <div style={styles.indexData}>
+        <div className="d-none d-md-flex" style={styles.indexData}>
           <div style={styles.indexName}>
             <span>NIFTY</span>
             <span style={styles.expiryTag}>EXPIRY</span>
@@ -316,7 +324,7 @@ const Navbar = ({ setSelectedCurrency, predictCount = 0 }) => {
       </div>
 
       {/* Search */}
-      <div style={styles.searchContainer} ref={searchContainerRef}>
+      <div className="d-none d-sm-block" style={styles.searchContainer} ref={searchContainerRef}>
         <form
           style={styles.searchForm}
           onSubmit={(e) => {
@@ -480,7 +488,7 @@ const Navbar = ({ setSelectedCurrency, predictCount = 0 }) => {
 
       {/* Right */}
       <div style={styles.rightSection}>
-        <div style={styles.navLinks}>
+        <div className="d-none d-md-flex" style={styles.navLinks}>
           {[
             // "Markets",
             "TradeOne",
@@ -575,6 +583,58 @@ const Navbar = ({ setSelectedCurrency, predictCount = 0 }) => {
           )}
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "var(--bg-primary)", zIndex: 9999,
+          padding: "20px", display: "flex", flexDirection: "column", gap: "20px",
+          overflowY: "auto"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={styles.logoContainer}>
+              <BsGrid style={styles.logoIcon} />
+              <span>Algo Mobile</span>
+            </div>
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '1.5rem' }}
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div style={{...styles.indexData, fontSize: '1rem', padding: '10px 0', borderBottom: '1px solid var(--border-color)'}}>
+            <div style={styles.indexName}>
+              <span>NIFTY</span>
+              <span style={styles.expiryTag}>EXPIRY</span>
+            </div>
+            <div style={styles.indexValues}>
+              <span style={{ color: "#ef5350" }}>24,052.80</span>
+              <span style={{ color: "#ef5350" }}>▼ -66.50 (-0.28%)</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {["TradeOne", "Orders", "Positions", "Tools"].map((link) => (
+              <div
+                key={link}
+                onClick={() => setIsMobileMenuOpen(false)}
+                style={{
+                  ...styles.navLink,
+                  fontSize: '1.2rem',
+                  padding: '10px 0',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  ...(link === "TradeOne" ? styles.navLinkActive : {}),
+                }}
+              >
+                {link}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

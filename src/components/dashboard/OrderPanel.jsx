@@ -1019,13 +1019,7 @@ const OrderPanel = ({
         <span style={s.sectionBar}>1</span>Select Stock & Expiry
       </div>
       <div style={s.card}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 14,
-          }}
-        >
+        <div className="grid-3-col">
           <div>
             <label style={s.label}>Stock</label>
             {stock ? (
@@ -1199,14 +1193,7 @@ const OrderPanel = ({
         </span>
       </div>
       <div style={s.card}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 14,
-            alignItems: "start",
-          }}
-        >
+        <div className="grid-3-col">
           <div>
             <label style={s.label}>Strategy</label>
             <select
@@ -1335,14 +1322,7 @@ const OrderPanel = ({
         <span style={s.sectionBar}>3</span>Order Details
       </div>
       <div style={s.card}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "0.8fr 1fr 1.1fr 1fr 0.8fr",
-            gap: 14,
-            alignItems: "start",
-          }}
-        >
+        <div className="grid-5-col">
           <div>
             <label style={s.label}>Product Type</label>
             <select
@@ -1547,14 +1527,7 @@ const OrderPanel = ({
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: instrumentType === "EQUITY" ? "1fr 1fr" : "1fr 1fr 1fr 1fr",
-          gap: 10,
-          marginBottom: 4,
-        }}
-      >
+      <div className={`grid-action-buttons ${instrumentType === "EQUITY" ? "equity" : ""}`}>
         {(instrumentType === "EQUITY" ? [
           {
             key: "BUY_EQ",

@@ -419,7 +419,7 @@ const Backtest = () => {
         <SummaryCards data={summaryMetrics} />
 
         {/* Row 2: Equity & Key Metrics */}
-        <div className="bd-grid-row" style={{ gridTemplateColumns: "3fr 1fr" }}>
+        <div className="bd-grid-row bd-grid-2-col-3-1">
           <EquityCurve
             equityData={equityCurveData}
             benchmarkData={benchmarkCurveData}
@@ -431,10 +431,7 @@ const Backtest = () => {
         <SecondaryStats data={secondaryStats} />
 
         {/* Row 4: PnL, Outcome, Profit/Time, Long/Short */}
-        <div
-          className="bd-grid-row"
-          style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}
-        >
+        <div className="bd-grid-row bd-grid-4-col">
           <PnLDistribution data={pnlDistributionData} />
           <TradeOutcome data={summaryMetrics} />
           <ProfitByTime data={profitByTimeData} />
@@ -442,7 +439,7 @@ const Backtest = () => {
         </div>
 
         {/* Row 5: Recent Trades & Drawdown */}
-        <div className="bd-grid-row" style={{ gridTemplateColumns: "2fr 1fr" }}>
+        <div className="bd-grid-row bd-grid-2-col-2-1">
           <RecentTrades data={recentTrades} />
           <DrawdownCurve drawdownData={drawdownCurveData} />
         </div>

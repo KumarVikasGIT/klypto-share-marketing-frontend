@@ -19,7 +19,9 @@ const d = {
     padding: "4px 16px",
     background: "var(--bg-primary)",
     borderBottom: "1px solid var(--bg-secondary)",
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
   },
   btn: {
     display: "flex", alignItems: "center", gap: 6,
@@ -144,7 +146,37 @@ export default function ChartHeader({
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 0, fontSize: "0.85rem" }}>
-      <div style={d.bar}>
+      <style>{`
+        .chart-header-bar {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 4px 16px;
+          background: var(--bg-primary);
+          border-bottom: 1px solid var(--bg-secondary);
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        .chart-header-bar::-webkit-scrollbar {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .chart-header-bar {
+            flex-wrap: wrap;
+            overflow-x: visible;
+            padding: 8px 16px;
+            gap: 8px;
+          }
+          .chart-header-bar > * {
+            flex-grow: 1;
+            text-align: center;
+            justify-content: center;
+          }
+        }
+      `}</style>
+      <div className="chart-header-bar">
 
         {/* Symbol button */}
         <button title="Symbol Search" onClick={() => openModal("Symbol Search")} style={{ ...d.btn, fontWeight: 700, borderRadius: 20, padding: "6px 18px" }}>
