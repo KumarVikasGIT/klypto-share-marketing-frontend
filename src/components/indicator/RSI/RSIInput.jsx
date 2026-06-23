@@ -1,12 +1,16 @@
+const IST_OFFSET = 19800;
+
 export default function RSIInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
-  maType
+  maType,
+  instanceId
 ) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
-  const series = indicatorSeriesRef.current?.RSI;
+  // Use instanceId if provided, otherwise fallback to "RSI"
+  const series = indicatorSeriesRef.current?.[instanceId || "RSI"];
   if (!series) return;
 
   /* ================= RSI ================= */
@@ -14,7 +18,7 @@ export default function RSIInput(
   const rsiData = rows
     .filter((d) => d?.rsi != null && d?.time != null)
     .map((d) => ({
-      time: Number(d.time),
+      time: Number(d.time) + IST_OFFSET,
       value: Number(d.rsi),
     }))
     .sort((a, b) => a.time - b.time);
@@ -24,7 +28,7 @@ export default function RSIInput(
   const smoothingData = rows
     .filter((d) => d?.smoothingMA != null && d?.time != null)
     .map((d) => ({
-      time: Number(d.time),
+      time: Number(d.time) + IST_OFFSET,
       value: Number(d.smoothingMA),
     }))
     .sort((a, b) => a.time - b.time);
@@ -34,7 +38,7 @@ export default function RSIInput(
   const bbUpperData = rows
     .filter((d) => d?.bbUpper != null && d?.time != null)
     .map((d) => ({
-      time: Number(d.time),
+      time: Number(d.time) + IST_OFFSET,
       value: Number(d.bbUpper),
     }))
     .sort((a, b) => a.time - b.time);
@@ -44,7 +48,7 @@ export default function RSIInput(
   const bbLowerData = rows
     .filter((d) => d?.bbLower != null && d?.time != null)
     .map((d) => ({
-      time: Number(d.time),
+      time: Number(d.time) + IST_OFFSET,
       value: Number(d.bbLower),
     }))
     .sort((a, b) => a.time - b.time);
@@ -61,6 +65,9 @@ export default function RSIInput(
     series.smoothingMA?.setData([]);
   }
 
+  const indicatorId = instanceId || "RSI";
+  console.log(indicatorId, "indicatorId");
+
   /* ================= BOLLINGER BANDS ================= */
 
   if (maType === "SMA + Bollinger Bands") {
@@ -70,10 +77,13 @@ export default function RSIInput(
     series.bbUpperData = bbUpperData;
     series.bbLowerData = bbLowerData;
 
-    latestIndicatorValuesRef.current.RSI.bbUpper =
+    if (!latestIndicatorValuesRef.current[indicatorId]) {
+      latestIndicatorValuesRef.current[indicatorId] = {};
+    }
+    latestIndicatorValuesRef.current[indicatorId].bbUpper =
       bbUpperData[bbUpperData.length - 1]?.value ?? null;
 
-    latestIndicatorValuesRef.current.RSI.bbLower =
+    latestIndicatorValuesRef.current[indicatorId].bbLower =
       bbLowerData[bbLowerData.length - 1]?.value ?? null;
   } else {
     /* clear BB if MA type changed */
@@ -84,21 +94,27 @@ export default function RSIInput(
     series.bbUpperData = [];
     series.bbLowerData = [];
 
-    latestIndicatorValuesRef.current.RSI.bbUpper = null;
-    latestIndicatorValuesRef.current.RSI.bbLower = null;
+    if (latestIndicatorValuesRef.current[indicatorId]) {
+      latestIndicatorValuesRef.current[indicatorId].bbUpper = null;
+      latestIndicatorValuesRef.current[indicatorId].bbLower = null;
+    }
   }
 
   /* ================= UPDATE HOVER VALUES ================= */
 
-  latestIndicatorValuesRef.current.RSI.rsi =
+  if (!latestIndicatorValuesRef.current[indicatorId]) {
+    latestIndicatorValuesRef.current[indicatorId] = {};
+  }
+
+  latestIndicatorValuesRef.current[indicatorId].rsi =
     rsiData[rsiData.length - 1]?.value ?? null;
 
-  latestIndicatorValuesRef.current.RSI.smoothingMA =
+  latestIndicatorValuesRef.current[indicatorId].smoothingMA =
     smoothingData[smoothingData.length - 1]?.value ?? null;
 
   /* ================= STORE RESULT ================= */
 
-  indicatorSeriesRef.current.RSI.result = {
+  indicatorSeriesRef.current[indicatorId].result = {
     data: {
       rsi: rsiData,
       smoothingMA: maType !== "none" ? smoothingData : [],

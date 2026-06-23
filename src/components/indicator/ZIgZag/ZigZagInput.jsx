@@ -1,14 +1,16 @@
+import { createSeriesMarkers } from "lightweight-charts";
+
 export default function ZIGZAGInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
   indicatorStyle // ✅ pass this from parent
-) {
+, instanceId) {
   const series = response?.data?.series ?? [];
   const pivots = response?.data?.pivots ?? [];
 
   const zigzagSeries =
-    indicatorSeriesRef.current?.ZIGZAG?.zigzagLine;
+    indicatorSeriesRef.current?.[instanceId || "ZIGZAG"]?.zigzagLine;
 
   // ❌ If series not ready, exit
   if (!zigzagSeries) return;
@@ -16,7 +18,7 @@ export default function ZIGZAGInput(
   // ✅ SAFE STYLE (uses correct key "z")
   const zigzagStyle = indicatorStyle?.ZIGZAG?.z || {};
 
-  const lineColor = zigzagStyle.color ?? "#2962ff";
+  const lineColor = zigzagStyle.color ?? "var(--accent-color)";
   const visible = zigzagStyle.visible ?? true;
   const width = zigzagStyle.width ?? 2;
 
@@ -61,13 +63,21 @@ export default function ZIGZAGInput(
 
   // ✅ Update markers
   try {
-    zigzagSeries.setMarkers(markers);
+    const group = indicatorSeriesRef.current?.[instanceId || "ZIGZAG"];
+    if (group) {
+      if (!group.markersPlugin) {
+        group.markersPlugin = createSeriesMarkers(zigzagSeries, markers);
+        zigzagSeries.attachPrimitive(group.markersPlugin);
+      } else {
+        group.markersPlugin.setMarkers(markers);
+      }
+    }
   } catch (e) {
     console.warn("ZIGZAG markers error:", e);
   }
 
   // 🔹 Store latest value (for tooltip / panel)
-  latestIndicatorValuesRef.current.ZIGZAG = {
+  latestIndicatorValuesRef.current[instanceId || "ZIGZAG"] = {
     zigzagLine:
       lineData.length > 0
         ? lineData[lineData.length - 1].value

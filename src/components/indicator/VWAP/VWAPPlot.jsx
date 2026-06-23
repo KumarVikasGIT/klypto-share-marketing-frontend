@@ -19,6 +19,14 @@ export default function VWAPPlot({
 
     console.log("🔥 VWAP CREATE TRIGGERED");
 
+    console.log("VWAP EFFECT", {
+      vwap: result.data.vwap?.length,
+      upper1: result.data.upper1?.length,
+      lower1: result.data.lower1?.length,
+      band1Enabled: indicatorConfigs?.VWAP?.band1?.enabled,
+      hasAddSeries: typeof addSeries,
+    });
+
     // CLEAR OLD
     if (indicatorSeriesRef.current?.VWAP) {
       console.log("🧹 Clearing old VWAP series");
@@ -74,7 +82,10 @@ export default function VWAPPlot({
     const createBand = (id, upperData, lowerData) => {
       const bandCfg = config?.[`band${id}`];
 
-      if (!bandCfg?.enabled) {
+      // Default band1 to enabled if config is missing
+      const isEnabled = bandCfg?.enabled ?? (id === 1 ? true : false);
+
+      if (!isEnabled) {
         console.log(`🚫 band${id} disabled`);
         return;
       }
@@ -124,12 +135,12 @@ export default function VWAPPlot({
     indicatorSeriesRef.current.VWAP = groupedSeries;
 
     console.log("✅ FINAL SERIES", groupedSeries);
-}, [
-  result,
-  indicatorConfigs?.VWAP?.band1?.enabled,
-  indicatorConfigs?.VWAP?.band2?.enabled,
-  indicatorConfigs?.VWAP?.band3?.enabled,
-]);
+  }, [
+    result,
+    indicatorConfigs?.VWAP?.band1?.enabled,
+    indicatorConfigs?.VWAP?.band2?.enabled,
+    indicatorConfigs?.VWAP?.band3?.enabled,
+  ]);
 
   /* ================= STYLE UPDATE ================= */
 
@@ -185,13 +196,11 @@ export default function VWAPPlot({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const drawSingleBand = (id) => {
-      const bandCfg = indicatorConfigs?.VWAP?.[`band${id}`];
       const fillStyle = indicatorStyle?.VWAP?.[`bandFill${id}`];
 
-      if (!bandCfg?.enabled) {
-        console.log(`🚫 Skip fill band${id} (disabled)`);
-        return;
-      }
+      const bandCfg = indicatorConfigs?.VWAP?.[`band${id}`];
+      const isEnabled = bandCfg?.enabled ?? (id === 1 ? true : false);
+      if (!isEnabled) return;
 
       const upperData = group[`upperBand${id}Data`] || [];
       const lowerData = group[`lowerBand${id}Data`] || [];

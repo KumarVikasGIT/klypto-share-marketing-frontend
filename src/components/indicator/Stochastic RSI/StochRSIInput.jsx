@@ -2,7 +2,7 @@ export default function STOCHRSIInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data?.candles)
     ? response.data.candles
     : [];
@@ -19,7 +19,7 @@ export default function STOCHRSIInput(
     };
 
     if (indicatorSeriesRef?.current) {
-      indicatorSeriesRef.current.STOCHRSIData = emptyResult;
+      indicatorSeriesRef.current[instanceId || "STOCHRSIData"] = emptyResult;
     }
 
     return emptyResult;
@@ -74,14 +74,14 @@ export default function STOCHRSIInput(
     indicatorSeriesRef.current = {};
   }
 
-  if (!indicatorSeriesRef.current.STOCHRSI) {
-    indicatorSeriesRef.current.STOCHRSI = {};
+  if (!indicatorSeriesRef.current[instanceId || "STOCHRSI"]) {
+    indicatorSeriesRef.current[instanceId || "STOCHRSI"] = {};
   }
 
   /* ---------------- SERIES UPDATE ---------------- */
 
-  const kSeries = indicatorSeriesRef.current.STOCHRSI.kLine;
-  const dSeries = indicatorSeriesRef.current.STOCHRSI.dLine;
+  const kSeries = indicatorSeriesRef.current[instanceId || "STOCHRSI"].kLine;
+  const dSeries = indicatorSeriesRef.current[instanceId || "STOCHRSI"].dLine;
 
   try {
     if (kSeries?.setData) {
@@ -101,7 +101,7 @@ export default function STOCHRSIInput(
 
   /* ---------------- STORE RAW ---------------- */
 
-  indicatorSeriesRef.current.STOCHRSIData = result.data;
+  indicatorSeriesRef.current[instanceId || "STOCHRSIData"] = result.data;
 
   /* ---------------- LATEST VALUES ---------------- */
 
@@ -109,7 +109,7 @@ export default function STOCHRSIInput(
     latestIndicatorValuesRef.current = {};
   }
 
-  latestIndicatorValuesRef.current.STOCHRSI = {
+  latestIndicatorValuesRef.current[instanceId || "STOCHRSI"] = {
     kLine: result.data.kData.at(-1)?.value ?? null,
     dLine: result.data.dData.at(-1)?.value ?? null,
   };
@@ -120,7 +120,7 @@ export default function STOCHRSIInput(
     rows: rows.length,
     kPoints: result.data.kData.length,
     dPoints: result.data.dData.length,
-    last: latestIndicatorValuesRef.current.STOCHRSI,
+    last: latestIndicatorValuesRef.current[instanceId || "STOCHRSI"],
     version: result._v,
   });
 

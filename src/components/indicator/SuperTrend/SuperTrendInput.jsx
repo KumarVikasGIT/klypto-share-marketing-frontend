@@ -2,7 +2,7 @@ export default function SuperTrendInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   if (!rows.length) {
@@ -19,7 +19,7 @@ export default function SuperTrendInput(
     };
 
     if (indicatorSeriesRef?.current) {
-      indicatorSeriesRef.current.SUPERTREND_DATA = emptyResult.data;
+      indicatorSeriesRef.current[instanceId || "SUPERTREND_DATA"] = emptyResult.data;
     }
 
     return emptyResult;
@@ -83,7 +83,7 @@ export default function SuperTrendInput(
   }
 
   // ✅ STORE RAW DATA
-  indicatorSeriesRef.current.SUPERTREND_DATA = result.data;
+  indicatorSeriesRef.current[instanceId || "SUPERTREND_DATA"] = result.data;
 
   // ✅ 🔥 IMPORTANT: FORCE CHART UPDATE (if series exist)
   const series = indicatorSeriesRef.current;
@@ -111,7 +111,7 @@ export default function SuperTrendInput(
     latestIndicatorValuesRef.current = {};
   }
 
-  latestIndicatorValuesRef.current.SUPERTREND = {
+  latestIndicatorValuesRef.current[instanceId || "SUPERTREND"] = {
     supertrend:
       last?.supertrend !== undefined ? Number(last.supertrend) : null,
     upTrend: last?.upTrend !== undefined ? Number(last.upTrend) : null,
@@ -123,7 +123,7 @@ export default function SuperTrendInput(
   // ✅ DEBUG LOG (optional)
   console.log("SuperTrend updated:", {
     points: rows.length,
-    last: latestIndicatorValuesRef.current.SUPERTREND,
+    last: latestIndicatorValuesRef.current[instanceId || "SUPERTREND"],
     version: result._v,
   });
 

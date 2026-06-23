@@ -70,7 +70,7 @@ export default function NVIPlot({
     if (!group) return;
 
     group.nvi.applyOptions({
-      color: indicatorStyle?.NVI?.nvi?.color ?? "#2962ff",
+      color: indicatorStyle?.NVI?.nvi?.color ?? "var(--accent-color)",
       lineWidth: indicatorStyle?.NVI?.nvi?.width ?? 2,
       lineStyle: indicatorStyle?.NVI?.nvi?.lineStyle ?? 0,
       visible: indicatorStyle?.NVI?.nvi?.visible ?? true,

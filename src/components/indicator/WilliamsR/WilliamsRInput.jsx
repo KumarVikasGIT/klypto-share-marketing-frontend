@@ -2,7 +2,7 @@ export default function WilliamsRInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   const rows = Array.isArray(response?.data?.series)
     ? response.data.series
     : [];
@@ -17,16 +17,16 @@ export default function WilliamsRInput(
     .sort((a, b) => a.time - b.time);
 
   // Update series data in indicatorSeriesRef without removing the series
-  if (!indicatorSeriesRef.current.WPR) {
-    indicatorSeriesRef.current.WPR = {};
+  if (!indicatorSeriesRef.current[instanceId || "WPR"]) {
+    indicatorSeriesRef.current[instanceId || "WPR"] = {};
   }
-  indicatorSeriesRef.current.WPR.rData = rData;
+  indicatorSeriesRef.current[instanceId || "WPR"].rData = rData;
 
   // Update result structure (used by plotting)
-  indicatorSeriesRef.current.WPR.result = { data: { r: rData } };
+  indicatorSeriesRef.current[instanceId || "WPR"].result = { data: { r: rData } };
 
   // Update latest value
-  latestIndicatorValuesRef.current.WPR = {
+  latestIndicatorValuesRef.current[instanceId || "WPR"] = {
     r: rData.length ? rData[rData.length - 1].value : null,
   };
 

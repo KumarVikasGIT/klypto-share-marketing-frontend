@@ -105,6 +105,9 @@ import VWMAInput from "./VWMA/VWMAInput";
 import VWMAPlot from "./VWMA/VWMAPlot";
 import TMAPlot from "./TMA/TMAPlot";
 import TMAInput from "./TMA/TMAInput";
+import SSLPlot from "./SSL/SSLPlot";
+import MARibbonPlot from "./MARibbon/MARibbonPlot";
+import MARibbonInput from "./MARibbon/MARibbonInput";
 
 export const indicatorComponents = {
   VWAP: VWAPPlot,
@@ -163,6 +166,8 @@ export const indicatorComponents = {
   TR: TRPlot,
   VWMA: VWMAPlot,
   TMA: TMAPlot,
+  SSL_HYBRID: SSLPlot,
+  MA_RIBBON: MARibbonPlot,
 };
 
 export const indicatorInputs = {
@@ -221,26 +226,30 @@ export const indicatorInputs = {
   TR: TRInput,
   VWMA: VWMAInput,
   TMA: TMAInput,
+  MA_RIBBON: MARibbonInput,
 };
 
 export function updateIndicatorFromInput(
+  instanceId,
   indicatorType,
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
   maType,
 ) {
-  console.log("🔥 updateIndicatorFromInput CALLED:", indicatorType);
-
   const handler = indicatorInputs[indicatorType];
 
   if (!handler) {
-    console.error("❌ No input handler for:", indicatorType);
-    console.log("Available handlers:", Object.keys(indicatorInputs));
     return;
   }
 
-  console.log("✅ Found handler for:", indicatorType);
+  const args = [response, indicatorSeriesRef, latestIndicatorValuesRef];
 
-  handler(response, indicatorSeriesRef, latestIndicatorValuesRef, maType);
+  if (handler.length >= 5) {
+    args.push(maType, instanceId);
+  } else if (handler.length === 4) {
+    args.push(instanceId);
+  }
+
+  handler(...args);
 }

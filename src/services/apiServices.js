@@ -1,88 +1,132 @@
 import axios from "axios";
+import { getToken } from "../pages/auth/protected";
 
-const token =
-  localStorage.getItem("session") &&
-  JSON.parse(localStorage.getItem("session"));
-// console.log(localStorage.getItem("session"), "tokennnnnnn kkkkkkkkkkkkkkkkkkkkk")
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://192.168.1.7:5000";
 
 // 🔹 Create axios instance
 const api = axios.create({
-  // baseURL: "https://studios-publishers-promising-rosa.trycloudflare.com",
-  baseURL: "http://192.168.1.16:8000", // change to your API
-  timeout: 500000,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+
+  timeout: 600000, // 1 min
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 // 🔹 Request Interceptor (Auth, logging, etc.)
-api.interceptors.request.use(
-  (config) => {
-    // Example: attach token
-    // const token = localStorage.getItem("token");
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+api.interceptors.request.use((config) => {
+  const token = getToken();
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Route strategy endpoints to the dedicated strategy backend
+  if (config.url && config.url.includes("/api/strategy")) {
+    config.baseURL =
+      import.meta.env.VITE_STRATEGY_API_URL ||
+      import.meta.env.VITE_API_BASE_URL;
+  }
+
+  if (config.url.includes("scanner-dashboard")) {
+    console.log(`🚀 [API] Request to ${config.url}`);
+    console.log(
+      `🔑 [API] Attached Token:`,
+      token ? "VALID_TOKEN_PRESENT" : "NULL/MISSING_TOKEN",
+    );
+  }
+
+  return config;
+});
 
 // 🔹 Response Interceptor
 api.interceptors.response.use(
   (response) => response?.data,
   (error) => {
-    const message =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Something went wrong";
-    // console.log("API Error:", error?.response?.data?.message);
-    // console.log("API Error Details:", error?.message);
+    if (error?.response?.status === 401) {
+      console.warn(
+        "Session expired or unauthorized. Logging out automatically.",
+      );
+      localStorage.removeItem("session");
+      sessionStorage.removeItem("session");
+
+      // Use setTimeout to avoid synchronous infinite redirect loops
+      setTimeout(() => {
+        if (
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/signup" &&
+          window.location.pathname !== "/"
+        ) {
+          window.location.href = "/login";
+        }
+      }, 500);
+    }
 
     return Promise.reject(error);
   },
 );
 
 // 🔹 API Methods
-const getAuthHeaders = () => {
-  const session =
-    JSON.parse(localStorage.getItem("session")) ||
-    JSON.parse(sessionStorage.getItem("session"));
+// const getAuthHeaders = () => {
+//   let session = null;
 
-  const token = session?.token;
+//   try {
+//     const raw =
+//       localStorage.getItem("session") ||
+//       sessionStorage.getItem("session");
 
-  return {
-    "Content-Type": "application/json",
-    Authorization: token ? `Bearer ${token}` : "",
-  };
-};
+//     if (raw) {
+//       session = JSON.parse(raw);
+//     }
+//   } catch (err) {
+//     console.error("Invalid session JSON in headers:", err);
+//   }
+
+//   const token = session?.token;
+
+//   return {
+//     "Content-Type": "application/json",
+//     Authorization: token ? `Bearer ${token}` : "",
+//   };
+// };
 
 // console.log(localStorage.getItem("session"), "tokennnnnnn kkkkkkkkkkkkkkkkkkkkk")
 
+// const apiService = {
+//   get: (url, params = {}) =>
+//     api.get(url, {
+//       headers: getAuthHeaders(),
+//       params,
+//     }),
+
+//   post: (url, data = {}) =>
+//     api.post(url, data, {
+//       headers: getAuthHeaders(),
+//     }),
+
+//   put: (url, data = {}) =>
+//     api.put(url, data, {
+//       headers: getAuthHeaders(),
+//     }),
+
+//   patch: (url, data = {}) =>
+//     api.patch(url, data, {
+//       headers: getAuthHeaders(),
+//     }),
+
+//   delete: (url) =>
+//     api.delete(url, {
+//       headers: getAuthHeaders(),
+//     }),
+// };
+
 const apiService = {
-  get: (url, params = {}) =>
-    api.get(url, {
-      headers: getAuthHeaders(),
-      params,
-    }),
-
-  post: (url, data = {}) =>
-    api.post(url, data, {
-      headers: getAuthHeaders(),
-    }),
-
-  put: (url, data = {}) =>
-    api.put(url, data, {
-      headers: getAuthHeaders(),
-    }),
-
-  patch: (url, data = {}) =>
-    api.patch(url, data, {
-      headers: getAuthHeaders(),
-    }),
-
-  delete: (url) =>
-    api.delete(url, {
-      headers: getAuthHeaders(),
-    }),
+  get: (url, params = {}) => api.get(url, { params }),
+  post: (url, data = {}) => api.post(url, data),
+  put: (url, data = {}) => api.put(url, data),
+  patch: (url, data = {}) => api.patch(url, data),
+  delete: (url) => api.delete(url),
 };
 
 export default apiService;

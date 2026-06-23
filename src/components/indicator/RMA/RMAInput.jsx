@@ -2,8 +2,8 @@ export default function RMAInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
-  const group = indicatorSeriesRef.current?.RMA;
+, instanceId) {
+  const group = indicatorSeriesRef.current?.[instanceId || "RMA"];
   if (!group) return;
 
   const rmaData =
@@ -16,7 +16,7 @@ export default function RMAInput(
 
   group.rmaLine?.setData(rmaData);
 
-  latestIndicatorValuesRef.current.RMA = {
+  latestIndicatorValuesRef.current[instanceId || "RMA"] = {
     rma: rmaData[rmaData.length - 1]?.value ?? null,
   };
 }

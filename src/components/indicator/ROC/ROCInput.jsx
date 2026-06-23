@@ -2,7 +2,7 @@ export default function ROCInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
 
   const rows = Array.isArray(response?.data) ? response.data : [];
 
@@ -17,7 +17,7 @@ export default function ROCInput(
     .sort((a, b) => a.time - b.time);
 
 
-  const series = indicatorSeriesRef.current?.ROC;
+  const series = indicatorSeriesRef.current?.[instanceId || "ROC"];
   if (!series) return;
 
   /* ================= UPDATE ROC ================= */
@@ -26,13 +26,13 @@ export default function ROCInput(
 
   /* ================= UPDATE HOVER VALUES ================= */
 
-  latestIndicatorValuesRef.current.ROC = {
+  latestIndicatorValuesRef.current[instanceId || "ROC"] = {
     roc: rocData[rocData.length - 1]?.value,
   };
 
   /* ================= STORE RESULT ================= */
 
-  indicatorSeriesRef.current.ROC.result = {
+  indicatorSeriesRef.current[instanceId || "ROC"].result = {
     data: {
       roc: rocData,
     },

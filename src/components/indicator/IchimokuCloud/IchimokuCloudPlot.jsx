@@ -130,8 +130,12 @@ export default function IchimokuCloudPlot({
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const bullishColor = indicatorStyle?.ICHIMOKU?.cloudFillBullish?.color || "rgba(0,200,0,0.25)";
-      const bearishColor = indicatorStyle?.ICHIMOKU?.cloudFillBearish?.color || "rgba(255,0,0,0.25)";
+      const bullishColor =
+        indicatorStyle?.ICHIMOKU?.cloudFillBullish?.color ||
+        "rgba(0,200,0,0.25)";
+      const bearishColor =
+        indicatorStyle?.ICHIMOKU?.cloudFillBearish?.color ||
+        "rgba(255,0,0,0.25)";
 
       for (let i = 0; i < spanA.length - 1; i++) {
         const a1 = spanA[i];
@@ -163,12 +167,12 @@ export default function IchimokuCloudPlot({
     };
 
     drawCloud();
-    const unsubscribeTime = chart.timeScale().subscribeVisibleLogicalRangeChange(drawCloud);
-    const unsubscribeCrosshair = chart.subscribeCrosshairMove(drawCloud);
+    chart.timeScale().subscribeVisibleLogicalRangeChange(drawCloud);
+    chart.subscribeCrosshairMove(drawCloud);
 
     return () => {
-      unsubscribeTime();
-      unsubscribeCrosshair();
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(drawCloud);
+      chart.unsubscribeCrosshairMove(drawCloud);
     };
   }, [result, indicatorStyle]);
 
@@ -180,7 +184,13 @@ export default function IchimokuCloudPlot({
 
     const style = indicatorStyle?.ICHIMOKU ?? {};
 
-    ["conversionLine", "baseLine", "leadLine1", "leadLine2", "laggingSpan"].forEach((key) => {
+    [
+      "conversionLine",
+      "baseLine",
+      "leadLine1",
+      "leadLine2",
+      "laggingSpan",
+    ].forEach((key) => {
       const s = group[key];
       const st = style?.[key];
       if (!s || !st) return;

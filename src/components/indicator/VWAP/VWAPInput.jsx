@@ -1,4 +1,4 @@
-export default function VWAPInput(response, indicatorSeriesRef, latestIndicatorValuesRef) {
+export default function VWAPInput(response, indicatorSeriesRef, latestIndicatorValuesRef, instanceId) {
   console.log("🚀 VWAP INPUT FUNCTION HIT");
 
   const rows = Array.isArray(response?.data) ? response.data : [];
@@ -62,11 +62,11 @@ export default function VWAPInput(response, indicatorSeriesRef, latestIndicatorV
 
   // Store raw series data
   if (!indicatorSeriesRef.current) indicatorSeriesRef.current = {};
-  indicatorSeriesRef.current.VWAPData = result;
+  indicatorSeriesRef.current[instanceId || "VWAPData"] = result;
 
   // Store latest values
   if (!latestIndicatorValuesRef.current) latestIndicatorValuesRef.current = {};
-  latestIndicatorValuesRef.current.VWAP = {
+  latestIndicatorValuesRef.current[instanceId || "VWAP"] = {
     vwap: vwap.at(-1)?.value ?? null,
     upper1: upper1.at(-1)?.value ?? null,
     lower1: lower1.at(-1)?.value ?? null,

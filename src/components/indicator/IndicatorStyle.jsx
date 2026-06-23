@@ -1,4 +1,5 @@
 import { Row, Col, Form } from "react-bootstrap";
+import { createPortal } from "react-dom";
 import { useState, useRef, useEffect } from "react";
 import ColorPalettePanel from "./ColorPalettePanel";
 import { getRowsByIndicator } from "../../util/common";
@@ -9,19 +10,24 @@ export default function IndicatorStyle({
   activeBarIndicator,
   indicatorConfigs,
 }) {
-  const normalizedType = activeBarIndicator.replace(/[\s/%]+/g, "");
-  const selectedStyle = indicatorStyle?.[normalizedType];
-  const config = indicatorConfigs?.[normalizedType] || {};
+  // activeBarIndicator is now {id, type} â€” fall back to string for legacy compat
+  const instanceId = typeof activeBarIndicator === "object" ? activeBarIndicator.id   : activeBarIndicator;
+  const normalizedType = typeof activeBarIndicator === "object" ? activeBarIndicator.type : activeBarIndicator.replace(/[\s/%]+/g, "");
+
+  // Read style by instance id (so two RSIs are independent); fall back to type key
+  const selectedStyle = indicatorStyle?.[instanceId] ?? indicatorStyle?.[normalizedType];
+  const config = indicatorConfigs?.[instanceId] || indicatorConfigs?.[normalizedType] || {};
   const { maType, maLength } = config;
   const rows = getRowsByIndicator(normalizedType, maType, indicatorConfigs);
 
   const [activePalette, setActivePalette] = useState(null);
+  const [palettePos, setPalettePos] = useState({ top: 0, left: 0 });
   const paletteRef = useRef(null);
 
   /* ================= UPDATE FUNCTION ================= */
   const update = (section, key, value) => {
     setIndicatorStyle((prev) => {
-      const indicator = prev[normalizedType] || {};
+      const indicator = prev[instanceId] ?? prev[normalizedType] ?? {};
 
       // ---------------- HISTOGRAM / VOLUME / AWO / AO PALETTE ----------------
       if (
@@ -38,15 +44,15 @@ export default function IndicatorStyle({
           ].includes(key)) ||
         (section === "volumeBars" && ["up", "down"].includes(key)) ||
         (section === "awoBars" && ["up", "down"].includes(key)) ||
-        // ✅ AO oscillator palette
+        // âœ… AO oscillator palette
         (section === "oscillator" && ["up", "down"].includes(key)) ||
-        // ✅ AO fill palette
+        // âœ… AO fill palette
         (section === "oscillatorFill" &&
           ["topFillColor1", "topFillColor2"].includes(key))
       ) {
         return {
           ...prev,
-          [normalizedType]: {
+          [instanceId]: {
             ...indicator,
             [section]: {
               ...indicator[section],
@@ -62,7 +68,7 @@ export default function IndicatorStyle({
       // ---------------- NORMAL STYLE UPDATE ----------------
       return {
         ...prev,
-        [normalizedType]: {
+        [instanceId]: {
           ...indicator,
           [section]: {
             ...indicator?.[section],
@@ -95,10 +101,10 @@ export default function IndicatorStyle({
         selectedStyle?.volumeBars?.palette?.[row.key]) ||
       (row.parent === "awoBars" &&
         selectedStyle?.awoBars?.palette?.[row.key]) ||
-      // ✅ AO oscillator palette preview
+      // âœ… AO oscillator palette preview
       (row.parent === "oscillator" &&
         selectedStyle?.oscillator?.palette?.[row.key]) ||
-      // ✅ AO fill palette preview
+      // âœ… AO fill palette preview
       (row.parent === "oscillatorFill" &&
         selectedStyle?.oscillatorFill?.palette?.[row.key])
     ) {
@@ -137,7 +143,7 @@ export default function IndicatorStyle({
               transition: "background 0.15s ease",
               flexWrap: "nowrap",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f7fa")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-secondary)")}
             onMouseLeave={(e) =>
               (e.currentTarget.style.background = "transparent")
             }
@@ -152,6 +158,7 @@ export default function IndicatorStyle({
             >
               {!row.parent ? (
                 <Form.Check
+                  id={`check-${row.key}`}
                   type="checkbox"
                   checked={
                     selectedStyle?.[row.key]?.visible ?? row.visible ?? true
@@ -162,7 +169,7 @@ export default function IndicatorStyle({
                       style={{
                         fontSize: "14.5px",
                         fontWeight: 600,
-                        color: "#111827",
+                        color: "var(--text-primary)",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -179,7 +186,7 @@ export default function IndicatorStyle({
                   style={{
                     fontSize: "14.5px",
                     fontWeight: 600,
-                    color: "#111827",
+                    color: "var(--text-primary)",
                   }}
                 >
                   {row.label}
@@ -198,6 +205,8 @@ export default function IndicatorStyle({
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setPalettePos({ top: rect.bottom + 8, left: rect.left });
                       setActivePalette(
                         activePalette === row.key ? null : row.key,
                       );
@@ -205,14 +214,14 @@ export default function IndicatorStyle({
                     style={{
                       width: 34,
                       height: 34,
-                      border: "1.5px solid #d1d5db",
+                      border: "1.5px solid var(--text-primary)",
                       borderRadius: 7,
                       cursor: "pointer",
                       background:
                         row.type !== "fill"
                           ? (selectedStyle?.[row.key]?.color ??
                             row.color ??
-                            "#2962ff")
+                            "var(--accent-color)")
                           : getFillPreview(row, selectedStyle),
                       boxShadow: "0 1px 3px rgba(0,0,0,0.10)",
                       transition: "box-shadow 0.15s, transform 0.1s",
@@ -230,14 +239,14 @@ export default function IndicatorStyle({
                     }}
                   />
 
-                  {activePalette === row.key && (
+                  {activePalette === row.key && createPortal(
                     <div
                       ref={paletteRef}
                       style={{
-                        position: "absolute",
-                        top: 42,
-                        left: 0,
-                        zIndex: 9999,
+                        position: "fixed",
+                        top: palettePos.top,
+                        left: palettePos.left,
+                        zIndex: 99999,
                         borderRadius: 10,
                         boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
                         overflow: "hidden",
@@ -272,7 +281,8 @@ export default function IndicatorStyle({
                           }
                         }}
                       />
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </>
               )}
@@ -298,21 +308,21 @@ export default function IndicatorStyle({
                     fontWeight: 500,
                     padding: "2px 10px",
                     borderRadius: 7,
-                    border: "1.5px solid #d1d5db",
+                    border: "1px solid var(--border-color)",
                     textAlign: "left",
-                    color: "#111827",
-                    background: "#fff",
+                    color: "var(--text-primary)",
+                    background: "var(--bg-secondary)",
                     boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
                     transition: "border-color 0.15s, box-shadow 0.15s",
                     outline: "none",
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#2962ff";
+                    e.currentTarget.style.borderColor = "var(--accent-color)";
                     e.currentTarget.style.boxShadow =
                       "0 0 0 3px rgba(41,98,255,0.12)";
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "#d1d5db";
+                    e.currentTarget.style.borderColor = "var(--border-color)";
                     e.currentTarget.style.boxShadow =
                       "0 1px 2px rgba(0,0,0,0.06)";
                   }}

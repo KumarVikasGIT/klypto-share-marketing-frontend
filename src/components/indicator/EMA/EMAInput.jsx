@@ -1,10 +1,11 @@
-import { LineSeries } from "lightweight-charts";
+const IST_OFFSET = 19800;
 
 export default function EMAInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
-  maType
+  maType,
+  instanceId
 ) {
   const rows = Array.isArray(response?.data) ? response.data : [];
 
@@ -12,27 +13,19 @@ export default function EMAInput(
   let emaData = rows
     .filter((d) => d.ema != null && d.time != null)
     .map((d) => ({
-      time: Number(d.time),
+      time: Number(d.time) + IST_OFFSET,
       value: Number(d.ema),
     }))
     .sort((a, b) => a.time - b.time);
-
-  if (typeof emaData === "number") {
-    emaData = [{ time: Date.now() / 1000, value: emaData }];
-  }
 
   /* ================= SMOOTHING MA ================= */
   let smoothingData = rows
     .filter((d) => d.smoothingMA != null && d.time != null)
     .map((d) => ({
-      time: Number(d.time),
+      time: Number(d.time) + IST_OFFSET,
       value: Number(d.smoothingMA),
     }))
     .sort((a, b) => a.time - b.time);
-
-  if (typeof smoothingData === "number") {
-    smoothingData = [{ time: Date.now() / 1000, value: smoothingData }];
-  }
 
   /* ================= BOLLINGER BANDS ================= */
   let bbUpperData = [];
@@ -40,17 +33,25 @@ export default function EMAInput(
   if (maType === "SMA + Bollinger Bands") {
     bbUpperData = rows
       .filter((d) => d.bbUpper != null && d.time != null)
-      .map((d) => ({ time: Number(d.time), value: Number(d.bbUpper) }))
+      .map((d) => ({
+        time: Number(d.time) + IST_OFFSET,
+        value: Number(d.bbUpper),
+      }))
       .sort((a, b) => a.time - b.time);
 
     bbLowerData = rows
       .filter((d) => d.bbLower != null && d.time != null)
-      .map((d) => ({ time: Number(d.time), value: Number(d.bbLower) }))
+      .map((d) => ({
+        time: Number(d.time) + IST_OFFSET,
+        value: Number(d.bbLower),
+      }))
       .sort((a, b) => a.time - b.time);
   }
 
   /* ================= UPDATE SERIES ================= */
-  const series = indicatorSeriesRef.current?.EMA;
+  const indicatorId = instanceId || "EMA";
+  const series = indicatorSeriesRef.current?.[indicatorId];
+
   if (!series) return;
 
   series.ema?.setData(emaData);
@@ -67,20 +68,21 @@ export default function EMAInput(
   }
 
   /* ================= UPDATE HOVER VALUES ================= */
-  latestIndicatorValuesRef.current.EMA =
-    typeof latestIndicatorValuesRef.current.EMA === "object" &&
-    latestIndicatorValuesRef.current.EMA !== null
-      ? latestIndicatorValuesRef.current.EMA
-      : {};
+  if (!latestIndicatorValuesRef.current[indicatorId]) {
+    latestIndicatorValuesRef.current[indicatorId] = {};
+  }
 
-  latestIndicatorValuesRef.current.EMA.ema = emaData[emaData.length - 1]?.value ?? null;
-  latestIndicatorValuesRef.current.EMA.smoothingMA =
+  latestIndicatorValuesRef.current[indicatorId].ema =
+    emaData[emaData.length - 1]?.value ?? null;
+  latestIndicatorValuesRef.current[indicatorId].smoothingMA =
     smoothingData[smoothingData.length - 1]?.value ?? null;
-  latestIndicatorValuesRef.current.EMA.bbUpper = bbUpperData[bbUpperData.length - 1]?.value ?? null;
-  latestIndicatorValuesRef.current.EMA.bbLower = bbLowerData[bbLowerData.length - 1]?.value ?? null;
+  latestIndicatorValuesRef.current[indicatorId].bbUpper =
+    bbUpperData[bbUpperData.length - 1]?.value ?? null;
+  latestIndicatorValuesRef.current[indicatorId].bbLower =
+    bbLowerData[bbLowerData.length - 1]?.value ?? null;
 
   /* ================= STORE RESULT ================= */
-  indicatorSeriesRef.current.EMA.result = {
+  indicatorSeriesRef.current[indicatorId].result = {
     data: {
       ema: emaData,
       smoothingMA: maType !== "none" ? smoothingData : [],
@@ -88,4 +90,4 @@ export default function EMAInput(
       bbLower: bbLowerData,
     },
   };
-}
+}

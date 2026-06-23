@@ -11,126 +11,102 @@ import {
 // import { toast } from "react-toastify";
 
 export const ChartProprties = {
-  width: 1350,
-  height: 515,
-
+  autoSize: true,
   layout: {
-    background: { type: "solid", color: "#ffffff" },
-    textColor: "#334155",
+    background: { type: "solid", color: "transparent" },
+    textColor: "#787b86", // neutral gray works on both
     fontSize: 12,
     fontFamily: "Inter, sans-serif",
   },
-
-localization: {
-  priceFormatter: (price) => {
-    if (!price || price === 0) return "0.00";
-
-    const abs = Math.abs(price);
-
-    // 🔥 Very small numbers → show full decimal (no exponential)
-    if (abs < 0.0001) {
-      // convert to string with high precision, then trim
-      return Number(price)
-        .toFixed(12)              // enough precision
-        .replace(/\.?0+$/, "");   // remove trailing zeros
-    }
-
-    // 🔥 Normal numbers → always 2 decimal places
-    return Number(price).toFixed(2);
+  localization: {
+    priceFormatter: (price) => {
+      if (!price || price === 0) return "0.00";
+      const abs = Math.abs(price);
+      if (abs < 0.0001) {
+        return Number(price)
+          .toFixed(12)
+          .replace(/\.?0+$/, "");
+      }
+      return Number(price).toFixed(2);
+    },
   },
-},
-
   timeScale: {
     timeVisible: true,
     secondsVisible: false,
-
-    borderColor: "#e2e8f0",
-
+    borderColor: "rgba(120, 123, 134, 0.4)",
     rightBarStaysOnScroll: true,
     rightBarStaysOnScale: true,
-
-    rightBarSpacing: 80, // ✅ Future space
-    barSpacing: 10, // Slightly tighter like TV
-
-    minBarSpacing: 5, // Prevent over-zoom crush
+    rightBarSpacing: 80,
+    barSpacing: 10,
+    minBarSpacing: 5,
     fixLeftEdge: false,
     fixRightEdge: false,
-
     lockVisibleTimeRangeOnResize: true,
     rightEdgeStaysOnScroll: true,
   },
-
   handleScroll: {
     mouseWheel: true,
     pressedMouseMove: true,
     horzTouchDrag: true,
     vertTouchDrag: true,
   },
-
   handleScale: {
     mouseWheel: true,
     pinch: true,
     axisPressedMouseMove: true,
-    axisDoubleClickReset: true, // ✅ TV behaviour
+    axisDoubleClickReset: true,
   },
-
   kineticScroll: {
-    mouse: true, // ✅ Smooth inertial scrolling like TV
+    mouse: true,
     touch: true,
   },
-
   rightPriceScale: {
     autoScale: true,
-    mode: 1, // 🔥 LOG SCALE (this is the fix)
+    mode: 1,
     scaleMargins: {
       top: 0.2,
       bottom: 0.2,
     },
+    borderColor: "rgba(120, 123, 134, 0.4)",
   },
-
   grid: {
     vertLines: {
       visible: true,
-      color: "#f1f5f9",
+      color: "rgba(120, 123, 134, 0.4)",
       style: 0,
     },
     horzLines: {
       visible: true,
-      color: "#f1f5f9",
+      color: "rgba(120, 123, 134, 0.4)",
       style: 0,
     },
   },
-
   crosshair: {
-    mode: 1, // Normal crosshair
-
+    mode: 1,
     vertLine: {
       visible: true,
       labelVisible: true,
-      color: "#94a3b8",
+      color: "rgba(120, 123, 134, 0.4)",
       width: 1,
-      style: 2, // Dotted like TV
+      style: 2,
     },
-
     horzLine: {
       visible: true,
       labelVisible: true,
-      color: "#94a3b8",
+      color: "var(--border-color)",
       width: 1,
       style: 2,
     },
   },
   attributionLogo: false,
-
   interaction: {
-    mode: 0, // Normal interaction
+    mode: 0,
   },
 };
-
 export function getIndicatorChartProperties() {
   return {
     ...ChartProprties,
-    height: 140,
+    // height: 0,
     layout: { ...ChartProprties.layout },
 
     timeScale: {
@@ -155,8 +131,8 @@ export const MiniChartProprties = {
   height: 280,
 
   layout: {
-    background: { type: "solid", color: "#ffffff" },
-    textColor: "#64748b",
+    background: { type: "solid", color: "transparent" },
+    textColor: "#787b86",
     fontSize: 11,
     fontFamily: "Inter, sans-serif",
   },
@@ -611,7 +587,6 @@ export const normalizeData = (data) => {
 //     toast.error("Failed to copy");
 //   }
 // };
-
 
 export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
   const baseIndicator = indicator.startsWith("CUSTOM_")
@@ -1656,7 +1631,7 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           key: "mfiLine",
           label: "MFI",
           type: "line",
-          color: "#2962FF",
+          color: "var(--accent-color)",
           width: 2,
           visible: true,
         },
@@ -1722,7 +1697,7 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           key: "pvi",
           label: "PVI",
           type: "line",
-          color: "#2962ff",
+          color: "var(--accent-color)",
           visible: true,
         },
         {
@@ -1864,6 +1839,84 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           showValue: true,
         },
       ];
+
+    case "SSL_HYBRID": {
+      return [
+        {
+          key: "baseline",
+          label: "Baseline",
+          type: "line",
+        },
+        {
+          key: "upperChannel",
+          label: "Upper Channel",
+          type: "line",
+        },
+        {
+          key: "lowerChannel",
+          label: "Lower Channel",
+          type: "line",
+        },
+        {
+          key: "ssl1",
+          label: "SSL1",
+          type: "line",
+        },
+        {
+          key: "ssl2",
+          label: "SSL2",
+          type: "line",
+        },
+        {
+          key: "atrUpper",
+          label: "+ATR",
+          type: "line",
+        },
+        {
+          key: "atrLower",
+          label: "-ATR",
+          type: "line",
+        },
+        {
+          key: "exitArrows",
+          label: "Exit Arrows",
+          type: "marker",
+        },
+        {
+          key: "signalDiamonds",
+          label: "Signal Diamonds",
+          type: "marker",
+        },
+        {
+          key: "baselineFill",
+          label: "Baseline Background",
+          type: "fill",
+        },
+      ];
+    }
+    case "MA_RIBBON":
+  return [
+    {
+      key: "ma1",
+      label: "MA #1",
+      type: "line",
+    },
+    {
+      key: "ma2",
+      label: "MA #2",
+      type: "line",
+    },
+    {
+      key: "ma3",
+      label: "MA #3",
+      type: "line",
+    },
+    {
+      key: "ma4",
+      label: "MA #4",
+      type: "line",
+    },
+  ];
 
     default:
       return [];
@@ -2036,5 +2089,90 @@ export const getMaxTimeframe = (tfs = []) => {
 
   return tfs.reduce((max, curr) => {
     return tfToMinutes(curr) > tfToMinutes(max) ? curr : max;
+  });
+};
+
+export const s = {
+  sectionTitle: {
+    fontSize: "0.7rem",
+    fontWeight: 700,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    color: "var(--text-secondary)",
+    marginBottom: 10,
+    marginTop: 20,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionBar: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    background: "linear-gradient(135deg,#7c3aed,var(--accent-color))",
+    color: "#fff",
+    fontSize: "0.6rem",
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  card: {
+    background: "var(--bg-primary)",
+    border: "1px solid var(--bg-secondary)",
+    borderRadius: 10,
+    padding: "14px 16px",
+    marginBottom: 4,
+  },
+  label: {
+    fontSize: "0.67rem",
+    fontWeight: 600,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "var(--text-secondary)",
+    marginBottom: 5,
+    display: "block",
+  },
+  select: {
+    background: "var(--bg-secondary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: 6,
+    color: "var(--text-primary)",
+    padding: "7px 30px 7px 10px",
+    fontSize: "0.85rem",
+    width: "100%",
+    appearance: "none",
+    cursor: "pointer",
+    boxSizing: "border-box",
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 10px center",
+  },
+  input: {
+    background: "var(--bg-secondary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: 6,
+    color: "var(--text-secondary)",
+    padding: "7px 10px",
+    fontSize: "0.85rem",
+    width: "100%",
+    boxSizing: "border-box",
+  },
+};
+
+
+export const formatIST = (timestamp) => {
+  if (!timestamp) return "—";
+
+  return new Date(timestamp).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   });
 };

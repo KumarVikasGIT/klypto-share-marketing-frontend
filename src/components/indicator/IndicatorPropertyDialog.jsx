@@ -4,6 +4,8 @@ import apiService from "../../services/apiServices";
 import useChartFunctions from "../../util/useChartFunctions";
 import { updateIndicatorFromInput } from "./IndicatorIndex";
 import React, { useEffect, useState } from "react";
+import socket from "../../services/websocket/socket";
+import { indicatorConfigDefault } from "../../util/indicatorFunctions";
 
 /* =========================
    BASE SETTINGS COMPONENT
@@ -172,6 +174,9 @@ export default function IndicatorPropertyDialog({
   selectedCurrency,
   timeframeValue,
   latestIndicatorValuesRef,
+  fromDate,
+  toDate,
+  setIndicatorLoading,
 }) {
   const labelStyle = {
     display: "inline-block",
@@ -180,45 +185,55 @@ export default function IndicatorPropertyDialog({
     marginRight: "1rem",
   };
 
-  const currentConfig = indicatorConfigs[activeBarIndicator];
-  const [indicatorLoading, setIndicatorLoading] = useState(false);
+  // activeBarIndicator is now {id, type} — fall back to string for legacy compat
+  const instanceId =
+    typeof activeBarIndicator === "object"
+      ? activeBarIndicator.id
+      : activeBarIndicator;
+  const activeType =
+    typeof activeBarIndicator === "object"
+      ? activeBarIndicator.type
+      : activeBarIndicator;
+
+  const currentConfig = {
+    ...(indicatorConfigDefault[activeType] || {}),
+    ...(indicatorConfigs[instanceId] || indicatorConfigs[activeType] || {}),
+  };
 
   const updateProperty = (key, value) => {
     setIndicatorConfigs((prev) => ({
       ...prev,
-      [activeBarIndicator]: {
-        ...prev[activeBarIndicator],
+      [instanceId]: {
+        ...(prev[instanceId] || prev[activeType] || {}),
         [key]: value,
       },
     }));
   };
 
   const handleBlur = (key, value) => {
-    const defaults = indicatorConfigs[activeBarIndicator] || {};
+    const defaults =
+      indicatorConfigDefault[activeType] || indicatorConfigs[activeType] || {};
     const defaultValue = defaults[key];
-
     let val = value;
-
     if (val === "" || val === undefined || isNaN(val)) {
       val = defaultValue ?? 0;
     } else {
       val = Number(val);
     }
-
     updateProperty(key, val);
   };
 
   const handleChange = (key, value) => {
-  updateProperty(key, value === "" ? "" : Number(value));
-};
+    updateProperty(key, value === "" ? "" : Number(value));
+  };
 
   const updateNestedDoubleProperty = (band, key, value) => {
     setIndicatorConfigs((prev) => ({
       ...prev,
-      [activeBarIndicator]: {
-        ...prev[activeBarIndicator],
+      [instanceId]: {
+        ...(prev[instanceId] || prev[activeType] || {}),
         [band]: {
-          ...prev[activeBarIndicator][band],
+          ...(prev[instanceId]?.[band] || prev[activeType]?.[band] || {}),
           [key]: value,
         },
       },
@@ -229,57 +244,90 @@ export default function IndicatorPropertyDialog({
      OK BUTTON
   ========================== */
   const handleIndicatorPropertyChange = async () => {
-    const config = indicatorConfigs?.[activeBarIndicator] || {};
+    const config = currentConfig;
     const { maType } = config;
 
     const payload = {
-      type: activeBarIndicator,
+      type: activeType,
       ...config,
     };
 
-    console.log(payload, "payloadddddddddd");
-    console.log(config, "configggggg");
+    console.log("[IndicatorProperty] Emitting updateIndicator:", payload);
 
-    setIndicatorLoading(true);
-    try {
-      setIndicatorLoading(true); // START LOADER
+    setIndicatorProperty(false);
+    setIndicatorLoading(true); // START LOADER
 
-      const response = await apiService.post(
-        `/api/updateIndicator?symbol=${selectedCurrency}&interval=${timeframeValue}`,
-        payload,
-      );
+    // Build the socket request
+    const longInterval =
+      timeframeValue === "1d"
+        ? "ONE_DAY"
+        : timeframeValue === "1h"
+          ? "ONE_HOUR"
+          : timeframeValue === "15m"
+            ? "FIFTEEN_MINUTE"
+            : timeframeValue === "5m"
+              ? "FIVE_MINUTE"
+              : "ONE_MINUTE";
 
-      console.log("Indicator updated:", response);
+    const socketPayload = {
+      ...payload,
+      type: activeType,
+      instanceId,
+      symbol: selectedCurrency?.name,
+      interval: timeframeValue,
+      fromDate: fromDate,
+      toDate: toDate,
+    };
+    console.log("[IndicatorProperty] Final socketPayload:", socketPayload);
+
+    const responseHandler = (response) => {
+      console.log("[IndicatorProperty] updateIndicatorResponse:", response);
+      setIndicatorLoading(false); // STOP LOADER
+
+      const hasValidData =
+        response?.success !== false &&
+        (response?.data || response?.result || response?.rows);
+
+      if (!hasValidData) {
+        console.error(
+          "Indicator update failed:",
+          response?.message || response?.error || "Unknown or empty response",
+        );
+        return;
+      }
 
       updateIndicatorFromInput(
-        activeBarIndicator,
+        instanceId,
+        activeType,
         response,
         indicatorSeriesRef,
         latestIndicatorValuesRef,
         maType,
       );
+    };
 
-      setIndicatorProperty(false);
-    } catch (error) {
-      if (error.response) {
-        console.error("Server responded with error:");
-        console.error("Status:", error.response.status);
-        console.error("Data:", error.response.data);
-      } else if (error.request) {
-        console.error("No response received from server");
-        console.error(error.request);
-      } else {
-        console.error("Request setup error:", error.message);
-      }
-    } finally {
-      setIndicatorLoading(false); // STOP LOADER
-    }
+    socket.once("updateIndicatorResponse", responseHandler);
+
+    socket.emit("updateIndicator", socketPayload);
+
+    // Safety fallback: if no response in 5 minutes, stop the loader
+    setTimeout(() => {
+      setIndicatorLoading((loading) => {
+        if (loading) {
+          console.warn(
+            "[IndicatorProperty] updateIndicatorResponse timed out (5m)",
+          );
+          socket.off("updateIndicatorResponse", responseHandler);
+        }
+        return false;
+      });
+    }, 300000);
   };
 
   const handleCancel = () => {
     setIndicatorConfigs((prev) => ({
       ...prev,
-      [activeBarIndicator]: indicatorConfigs[activeBarIndicator],
+      [activeType]: indicatorConfigs[activeType],
     }));
     setIndicatorProperty(false);
   };
@@ -289,7 +337,7 @@ export default function IndicatorPropertyDialog({
   ========================== */
 
   function renderIndicatorSetting() {
-    switch (activeBarIndicator) {
+    switch (activeType) {
       case "SMA":
       case "EMA":
         return (
@@ -305,6 +353,546 @@ export default function IndicatorPropertyDialog({
             />
           </>
         );
+
+      case "MA_RIBBON":
+        return (
+          <>
+            {["ma1", "ma2", "ma3", "ma4"].map((maKey, index) => (
+              <div key={maKey} className="border rounded p-3 mb-3">
+                <div className="form-check mb-3">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    checked={currentConfig[maKey]?.enabled ?? true}
+                    onChange={(e) =>
+                      updateProperty(maKey, {
+                        ...currentConfig[maKey],
+                        enabled: e.target.checked,
+                      })
+                    }
+                  />
+                  <label className="form-check-label">MA #{index + 1}</label>
+                </div>
+
+                {/* MA TYPE */}
+                <div className="mb-3">
+                  <label className="form-label">Type</label>
+                  <select
+                    className="form-select"
+                    value={currentConfig[maKey]?.type}
+                    onChange={(e) =>
+                      updateProperty(maKey, {
+                        ...currentConfig[maKey],
+                        type: e.target.value,
+                      })
+                    }
+                  >
+                    {["EMA", "SMA", "WMA", "VWMA"].map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* SOURCE */}
+                <div className="mb-3">
+                  <label className="form-label">Source</label>
+                  <select
+                    className="form-select"
+                    value={currentConfig[maKey]?.source}
+                    onChange={(e) =>
+                      updateProperty(maKey, {
+                        ...currentConfig[maKey],
+                        source: e.target.value,
+                      })
+                    }
+                  >
+                    {[
+                      "Close",
+                      "Open",
+                      "High",
+                      "Low",
+                      "HL2",
+                      "HLC3",
+                      "OHLC4",
+                    ].map((opt) => (
+                      <option key={opt} value={opt.toLowerCase()}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* LENGTH */}
+                <div className="mb-3">
+                  <label className="form-label">Length</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-control"
+                    value={currentConfig[maKey]?.length}
+                    onChange={(e) =>
+                      updateProperty(maKey, {
+                        ...currentConfig[maKey],
+                        length: Math.max(1, Number(e.target.value)),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+          </>
+        );
+
+      case "SSL_HYBRID":
+        return (
+          <>
+            {/* =========================
+    DISPLAY CONTROLS
+========================= */}
+            <h6 className="mb-3 fw-bold">Display Controls</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Display Mode</label>
+
+              <select
+                className="form-select"
+                value={currentConfig.displayMode}
+                onChange={(e) => updateProperty("displayMode", e.target.value)}
+              >
+                <option value="FULL_DISPLAY">Full Display</option>
+
+                <option value="BASELINE_ONLY">Baseline Only</option>
+
+                <option value="SSL_ONLY">SSL Only</option>
+
+                <option value="BASELINE_SSL">Baseline + SSL</option>
+
+                <option value="ENTRY_EXIT_ONLY">Entry/Exit Only</option>
+              </select>
+            </div>
+            {/* =========================
+          SSL SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">SSL Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Baseline Type</label>
+              <select
+                className="form-select"
+                value={currentConfig.maType}
+                onChange={(e) => updateProperty("maType", e.target.value)}
+              >
+                {[
+                  "SMA",
+                  "EMA",
+                  "DEMA",
+                  "TEMA",
+                  "LSMA",
+                  "WMA",
+                  "MF",
+                  "VAMA",
+                  "TMA",
+                  "HMA",
+                  "JMA",
+                  "Kijun v2",
+                  "EDSMA",
+                  "McGinley",
+                ].map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Baseline Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.baseLen}
+                onChange={(e) =>
+                  updateProperty("baseLen", Math.max(1, Number(e.target.value)))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Source</label>
+              <select
+                className="form-select"
+                value={currentConfig.src}
+                onChange={(e) => updateProperty("src", e.target.value)}
+              >
+                {["Close", "Open", "High", "Low", "HL2", "HLC3", "OHLC4"].map(
+                  (opt) => (
+                    <option key={opt} value={opt.toLowerCase()}>
+                      {opt}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Channel Multiplier</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={currentConfig.multy}
+                onChange={(e) =>
+                  updateProperty("multy", Number(e.target.value))
+                }
+              />
+            </div>
+
+            {/* =========================
+          SSL2 SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">SSL2 Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">SSL2 Type</label>
+              <select
+                className="form-select"
+                value={currentConfig.ssl2Type}
+                onChange={(e) => updateProperty("ssl2Type", e.target.value)}
+              >
+                {[
+                  "SMA",
+                  "EMA",
+                  "DEMA",
+                  "TEMA",
+                  "WMA",
+                  "MF",
+                  "VAMA",
+                  "TMA",
+                  "HMA",
+                  "JMA",
+                  "McGinley",
+                ].map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">SSL2 Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.ssl2Len}
+                onChange={(e) =>
+                  updateProperty("ssl2Len", Math.max(1, Number(e.target.value)))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Continuation ATR Criteria</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={currentConfig.atrCrit}
+                onChange={(e) =>
+                  updateProperty("atrCrit", Number(e.target.value))
+                }
+              />
+            </div>
+
+            {/* =========================
+          EXIT SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">Exit Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Exit Type</label>
+              <select
+                className="form-select"
+                value={currentConfig.ssl3Type}
+                onChange={(e) => updateProperty("ssl3Type", e.target.value)}
+              >
+                {[
+                  "DEMA",
+                  "TEMA",
+                  "LSMA",
+                  "VAMA",
+                  "TMA",
+                  "HMA",
+                  "JMA",
+                  "Kijun v2",
+                  "McGinley",
+                  "MF",
+                ].map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Exit Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.ssl3Len}
+                onChange={(e) =>
+                  updateProperty("ssl3Len", Math.max(1, Number(e.target.value)))
+                }
+              />
+            </div>
+
+            {/* =========================
+          ATR SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">ATR Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">ATR Period</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.atrLen}
+                onChange={(e) =>
+                  updateProperty("atrLen", Math.max(1, Number(e.target.value)))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">ATR Multiplier</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={currentConfig.atrMult}
+                onChange={(e) =>
+                  updateProperty("atrMult", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">ATR Smoothing</label>
+              <select
+                className="form-select"
+                value={currentConfig.atrSmoothing}
+                onChange={(e) => updateProperty("atrSmoothing", e.target.value)}
+              >
+                {["RMA", "SMA", "EMA", "WMA"].map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-check mb-3">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={currentConfig.showAtrBands}
+                onChange={(e) =>
+                  updateProperty("showAtrBands", e.target.checked)
+                }
+              />
+              <label className="form-check-label">Show ATR Bands</label>
+            </div>
+
+            {/* =========================
+          RISK SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">Risk Assessment</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Risk Lookback Period</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.riskLookback}
+                onChange={(e) =>
+                  updateProperty(
+                    "riskLookback",
+                    Math.max(1, Number(e.target.value)),
+                  )
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Risk Sensitivity</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={currentConfig.riskSensitivity}
+                onChange={(e) =>
+                  updateProperty("riskSensitivity", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="form-check mb-3">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={currentConfig.enableRiskGradient}
+                onChange={(e) =>
+                  updateProperty("enableRiskGradient", e.target.checked)
+                }
+              />
+              <label className="form-check-label">Enable Risk Gradient</label>
+            </div>
+
+            {/* =========================
+          JMA SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">Jurik (JMA) Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Phase</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.phase}
+                onChange={(e) =>
+                  updateProperty("phase", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Power</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.power}
+                onChange={(e) =>
+                  updateProperty("power", Number(e.target.value))
+                }
+              />
+            </div>
+
+            {/* =========================
+          KIJUN SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">Kijun Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Kijun Mod Divider</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.kijunDivider}
+                onChange={(e) =>
+                  updateProperty("kijunDivider", Number(e.target.value))
+                }
+              />
+            </div>
+
+            {/* =========================
+          VAMA SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">VAMA Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Volatility Lookback Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.volatilityLookback}
+                onChange={(e) =>
+                  updateProperty(
+                    "volatilityLookback",
+                    Math.max(1, Number(e.target.value)),
+                  )
+                }
+              />
+            </div>
+
+            {/* =========================
+          MODULAR FILTER SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">Modular Filter Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Beta</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={currentConfig.beta}
+                onChange={(e) => updateProperty("beta", Number(e.target.value))}
+              />
+            </div>
+
+            <div className="form-check mb-3">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={currentConfig.feedback}
+                onChange={(e) => updateProperty("feedback", e.target.checked)}
+              />
+              <label className="form-check-label">Feedback</label>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Feedback Weighting</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={currentConfig.feedbackWeighting}
+                onChange={(e) =>
+                  updateProperty("feedbackWeighting", Number(e.target.value))
+                }
+              />
+            </div>
+
+            {/* =========================
+          EDSMA SETTINGS
+      ========================= */}
+            <h6 className="mb-3 fw-bold">EDSMA Settings</h6>
+
+            <div className="mb-3">
+              <label className="form-label">Super Smoother Filter Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.superSmootherLength}
+                onChange={(e) =>
+                  updateProperty(
+                    "superSmootherLength",
+                    Math.max(1, Number(e.target.value)),
+                  )
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Super Smoother Filter Poles</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig.superSmootherPoles}
+                onChange={(e) =>
+                  updateProperty(
+                    "superSmootherPoles",
+                    Math.max(1, Number(e.target.value)),
+                  )
+                }
+              />
+            </div>
+          </>
+        );
+
       case "WMA":
         return (
           <BaseSettings
@@ -442,46 +1030,46 @@ export default function IndicatorPropertyDialog({
           </>
         );
 
-      case "PSAR":
-        return (
-          <>
-            <div className="mb-3">
-              <label className="form-label">Start</label>
-              <input
-                type="number"
-                className="form-control"
-                value={currentConfig?.start}
-                onChange={(e) =>
-                  updateProperty("start", Number(e.target.value))
-                }
-              />
-            </div>
+      // case "PSAR":
+      //   return (
+      //     <>
+      //       <div className="mb-3">
+      //         <label className="form-label">Start</label>
+      //         <input
+      //           type="number"
+      //           className="form-control"
+      //           value={currentConfig?.start}
+      //           onChange={(e) =>
+      //             updateProperty("start", Number(e.target.value))
+      //           }
+      //         />
+      //       </div>
 
-            <div className="mb-3">
-              <label className="form-label">Increment</label>
-              <input
-                type="number"
-                className="form-control"
-                value={currentConfig?.increment}
-                onChange={(e) =>
-                  updateProperty("increment", Number(e.target.value))
-                }
-              />
-            </div>
+      //       <div className="mb-3">
+      //         <label className="form-label">Increment</label>
+      //         <input
+      //           type="number"
+      //           className="form-control"
+      //           value={currentConfig?.increment}
+      //           onChange={(e) =>
+      //             updateProperty("increment", Number(e.target.value))
+      //           }
+      //         />
+      //       </div>
 
-            <div className="mb-3">
-              <label className="form-label">Max Value</label>
-              <input
-                type="number"
-                className="form-control"
-                value={currentConfig?.maxValue}
-                onChange={(e) =>
-                  updateProperty("maxValue", Number(e.target.value))
-                }
-              />
-            </div>
-          </>
-        );
+      //       <div className="mb-3">
+      //         <label className="form-label">Max Value</label>
+      //         <input
+      //           type="number"
+      //           className="form-control"
+      //           value={currentConfig?.maxValue}
+      //           onChange={(e) =>
+      //             updateProperty("maxValue", Number(e.target.value))
+      //           }
+      //         />
+      //       </div>
+      //     </>
+      //   );
 
       case "SUPERTREND":
         return (
@@ -945,7 +1533,6 @@ export default function IndicatorPropertyDialog({
           </>
         );
 
-
       case "BB":
         return (
           <>
@@ -982,7 +1569,7 @@ export default function IndicatorPropertyDialog({
           </>
         );
 
-         case "BBPERB":
+      case "BBPERB":
         return (
           <>
             <BaseSettings
@@ -1776,7 +2363,7 @@ export default function IndicatorPropertyDialog({
       show={indicatorProperty}
       onHide={() => setIndicatorProperty(false)}
       centered
-      contentClassName="border-0 shadow-lg"
+      contentClassName="border-0 shadow-lg modal-dark-theme"
       style={{ borderRadius: 16 }}
     >
       <Modal.Header closeButton className="border-0 pb-0 px-4 pt-4">
@@ -1784,11 +2371,11 @@ export default function IndicatorPropertyDialog({
           style={{
             fontSize: 17,
             fontWeight: 700,
-            color: "#111827",
+            color: "var(--text-primary)",
             letterSpacing: "-0.2px",
           }}
         >
-          {activeBarIndicator}
+          {activeType}
         </Modal.Title>
       </Modal.Header>
 
@@ -1815,7 +2402,16 @@ export default function IndicatorPropertyDialog({
               </span>
             }
           >
-            <div className="px-4 py-3">{renderIndicatorSetting()}</div>
+            <div
+              className="custom-scrollbar"
+              style={{
+                maxHeight: "350px",
+                overflowY: "auto",
+                overflowX: "hidden",
+              }}
+            >
+              <div className="px-4 py-3">{renderIndicatorSetting()}</div>
+            </div>
           </Tab>
 
           <Tab
@@ -1826,26 +2422,58 @@ export default function IndicatorPropertyDialog({
               </span>
             }
           >
-            <div className="px-4 py-3">
-              <IndicatorStyle
-                indicatorStyle={indicatorStyle}
-                setIndicatorStyle={setIndicatorStyle}
-                activeBarIndicator={activeBarIndicator}
-                indicatorConfigs={indicatorConfigs}
-              />
+            <div
+              className="custom-scrollbar"
+              style={{
+                maxHeight: "350px",
+                overflowY: "auto",
+                overflowX: "hidden",
+              }}
+            >
+              <div className="px-4 py-3">
+                <IndicatorStyle
+                  indicatorStyle={indicatorStyle}
+                  setIndicatorStyle={setIndicatorStyle}
+                  activeBarIndicator={activeBarIndicator}
+                  indicatorConfigs={indicatorConfigs}
+                />
+              </div>
             </div>
           </Tab>
         </Tabs>
 
         {/* Inline style overrides for Bootstrap nav-tabs */}
         <style>{`
+      .modal-dark-theme {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+      }
+      .modal-dark-theme .modal-header {
+        border-bottom: 1px solid var(--border-color) !important;
+      }
+      .modal-dark-theme .modal-header .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+      }
+      .modal-dark-theme .form-control, .modal-dark-theme .form-select {
+        background-color: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-color) !important;
+      }
+      .modal-dark-theme .form-control:focus, .modal-dark-theme .form-select:focus {
+        border-color: var(--accent-color) !important;
+        box-shadow: none !important;
+      }
+      .modal-dark-theme .form-label, .modal-dark-theme .form-check-label {
+        color: var(--text-secondary) !important;
+      }
       .nav-tabs {
-        border-bottom: 1.5px solid #f0f0f0 !important;
+        border-bottom: 1.5px solid var(--border-color) !important;
       }
       .nav-tabs .nav-link {
         border: none !important;
         border-bottom: 2.5px solid transparent !important;
-        color: #9ca3af !important;
+        color: var(--text-secondary) !important;
         font-weight: 600 !important;
         font-size: 14px !important;
         padding: 10px 14px !important;
@@ -1855,16 +2483,29 @@ export default function IndicatorPropertyDialog({
         transition: color 0.15s ease, border-color 0.15s ease !important;
       }
       .nav-tabs .nav-link:hover {
-        color: #374151 !important;
-        border-bottom-color: #d1d5db !important;
+        color: var(--text-primary) !important;
+        border-bottom-color: var(--text-primary) !important;
       }
       .nav-tabs .nav-link.active {
-        color: #111827 !important;
-        border-bottom: 2.5px solid #111827 !important;
+        color: var(--accent-color) !important;
+        border-bottom: 2.5px solid var(--accent-color) !important;
         background: transparent !important;
       }
       .tab-content {
         border: none !important;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: var(--text-primary);
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary);
       }
     `}</style>
       </Modal.Body>
@@ -1878,9 +2519,10 @@ export default function IndicatorPropertyDialog({
             fontWeight: 600,
             borderRadius: 8,
             padding: "8px 20px",
-            border: "1.5px solid #e5e7eb",
-            color: "#374151",
-            background: "#f9fafb",
+            padding: "8px 20px",
+            border: "1px solid var(--border-color)",
+            color: "var(--text-secondary)",
+            background: "var(--bg-secondary)",
           }}
         >
           Cancel
@@ -1894,7 +2536,8 @@ export default function IndicatorPropertyDialog({
             fontWeight: 600,
             borderRadius: 8,
             padding: "8px 20px",
-            background: "#111827",
+            background: "var(--accent-color)",
+            color: "#fff",
             border: "none",
             boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
           }}

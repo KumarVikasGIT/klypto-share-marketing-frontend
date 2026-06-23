@@ -2,8 +2,8 @@ export default function TMAInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
-  const group = indicatorSeriesRef.current?.TMA;
+, instanceId) {
+  const group = indicatorSeriesRef.current?.[instanceId || "TMA"];
   if (!group) return;
 
   const tmaData =
@@ -16,7 +16,7 @@ export default function TMAInput(
 
   group.tmaLine?.setData(tmaData);
 
-  latestIndicatorValuesRef.current.TMA = {
+  latestIndicatorValuesRef.current[instanceId || "TMA"] = {
     tma: tmaData[tmaData.length - 1]?.value ?? null,
   };
 }

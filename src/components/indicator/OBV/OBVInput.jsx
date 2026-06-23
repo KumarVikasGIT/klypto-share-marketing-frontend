@@ -2,10 +2,10 @@ export default function OBVInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   if (!response?.data?.length) return;
 
-  const obvGroup = indicatorSeriesRef.current?.OBV;
+  const obvGroup = indicatorSeriesRef.current?.[instanceId || "OBV"];
   if (!obvGroup) return;
 
   const obv = response.data
@@ -30,7 +30,7 @@ export default function OBVInput(
   obvGroup.bbUpper?.setData(bbUpper);
   obvGroup.bbLower?.setData(bbLower);
 
-  latestIndicatorValuesRef.current.OBV = {
+  latestIndicatorValuesRef.current[instanceId || "OBV"] = {
     obv: obv.at(-1)?.value ?? null,
     smoothingMA: smoothingMA.at(-1)?.value ?? null,
     bbUpper: bbUpper.at(-1)?.value ?? null,

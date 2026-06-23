@@ -2,7 +2,7 @@ export default function AroonOscillatorInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
+, instanceId) {
   console.log("AO INPUT RESPONSE:", response);
 
   /* ================= GET ROWS ================= */
@@ -49,11 +49,11 @@ export default function AroonOscillatorInput(
   /* ================= ALWAYS STORE DATA ================= */
 
   // ✅ store globally so plot can pick it later
-  indicatorSeriesRef.current.AOData = oscData;
+  indicatorSeriesRef.current[instanceId || "AOData"] = oscData;
 
   /* ================= TRY LIVE UPDATE (if series exists) ================= */
 
-  const series = indicatorSeriesRef.current?.AO;
+  const series = indicatorSeriesRef.current?.[instanceId || "AO"];
 
   if (series) {
     try {
@@ -94,18 +94,18 @@ export default function AroonOscillatorInput(
 
   /* ================= HOVER VALUE ================= */
 
-  latestIndicatorValuesRef.current.AO = {
+  latestIndicatorValuesRef.current[instanceId || "AO"] = {
     oscillator: oscData[oscData.length - 1]?.value,
   };
 
   console.log(
     "AO latest value:",
-    latestIndicatorValuesRef.current.AO.oscillator
+    latestIndicatorValuesRef.current[instanceId || "AO"].oscillator
   );
 
   /* ================= STORE RESULT ================= */
 
-  indicatorSeriesRef.current.AOResult = {
+  indicatorSeriesRef.current[instanceId || "AOResult"] = {
     data: oscData,
   };
 

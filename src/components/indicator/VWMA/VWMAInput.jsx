@@ -2,8 +2,8 @@ export default function VWMAInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef
-) {
-  const group = indicatorSeriesRef.current?.VWMA;
+, instanceId) {
+  const group = indicatorSeriesRef.current?.[instanceId || "VWMA"];
   if (!group) return;
 
   const vwmaData =
@@ -16,7 +16,7 @@ export default function VWMAInput(
 
   group.vwmaLine?.setData(vwmaData);
 
-  latestIndicatorValuesRef.current.VWMA = {
+  latestIndicatorValuesRef.current[instanceId || "VWMA"] = {
     vwma: vwmaData[vwmaData.length - 1]?.value ?? null,
   };
 }

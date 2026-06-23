@@ -1,29 +1,44 @@
+const IST_OFFSET = 19800;
+
 export default function SMAInput(
   response,
   indicatorSeriesRef,
   latestIndicatorValuesRef,
-  maType
+  maType,
+  instanceId
 ) {
-
   const rows = Array.isArray(response?.data) ? response.data : [];
 
   const smaData = rows
     .filter((d) => d.sma != null && d.time != null)
-    .map((d) => ({ time: Number(d.time), value: Number(d.sma) }));
+    .map((d) => ({
+      time: Number(d.time) + IST_OFFSET,
+      value: Number(d.sma),
+    }));
 
   const smoothingData = rows
     .filter((d) => d.smoothingMA != null && d.time != null)
-    .map((d) => ({ time: Number(d.time), value: Number(d.smoothingMA) }));
+    .map((d) => ({
+      time: Number(d.time) + IST_OFFSET,
+      value: Number(d.smoothingMA),
+    }));
 
   const bbUpperData = rows
     .filter((d) => d.bbUpper != null && d.time != null)
-    .map((d) => ({ time: Number(d.time), value: Number(d.bbUpper) }));
+    .map((d) => ({
+      time: Number(d.time) + IST_OFFSET,
+      value: Number(d.bbUpper),
+    }));
 
   const bbLowerData = rows
     .filter((d) => d.bbLower != null && d.time != null)
-    .map((d) => ({ time: Number(d.time), value: Number(d.bbLower) }));
+    .map((d) => ({
+      time: Number(d.time) + IST_OFFSET,
+      value: Number(d.bbLower),
+    }));
 
-  const series = indicatorSeriesRef.current?.SMA;
+  const indicatorId = instanceId || "SMA";
+  const series = indicatorSeriesRef.current?.[indicatorId];
 
   if (!series) return;
 
@@ -38,14 +53,18 @@ export default function SMAInput(
     series.bbLower?.setData(bbLowerData);
   }
 
-  latestIndicatorValuesRef.current.SMA = {
+  if (!latestIndicatorValuesRef.current[indicatorId]) {
+    latestIndicatorValuesRef.current[indicatorId] = {};
+  }
+
+  latestIndicatorValuesRef.current[indicatorId] = {
     sma: smaData[smaData.length - 1]?.value,
     smoothingMA: smoothingData[smoothingData.length - 1]?.value,
     bbUpper: bbUpperData[bbUpperData.length - 1]?.value,
     bbLower: bbLowerData[bbLowerData.length - 1]?.value,
   };
 
-  indicatorSeriesRef.current.SMA.result = {
+  indicatorSeriesRef.current[indicatorId].result = {
     data: {
       sma: smaData,
       smoothingMA: smoothingData,

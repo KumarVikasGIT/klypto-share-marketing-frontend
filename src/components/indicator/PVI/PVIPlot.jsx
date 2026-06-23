@@ -70,7 +70,7 @@ export default function PVIPlot({
     if (!group) return;
 
     group.pvi.applyOptions({
-      color: indicatorStyle?.PVI?.pvi?.color ?? "#2962ff",
+      color: indicatorStyle?.PVI?.pvi?.color ?? "var(--accent-color)",
       lineWidth: indicatorStyle?.PVI?.pvi?.width ?? 2,
       lineStyle: indicatorStyle?.PVI?.pvi?.lineStyle ?? 0,
       visible: indicatorStyle?.PVI?.pvi?.visible ?? true,

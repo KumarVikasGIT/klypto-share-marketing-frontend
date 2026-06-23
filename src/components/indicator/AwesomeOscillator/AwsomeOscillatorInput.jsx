@@ -1,4 +1,4 @@
-export default function AWOInput(response, indicatorSeriesRef, latestIndicatorValuesRef) {
+export default function AWOInput(response, indicatorSeriesRef, latestIndicatorValuesRef, instanceId) {
   const rows = Array.isArray(response?.data?.series) ? response.data.series : [];
 
   const awoData = rows
@@ -9,14 +9,14 @@ export default function AWOInput(response, indicatorSeriesRef, latestIndicatorVa
     }));
 
   // Store processed data in indicatorSeriesRef for plotting
-  indicatorSeriesRef.current.AWO = {
-    ...(indicatorSeriesRef.current.AWO || {}),
+  indicatorSeriesRef.current[instanceId || "AWO"] = {
+    ...(indicatorSeriesRef.current[instanceId || "AWO"] || {}),
     result: response,
     awoData,
   };
 
   // Store latest value
-  latestIndicatorValuesRef.current.AWO = {
+  latestIndicatorValuesRef.current[instanceId || "AWO"] = {
     awo: awoData.length ? awoData[awoData.length - 1].value : null,
   };
 

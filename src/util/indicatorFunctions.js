@@ -328,6 +328,62 @@ export let indicatorConfigDefault = {
     deviation: 5,
     depth: 10,
   },
+  SSL_HYBRID: {
+    type: "SSL_HYBRID",
+    maType: "HMA",
+    baseLen: 60,
+    src: "close",
+    multy: 0.2,
+    useTrueRange: true,
+    ssl2Type: "JMA",
+    ssl2Len: 5,
+    atrCrit: 0.9,
+    ssl3Type: "HMA",
+    ssl3Len: 15,
+    atrLen: 14,
+    atrMult: 1.0,
+    atrSmoothing: "WMA",
+    showAtrBands: true,
+    riskLookback: 100,
+    riskSensitivity: 2.0,
+    enableRiskGradient: true,
+    phase: 3,
+    power: 1,
+    kijunDivider: 1,
+    volatilityLookback: 10,
+    beta: 0.8,
+    feedback: false,
+    feedbackWeighting: 0.5,
+    superSmootherLength: 20,
+    superSmootherPoles: 2,
+    displayMode: "FULL_DISPLAY",
+  },
+  MA_RIBBON: {
+  ma1: {
+    enabled: true,
+    type: "EMA",
+    source: "close",
+    length: 20,
+  },
+  ma2: {
+    enabled: true,
+    type: "SMA",
+    source: "hl2",
+    length: 50,
+  },
+  ma3: {
+    enabled: true,
+    type: "WMA",
+    source: "close",
+    length: 100,
+  },
+  ma4: {
+    enabled: true,
+    type: "VWMA",
+    source: "close",
+    length: 200,
+  },
+},
 };
 
 export let indicatorStyleDefault = {
@@ -650,7 +706,7 @@ export let indicatorStyleDefault = {
   },
   EMA: {
     ema: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -686,7 +742,7 @@ export let indicatorStyleDefault = {
   },
   WMA: {
     wma: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -696,7 +752,7 @@ export let indicatorStyleDefault = {
   HMA: {
     hma: {
       visible: true,
-      color: "rgba(0,0,0)",
+      color: "rgba(0,0,255,1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -704,7 +760,7 @@ export let indicatorStyleDefault = {
   },
   DEMA: {
     dema: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -713,7 +769,7 @@ export let indicatorStyleDefault = {
   },
   TEMA: {
     tema: {
-      color: "rgba(0,0,0,1)",
+      color: "rgba(255, 255, 255, 1)",
       width: 1,
       lineStyle: 0,
       opacity: 100,
@@ -961,7 +1017,7 @@ export let indicatorStyleDefault = {
   ATR: {
     atr: {
       visible: true,
-      color: "rgba(0, 0, 0,1)",
+      color: "rgba(255, 165, 255,1)",
       width: 2,
       lineStyle: 0,
       opacity: 100,
@@ -1495,7 +1551,6 @@ export let indicatorStyleDefault = {
       visible: true,
       value: 0,
     },
-
     level_minus0_75: {
       color: "rgba(129,199,132,1)",
       width: 1,
@@ -1503,7 +1558,6 @@ export let indicatorStyleDefault = {
       visible: true,
       value: -0.75,
     },
-
     level_minus1_5: {
       color: "rgba(38,166,154,1)",
       width: 1,
@@ -1512,4 +1566,93 @@ export let indicatorStyleDefault = {
       value: -1.5,
     },
   },
+  SSL_HYBRID: {
+    baseline: {
+      visible: true,
+      color: "rgba(0, 140, 255, 1)",
+      width: 2,
+      lineStyle: 0,
+    },
+    upperChannel: {
+      visible: true,
+      color: "rgba(38,166,154,1)",
+      width: 1,
+      lineStyle: 2,
+    },
+    lowerChannel: {
+      visible: true,
+      color: "rgba(239,83,80,1)",
+      width: 1,
+      lineStyle: 2,
+    },
+    ssl1: {
+      visible: true,
+      color: "rgba(76,175,80,1)",
+      width: 2,
+      lineStyle: 0,
+    },
+    ssl2: {
+      visible: true,
+      color: "rgba(244,67,54,1)",
+      width: 2,
+      lineStyle: 0,
+    },
+    plusAtr: {
+      visible: true,
+      color: "rgba(0,200,83,1)",
+      width: 1,
+      lineStyle: 1,
+    },
+    minusAtr: {
+      visible: true,
+      color: "rgba(213,0,0,1)",
+      width: 1,
+      lineStyle: 1,
+    },
+    exitArrows: {
+      visible: true,
+      upColor: "rgba(76,175,80,1)",
+      downColor: "rgba(244,67,54,1)",
+    },
+    signalDiamonds: {
+      visible: true,
+      bullishColor: "rgba(0,200,83,1)",
+      bearishColor: "rgba(213,0,0,1)",
+    },
+    baselineFill: {
+      visible: true,
+      topFillColor1: "rgba(33,150,243,0.15)",
+      bottomFillColor1: "rgba(33,150,243,0.03)",
+    },
+  },
+  MA_RIBBON: {
+  ma1: {
+    color: "rgba(255,255,255,1)",
+    width: 1,
+    lineStyle: 0,
+    opacity: 100,
+    visible: true,
+  },
+  ma2: {
+    color: "rgba(255,202,28,1)",
+    width: 1,
+    lineStyle: 0,
+    opacity: 100,
+    visible: true,
+  },
+  ma3: {
+    color: "rgba(38,166,154,1)",
+    width: 1,
+    lineStyle: 0,
+    opacity: 100,
+    visible: true,
+  },
+  ma4: {
+    color: "rgba(239,83,80,1)",
+    width: 1,
+    lineStyle: 0,
+    opacity: 100,
+    visible: true,
+  },
+},
 };
