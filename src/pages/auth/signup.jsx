@@ -130,7 +130,9 @@ export default function Signup() {
       padding: "20px 0",
     },
     card: {
-      width: 440,
+      width: "100%",
+      maxWidth: 440,
+      margin: "0 16px",
       borderRadius: 16,
       background: "var(--bg-primary)",
       border: "1px solid var(--bg-secondary)",
@@ -183,7 +185,7 @@ export default function Signup() {
     inputError: { borderColor: "#ef4444" },
     errorMsg: { fontSize: "0.72rem", color: "#f87171", marginTop: 5 },
     group: { marginBottom: 18, flex: 1 },
-    row: { display: "flex", gap: 12 },
+    row: { display: "flex", gap: 12, flexWrap: "wrap" },
     btn: {
       width: "100%",
       padding: "11px",
@@ -371,7 +373,7 @@ export default function Signup() {
 
           {/* Mobile + Country */}
           <div style={s.row}>
-            <div style={s.group}>
+            <div style={{...s.group, minWidth: "200px"}}>
               <label style={s.label}>Mobile</label>
               <PhoneInput
                 country={"in"}

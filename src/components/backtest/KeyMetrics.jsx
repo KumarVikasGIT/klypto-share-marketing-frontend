@@ -36,6 +36,11 @@ const KeyMetrics = ({ data }) => {
           column-gap: 32px;
           row-gap: 12px;
         }
+        @media (max-width: 768px) {
+          .metrics-grid {
+            grid-template-columns: 1fr;
+          }
+        }
         .metric-row {
           display: flex;
           justify-content: space-between;

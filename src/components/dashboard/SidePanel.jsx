@@ -248,105 +248,107 @@ const SidePanel = ({ stock, expiry }) => {
           </div>
         </div>
 
-        <table className="table-dark-custom">
-          <thead>
-            <tr>
-              <th className="bg-primary bg-opacity-10">OI (CE)</th>
-              <th className="bg-primary bg-opacity-10">LTP</th>
-              <th className="text-accent-purple">Strike</th>
-              <th className="bg-danger bg-opacity-10">LTP</th>
-              <th className="bg-danger bg-opacity-10">OI (PE)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {strikes.length === 0 ? (
+        <div className="table-responsive">
+          <table className="table-dark-custom mb-0">
+            <thead>
               <tr>
-                <td
-                  colSpan={5}
-                  style={{
-                    textAlign: "center",
-                    color: "var(--text-secondary)",
-                    padding: "16px 0",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  Waiting for data…
-                </td>
+                <th className="bg-primary bg-opacity-10">OI (CE)</th>
+                <th className="bg-primary bg-opacity-10">LTP</th>
+                <th className="text-accent-purple">Strike</th>
+                <th className="bg-danger bg-opacity-10">LTP</th>
+                <th className="bg-danger bg-opacity-10">OI (PE)</th>
               </tr>
-            ) : (
-              strikes.map((row, idx) => {
-                const isATM = Number(row.strike) === Number(atmStrike); // ✅ coerce both sides
-                return (
-                  <tr
-                    key={idx}
-                    style={
-                      isATM ? { background: "rgba(139, 92, 246, 0.1)" } : {}
-                    }
+            </thead>
+            <tbody>
+              {strikes.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    style={{
+                      textAlign: "center",
+                      color: "var(--text-secondary)",
+                      padding: "16px 0",
+                      fontSize: "0.75rem",
+                    }}
                   >
-                    <td
+                    Waiting for data…
+                  </td>
+                </tr>
+              ) : (
+                strikes.map((row, idx) => {
+                  const isATM = Number(row.strike) === Number(atmStrike); // ✅ coerce both sides
+                  return (
+                    <tr
+                      key={idx}
                       style={
-                        isATM
-                          ? {
-                              color: "var(--success-color)",
-                              fontWeight: "bold",
-                            }
-                          : {}
+                        isATM ? { background: "rgba(139, 92, 246, 0.1)" } : {}
                       }
                     >
-                      {formatOI(row.ce?.oi)}
-                    </td>
-                    <td
-                      style={
-                        isATM
-                          ? {
-                              color: "var(--success-color)",
-                              fontWeight: "bold",
-                            }
-                          : {}
-                      }
-                    >
-                      {formatPrice(row.ce?.ltp)}
-                    </td>
-                    <td
-                      className={isATM ? "text-white rounded" : "fw-bold"}
-                      style={
-                        isATM
-                          ? {
-                              background: "rgba(139, 92, 246, 0.6)",
-                              textAlign: "center",
-                            }
-                          : {}
-                      }
-                    >
-                      {Number(row.strike).toLocaleString("en-IN")}
-                      {isATM && (
-                        <span className="x-small ms-1 opacity-75">ATM</span>
-                      )}
-                    </td>
-                    <td
-                      style={
-                        isATM
-                          ? { color: "var(--danger-color)", fontWeight: "bold" }
-                          : {}
-                      }
-                    >
-                      {formatPrice(row.pe?.ltp)}
-                    </td>
-                    <td
-                      style={
-                        isATM
-                          ? { color: "var(--danger-color)", fontWeight: "bold" }
-                          : {}
-                      }
-                    >
-                      {formatOI(row.pe?.oi)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      <td
+                        style={
+                          isATM
+                            ? {
+                                color: "var(--success-color)",
+                                fontWeight: "bold",
+                              }
+                            : {}
+                        }
+                      >
+                        {formatOI(row.ce?.oi)}
+                      </td>
+                      <td
+                        style={
+                          isATM
+                            ? {
+                                color: "var(--success-color)",
+                                fontWeight: "bold",
+                              }
+                            : {}
+                        }
+                      >
+                        {formatPrice(row.ce?.ltp)}
+                      </td>
+                      <td
+                        className={isATM ? "text-white rounded" : "fw-bold"}
+                        style={
+                          isATM
+                            ? {
+                                background: "rgba(139, 92, 246, 0.6)",
+                                textAlign: "center",
+                              }
+                            : {}
+                        }
+                      >
+                        {Number(row.strike).toLocaleString("en-IN")}
+                        {isATM && (
+                          <span className="x-small ms-1 opacity-75">ATM</span>
+                        )}
+                      </td>
+                      <td
+                        style={
+                          isATM
+                            ? { color: "var(--danger-color)", fontWeight: "bold" }
+                            : {}
+                        }
+                      >
+                        {formatPrice(row.pe?.ltp)}
+                      </td>
+                      <td
+                        style={
+                          isATM
+                            ? { color: "var(--danger-color)", fontWeight: "bold" }
+                            : {}
+                        }
+                      >
+                        {formatOI(row.pe?.oi)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         <div className="p-2 text-center border-top border-secondary">
           <button className="btn btn-link text-accent-green x-small text-decoration-none p-0">

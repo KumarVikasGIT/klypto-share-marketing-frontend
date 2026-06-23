@@ -25,6 +25,7 @@ ChartJS.register(
 import { io } from "socket.io-client";
 import apiService from "../../services/apiServices";
 import { SOCKET_URL } from "../../services/websocket/socket";
+import { FiArrowLeft } from "react-icons/fi";
 
 const customDataLabelsPlugin = {
   id: "customDataLabels",
@@ -91,7 +92,7 @@ const spotPriceLinePlugin = {
   },
 };
 
-const OIAnalytics = ({ selectedCurrency }) => {
+const OIAnalytics = ({ selectedCurrency, onBack }) => {
   const [theme, setTheme] = useState(
     document.documentElement.getAttribute("data-theme") || "dark",
   );
@@ -307,6 +308,8 @@ const OIAnalytics = ({ selectedCurrency }) => {
     },
     headerRow: {
       display: "flex",
+      flexWrap: "wrap",
+      gap: "10px",
       justifyContent: "space-between",
       alignItems: "center",
       marginBottom: "20px",
@@ -320,6 +323,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
     },
     rightInfo: {
       display: "flex",
+      flexWrap: "wrap",
       gap: "20px",
       alignItems: "center",
       backgroundColor: "var(--bg-secondary)",
@@ -329,7 +333,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
     },
     metricsGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(5, 1fr)",
+      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
       gap: "12px",
       marginBottom: "24px",
     },
@@ -366,6 +370,8 @@ const OIAnalytics = ({ selectedCurrency }) => {
     },
     chartHeader: {
       display: "flex",
+      flexWrap: "wrap",
+      gap: "10px",
       justifyContent: "space-between",
       alignItems: "center",
       marginBottom: "20px",
@@ -381,7 +387,7 @@ const OIAnalytics = ({ selectedCurrency }) => {
     }),
     bottomGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(2, 1fr)",
+      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
       gap: "16px",
     },
     bottomCard: {
@@ -439,7 +445,27 @@ const OIAnalytics = ({ selectedCurrency }) => {
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.headerRow}>
-        <div style={styles.title}>Option Chain - Bar Graph View</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Back Button */}
+          <div
+            onClick={onBack}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border-color)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "var(--text-primary)",
+            }}
+          >
+            <FiArrowLeft size={18} />
+          </div>
+          <div style={styles.title}>Option Chain - Bar Graph View</div>
+        </div>
         <div style={styles.rightInfo}>
           <span style={{ fontWeight: 600 }}>{currentSymbol}</span>
           <span style={{ color: "#ef4444", fontWeight: 600 }}>

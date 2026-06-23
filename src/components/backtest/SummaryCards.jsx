@@ -61,6 +61,16 @@ const SummaryCards = ({ data }) => {
           gap: 12px;
           margin-bottom: 16px;
         }
+        @media (max-width: 1200px) {
+          .summary-cards-container {
+            grid-template-columns: repeat(4, 1fr);
+          }
+        }
+        @media (max-width: 768px) {
+          .summary-cards-container {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
         .summary-card {
           background: var(--bg-secondary);
           border: 1px solid var(--border-color);

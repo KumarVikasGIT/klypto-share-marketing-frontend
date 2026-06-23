@@ -89,16 +89,31 @@ const CodeEditorPanel = ({
   }, []);
 
   return (
-    <div
-      style={{
-        width: "400px",
-        borderLeft: "1px solid var(--border-color)",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--bg-primary)",
-        flexShrink: 0,
-      }}
-    >
+    <>
+      <style>{`
+        .code-editor-panel {
+          width: 400px;
+          max-width: 100%;
+          display: flex;
+          flex-direction: column;
+          border-left: 1px solid var(--border-color);
+          border-right: 1px solid var(--border-color);
+          background-color: var(--bg-primary);
+          color: var(--text-primary);
+          z-index: 100;
+        }
+        @media (max-width: 768px) {
+          .code-editor-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            border: none;
+          }
+        }
+      `}</style>
+      <div className="code-editor-panel">
       <div
         style={{
           padding: "10px 16px",
@@ -273,6 +288,7 @@ const CodeEditorPanel = ({
         )}
       </div>
     </div>
+    </>
   );
 };
 

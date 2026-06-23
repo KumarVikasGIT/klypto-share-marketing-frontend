@@ -98,7 +98,9 @@ export default function Login() {
       fontFamily: "'Inter', sans-serif",
     },
     card: {
-      width: 400,
+      width: "100%",
+      maxWidth: 400,
+      margin: "0 16px",
       borderRadius: 16,
       background: "var(--bg-primary)",
       border: "1px solid var(--bg-secondary)",

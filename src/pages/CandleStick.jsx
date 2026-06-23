@@ -2142,20 +2142,47 @@ json.dumps(result, default=json_default)
         predictCount={predictResultData.length}
       />
       <section
-        className="trading-view-wrapper overflow-hidden"
+        className="trading-view-wrapper overflow-x-hidden"
         style={{
           background: "var(--bg-primary)",
           height: "calc(100vh - 60px)",
           display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
         }}
       >
         <div
           className="container-fluid p-0 m-0"
-          style={{ display: "flex", width: "100%", height: "100%" }}
+          style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1, minHeight: "fit-content" }}
         >
-          <div style={{ display: "flex", width: "100%", height: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "row", width: "100%", flex: 1, minHeight: "fit-content" }}>
+            <style>{`
+              @media (max-width: 768px) {
+                .left-panel-mobile.is-open {
+                  position: absolute !important;
+                  left: 0;
+                  top: 0;
+                  z-index: 1000;
+                  background: var(--bg-primary);
+                  width: 100% !important;
+                  height: 100% !important;
+                  box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+                }
+                .right-sidebar-mobile {
+                  width: 60px !important;
+                }
+                .mobile-scrollable-chart {
+                  min-width: 600px !important;
+                }
+                .buy-sell-btn {
+                  padding: 6px 12px !important;
+                  font-size: 0.85rem !important;
+                }
+              }
+            `}</style>
             {/* Left Panel (Watchlist or Details) */}
             <div
+              className={`left-panel-mobile ${isWatchlistOpen || isDetailsOpen || isDepthOpen ? "is-open" : ""}`}
               style={{
                 width:
                   isWatchlistOpen || isDetailsOpen || isDepthOpen
@@ -2253,7 +2280,7 @@ json.dumps(result, default=json_default)
                 borderRight: "1px solid var(--border-color)",
                 display: "flex",
                 flexDirection: "column",
-                height: "100%",
+                minHeight: "100%",
                 transition: "border-color 0.3s ease",
               }}
             >
@@ -2307,9 +2334,9 @@ json.dumps(result, default=json_default)
                   />
                 </div>
 
-                <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                <div style={{ display: "flex", flex: 1, overflowX: "auto", overflowY: "hidden" }}>
                   <div
-                    className="chart-and-panes-wrapper"
+                    className="chart-and-panes-wrapper mobile-scrollable-chart"
                     style={{
                       display: "flex",
                       flexDirection: "column",
@@ -2329,6 +2356,7 @@ json.dumps(result, default=json_default)
                         overflow: "hidden",
                         display: "flex",
                         flexDirection: "column",
+                        minHeight: 450,
                       }}
                     >
                       {mainChartLoading || isDeploying ? (
@@ -2429,7 +2457,7 @@ json.dumps(result, default=json_default)
                           {/* OHLC Values */}
                           {/* OHLC Values - direct DOM, zero re-render */}
                           <div
-                            className="d-flex align-items-center gap-1"
+                            className="d-none d-md-flex align-items-center gap-1"
                             ref={ohlcvDisplayRef}
                             style={{
                               opacity: currentCandleRef.current ? 1 : 0,
@@ -2550,6 +2578,7 @@ json.dumps(result, default=json_default)
                           ref={actionButtonsRef}
                         >
                           <button
+                            className="buy-sell-btn"
                             onClick={() => {
                               const price = currentCandleRef.current?.close;
                               const state = {
@@ -2581,6 +2610,7 @@ json.dumps(result, default=json_default)
                           </button>
 
                           <button
+                            className="buy-sell-btn"
                             onClick={() => {
                               const price = currentCandleRef.current?.close;
                               const state = {
@@ -2910,12 +2940,13 @@ json.dumps(result, default=json_default)
                   borderRight: "1px solid var(--border-color)",
                   display: activeTab === "Overview" ? "flex" : "none",
                   flexDirection: "column",
-                  height: "100%",
+                  minHeight: "100%",
                 }}
               >
                 <Overview
                   key={selectedCurrency?.name}
                   selectedCurrency={selectedCurrency}
+                  onBack={() => setActiveTab("Chart")}
                 />
               </div>
 
@@ -2932,7 +2963,7 @@ json.dumps(result, default=json_default)
                   height: "100%",
                 }}
               >
-                <OptionChain />
+                <OptionChain onBack={() => setActiveTab("Chart")} />
               </div>
 
               <div
@@ -2946,17 +2977,19 @@ json.dumps(result, default=json_default)
                   display: activeTab === "OI Analytics" ? "flex" : "none",
                   flexDirection: "column",
                   height: "100%",
-                  overflow: "hidden",
                 }}
               >
                 {activeTab === "OI Analytics" && (
-                  <OIAnalytics selectedCurrency={selectedCurrency} />
+                  <OIAnalytics
+                    selectedCurrency={selectedCurrency}
+                    onBack={() => setActiveTab("Chart")}
+                  />
                 )}
               </div>
             </div>
 
             {/* Right Sidebar */}
-            <div style={{ width: "70px", height: "100%", flexShrink: 0 }}>
+            <div className="right-sidebar-mobile" style={{ width: "70px", height: "100%", flexShrink: 0, borderLeft: "1px solid var(--border-color)", zIndex: 50 }}>
               <RightSidebar
                 isWatchlistOpen={activeTab !== "Alerts" && isWatchlistOpen}
                 toggleWatchlist={() => {

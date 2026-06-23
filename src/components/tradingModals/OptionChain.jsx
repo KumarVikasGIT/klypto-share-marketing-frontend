@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { METADATA_API_URL, SOCKET_URL } from "../../services/websocket/socket";
+import { FiArrowLeft } from "react-icons/fi";
 
-const OptionChain = ({ onSymbolChange }) => {
+const OptionChain = ({ onSymbolChange, onBack }) => {
   const navigate = useNavigate();
 
   // ── Dropdown state ──
@@ -440,6 +441,25 @@ const OptionChain = ({ onSymbolChange }) => {
           flexWrap: "wrap",
         }}
       >
+        {/* Back Button */}
+        <div
+          onClick={onBack}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-color)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "var(--text-primary)",
+          }}
+        >
+          <FiArrowLeft size={18} />
+        </div>
+
         {/* Symbol Dropdown */}
         <div ref={dropdownRef} style={{ position: "relative", minWidth: 300 }}>
           <div
