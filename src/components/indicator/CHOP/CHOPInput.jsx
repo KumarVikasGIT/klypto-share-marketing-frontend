@@ -16,7 +16,7 @@ export default function CHOPInput(
       value: Number(d.chop),
     }));
 
-  if (!chopData.length) return;
+  if (!chopData?.length) return;
 
   /* UPDATE CHOP LINE */
 
@@ -53,7 +53,7 @@ export default function CHOPInput(
   /* UPDATE LATEST VALUE */
 
   latestIndicatorValuesRef.current[instanceId || "CHOP"] = {
-    chop: chopData[chopData.length - 1]?.value ?? null,
+    chop: chopData[chopData?.length - 1]?.value ?? null,
   };
 
   console.log("✅ CHOP updated after input change");

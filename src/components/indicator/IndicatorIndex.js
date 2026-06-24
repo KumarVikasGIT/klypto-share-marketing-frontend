@@ -245,9 +245,9 @@ export function updateIndicatorFromInput(
 
   const args = [response, indicatorSeriesRef, latestIndicatorValuesRef];
 
-  if (handler.length >= 5) {
+  if (handler?.length >= 5) {
     args.push(maType, instanceId);
-  } else if (handler.length === 4) {
+  } else if (handler?.length === 4) {
     args.push(instanceId);
   }
 

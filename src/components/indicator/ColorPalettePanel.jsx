@@ -31,7 +31,7 @@ export const getOpacityFromRGBA = (colorStr) => {
 };
 
 const hexToRGBA = (hex, op) => {
-  if (!hex || hex.includes('NaN') || hex.length < 7) return `rgba(41, 98, 255, ${op / 100})`;
+  if (!hex || hex.includes('NaN') || hex?.length < 7) return `rgba(41, 98, 255, ${op / 100})`;
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);

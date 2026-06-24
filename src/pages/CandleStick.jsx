@@ -320,7 +320,7 @@ plot_markers(markers)`,
   // Flush buffer to state every 500ms to avoid freezing the UI on mass updates
   useEffect(() => {
     const flushInterval = setInterval(() => {
-      if (signalBufferRef.current.length > 0) {
+      if (signalBufferRef.current?.length > 0) {
         const newSignals = [...signalBufferRef.current];
         signalBufferRef.current = []; // Clear immediately
 
@@ -476,7 +476,7 @@ plot_markers(markers)`,
       console.log("Final markersToSet to plot on chart:", markersToSet);
 
       // Auto-open Alerts panel if we have signals
-      if (newSignals.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
+      if (newSignals?.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
         if (typeof setActiveTab === "function") {
           setActiveTab("Alerts");
         }
@@ -485,7 +485,7 @@ plot_markers(markers)`,
 
     lastDeployedMarkersRef.current = markersToSet;
 
-    if (markersToSet.length > 0 && seriesRef.current) {
+    if (markersToSet?.length > 0 && seriesRef.current) {
       if (!customScriptMarkersRef.current) {
         customScriptMarkersRef.current = createSeriesMarkers(
           seriesRef.current,
@@ -732,7 +732,7 @@ json.dumps(result, default=json_default)
             "position" in m,
         );
 
-        if (markersList.length === 0 || !isStructurallyValid) {
+        if (markersList?.length === 0 || !isStructurallyValid) {
           Swal.fire({
             icon: "warning",
             title: "Invalid Markers",
@@ -763,7 +763,7 @@ json.dumps(result, default=json_default)
 
       try {
         const closes = candlesRef?.current?.map((c) => c.close) || [];
-        if (closes.length < 4) {
+        if (closes?.length < 4) {
           Swal.fire({
             icon: "warning",
             title: "Insufficient Data",
@@ -1005,7 +1005,7 @@ json.dumps(result, default=json_default)
         }
       }
 
-      const markers = response.markers
+      const markers = response?.markers
         .map((marker) => ({
           // marker.datetimeUTC is in seconds (UTC) — align with candle times (which use IST_OFFSET)
           time: Number(marker.datetimeUTC) + IST_OFFSET,
@@ -1017,7 +1017,7 @@ json.dumps(result, default=json_default)
         }))
         .filter((m) => Number.isFinite(m.time));
 
-      console.log("Strategy markers:", markers.length);
+      console.log("Strategy markers:", markers?.length);
 
       if (!strategyMarkersRef.current) {
         strategyMarkersRef.current = createSeriesMarkers(
@@ -1026,7 +1026,7 @@ json.dumps(result, default=json_default)
         );
         seriesRef.current.attachPrimitive(strategyMarkersRef.current);
       } else {
-        strategyMarkersRef.current.setMarkers(markers);
+        strategyMarkersRef?.current.setMarkers(markers);
       }
     } catch (error) {
       console.error("Failed to fetch strategy markers:", error);
@@ -1042,7 +1042,7 @@ json.dumps(result, default=json_default)
   }, [selectedCurrency?.name]);
 
   useEffect(() => {
-    if (!selectedIndicator.length) return;
+    if (!selectedIndicator?.length) return;
 
     const isContextChange =
       prevTimeframeRef.current !== timeframeValue ||
@@ -1057,7 +1057,7 @@ json.dumps(result, default=json_default)
         (ind) => !fetchedIndicatorsRef.current.has(ind.id),
       );
 
-      if (indicatorsToFetch.length === 0) return;
+      if (indicatorsToFetch?.length === 0) return;
     } else {
       // 🔥 Reset on timeframe / currency / chartType change
       fetchedIndicatorsRef.current.clear();
@@ -1160,7 +1160,7 @@ json.dumps(result, default=json_default)
       return paneIndexRef.current[indicator];
     }
 
-    const nextPane = Object.keys(paneIndexRef.current).length + 1;
+    const nextPane = Object.keys(paneIndexRef.current)?.length + 1;
     paneIndexRef.current[indicator] = nextPane;
 
     return nextPane;
@@ -1225,7 +1225,7 @@ json.dumps(result, default=json_default)
     syncingRef.current = true;
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ];
 
     charts.forEach((chart) => {
@@ -1461,7 +1461,7 @@ json.dumps(result, default=json_default)
   };
 
   const renderIndicators = () => {
-    return selectedIndicator.map((ind) => {
+    return selectedIndicator?.map((ind) => {
       const { id, type } = ind;
       const Component = indicatorComponents[type];
       if (!Component) return null;
@@ -1545,14 +1545,14 @@ json.dumps(result, default=json_default)
         }
       });
 
-      if (Object.keys(indicatorValues).length === 1) {
+      if (Object.keys(indicatorValues)?.length === 1) {
         updates[indicator] = Object.values(indicatorValues)[0];
-      } else if (Object.keys(indicatorValues).length > 0) {
+      } else if (Object.keys(indicatorValues)?.length > 0) {
         updates[indicator] = indicatorValues;
       }
     });
 
-    if (Object.keys(updates).length > 0) {
+    if (Object.keys(updates)?.length > 0) {
       latestIndicatorValuesRef.current = updates;
       setLiveIndicatorData(updates); // <- triggers renderValue
     }
@@ -1564,7 +1564,7 @@ json.dumps(result, default=json_default)
     const handler = (param) => {
       const charts = [
         chartRef.current,
-        ...Object.values(panesRef.current).map((p) => p.chart),
+        ...Object.values(panesRef.current)?.map((p) => p.chart),
       ].filter(Boolean);
 
       // clear crosshair if invalid
@@ -1628,7 +1628,7 @@ json.dumps(result, default=json_default)
       chartRef.current,
       ...Object.values(panesRef.current).map((p) => p.chart),
     ].filter(Boolean);
-    const detachHandlers = charts.map((c) => attachCrosshair(c));
+    const detachHandlers = charts?.map((c) => attachCrosshair(c));
 
     return () => detachHandlers.forEach((d) => d());
   }, [indicatorSeriesRef.current, timeframeValue]);
@@ -1666,7 +1666,7 @@ json.dumps(result, default=json_default)
       const symbolFromResponse =
         response?.symbol || raw[0]?.symbol || selectedCurrency?.name;
 
-      const parsedData = new Array(raw.length);
+      const parsedData = new Array(raw?.length);
       for (let i = 0; i < raw.length; i++) {
         const d = raw[i];
         parsedData[i] = {
@@ -1747,7 +1747,7 @@ json.dumps(result, default=json_default)
             chartSeriesStyles.line,
           );
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           fetchStrategyMarkers();
           break;
@@ -1765,7 +1765,7 @@ json.dumps(result, default=json_default)
             chartSeriesStyles.area,
           );
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "baseline":
@@ -1774,7 +1774,7 @@ json.dumps(result, default=json_default)
             baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
           });
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "histogram":
@@ -1783,7 +1783,7 @@ json.dumps(result, default=json_default)
             chartSeriesStyles.histogram,
           );
           seriesRef.current.setData(
-            data.map((d, index, arr) => {
+            data?.map((d, index, arr) => {
               const prev = arr[index - 1];
               const isUp = prev ? d.close >= prev.close : true;
               return {
@@ -1820,7 +1820,7 @@ json.dumps(result, default=json_default)
 
       if (
         lastDeployedMarkersRef.current &&
-        lastDeployedMarkersRef.current.length > 0 &&
+        lastDeployedMarkersRef.current?.length > 0 &&
         seriesRef.current
       ) {
         if (!customScriptMarkersRef.current) {
@@ -1836,10 +1836,10 @@ json.dumps(result, default=json_default)
         }
       }
 
-      currentCandleRef.current = data[data.length - 1];
+      currentCandleRef.current = data[data?.length - 1];
 
       setTimeout(() => {
-        const last = data[data.length - 1];
+        const last = data[data?.length - 1];
         if (last && ohlcvDisplayRef.current) {
           const el = ohlcvDisplayRef.current;
           const isUp = last.close >= last.open;
@@ -2113,7 +2113,7 @@ json.dumps(result, default=json_default)
   const zoomCharts = (delta) => {
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ].filter(Boolean);
     charts.forEach((chart) => {
       const range = chart.timeScale().getVisibleLogicalRange();
@@ -2130,7 +2130,7 @@ json.dumps(result, default=json_default)
   const resetZoom = () => {
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ].filter(Boolean);
     charts.forEach((chart) => chart.timeScale().fitContent());
   };
@@ -2139,7 +2139,7 @@ json.dumps(result, default=json_default)
     <>
       <Navbar
         setSelectedCurrency={setSelectedCurrency}
-        predictCount={predictResultData.length}
+        predictCount={predictResultData?.length}
       />
       <section
         className="trading-view-wrapper overflow-x-hidden"
@@ -2717,7 +2717,7 @@ json.dumps(result, default=json_default)
                                         ...(indicatorConfigs?.[id] || {}),
                                       };
                                       const len =
-                                        cfg.length ?? cfg.baseLen ?? "";
+                                        cfg?.length ?? cfg.baseLen ?? "";
                                       const src = cfg.source ?? "";
                                       return `${len}${src ? " " + src : ""}`;
                                     })()}
@@ -2796,7 +2796,7 @@ json.dumps(result, default=json_default)
                             })}
                         </div>
                       )}
-                      {/* {selectedIndicator.map((indicator, index) => {
+                      {/* {selectedIndicator?.map((indicator, index) => {
                 const value = liveIndicatorData[indicator];
                 const paneIndex = paneIndexRef.current[indicator];
                 if (paneIndex === undefined || paneIndex === 0) return null;

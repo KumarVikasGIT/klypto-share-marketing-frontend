@@ -248,7 +248,7 @@ const OrderPanel = ({
       
       setExpiry((prev) => {
         if (prev) return prev; // Do not auto-switch the expiry if it was already selected/passed down
-        return rawExpiries.length > 0 ? rawExpiries[0] : "";
+        return rawExpiries?.length > 0 ? rawExpiries[0] : "";
       });
 
       const spotPrice = items[0]?.spot_price ?? null;
@@ -262,7 +262,7 @@ const OrderPanel = ({
         ),
       ].sort((a, b) => a - b);
       const ltpToUse = spotPrice != null ? Number(spotPrice) : currentPrice;
-      if (strikes.length > 0 && ltpToUse) {
+      if (strikes?.length > 0 && ltpToUse) {
         const atm = findATM(strikes, ltpToUse);
         const atmIdx = strikes.indexOf(atm);
         setStrikeMap({
@@ -333,7 +333,7 @@ const OrderPanel = ({
       const uniqueStrikes = [...new Set(strikes)];
 
       const ltpToUse = chainLtp != null ? Number(chainLtp) : currentPrice;
-      if (uniqueStrikes.length > 0 && ltpToUse) {
+      if (uniqueStrikes?.length > 0 && ltpToUse) {
         const atm = findATM(uniqueStrikes, ltpToUse);
         const atmIdx = uniqueStrikes.indexOf(atm);
         setStrikeMap({
@@ -348,8 +348,8 @@ const OrderPanel = ({
             OTM: fmt(uniqueStrikes[atmIdx + 2]),
           },
         });
-      } else if (uniqueStrikes.length > 0) {
-        const mid = Math.floor(uniqueStrikes.length / 2);
+      } else if (uniqueStrikes?.length > 0) {
+        const mid = Math.floor(uniqueStrikes?.length / 2);
         setStrikeMap({
           "Nearest ATM": {
             ATM: fmt(uniqueStrikes[mid]),
@@ -433,7 +433,7 @@ const OrderPanel = ({
 
   // ── 3. Keep selectedStockObj + live price in sync with ticks ──
   useEffect(() => {
-    if (!stock || stocks.length === 0) return;
+    if (!stock || stocks?.length === 0) return;
     const currentToken = stock?.token ?? stock;
     const match = stocks.find((s) => s.token === currentToken);
     if (!match) return;
@@ -554,7 +554,7 @@ const OrderPanel = ({
 
         // ── Populate expiry dropdown from allExpiries ──
         const apiExpiries = response?.allExpiries ?? [];
-        if (apiExpiries.length > 0) {
+        if (apiExpiries?.length > 0) {
           setExpiries(apiExpiries);
           // Only set expiry if none is already chosen or it's not in the new list
           setExpiry((prev) => {
@@ -623,9 +623,9 @@ const OrderPanel = ({
       return norm1 === norm2 || norm1.startsWith(norm2) || norm2.startsWith(norm1);
     });
 
-    const rows = rowsForExpiry.length > 0 ? rowsForExpiry : allRows;
+    const rows = rowsForExpiry?.length > 0 ? rowsForExpiry : allRows;
 
-    if (rows.length === 0) return;
+    if (rows?.length === 0) return;
 
     // Find ATM row using isATM flag
     const atmRow = rows.find((r) => r.isATM === true);
@@ -634,14 +634,14 @@ const OrderPanel = ({
       .filter((n) => !isNaN(n))
       .sort((a, b) => a - b);
 
-    if (strikes.length === 0) return;
+    if (strikes?.length === 0) return;
 
     let atmStrike;
     if (atmRow) {
       atmStrike = Number(atmRow.strike);
     } else {
       // Fallback: use middle strike
-      atmStrike = strikes[Math.floor(strikes.length / 2)];
+      atmStrike = strikes[Math.floor(strikes?.length / 2)];
     }
 
     const atmIdx = strikes.indexOf(atmStrike);
@@ -1203,7 +1203,7 @@ const OrderPanel = ({
                 setStrategy(e.target.value);
                 setValidationMsg("");
               }}
-              // disabled={Object.keys(strikeMap).length === 0}
+              // disabled={Object.keys(strikeMap)?.length === 0}
             >
               <option value="">Select strategy</option>
               {Object.keys(strikeMap).map((k) => (

@@ -27,7 +27,7 @@ const BaseSettings = React.memo(function BaseSettings({
             type="number"
             className="form-control"
             min="1"
-            value={currentConfig.length ?? ""}
+            value={currentConfig?.length ?? ""}
             onChange={(e) => {
               const value =
                 e.target.value === ""
@@ -45,7 +45,7 @@ const BaseSettings = React.memo(function BaseSettings({
           <label className="form-label">Source</label>
           <select
             className="form-select"
-            value={currentConfig.source ?? ""}
+            value={currentConfig?.source ?? ""}
             onChange={(e) => updateProperty("source", e.target.value)}
           >
             {["Close", "Open", "High", "Low", "HL2", "HLC3", "OHLC4"].map(
@@ -67,7 +67,7 @@ const BaseSettings = React.memo(function BaseSettings({
             type="number"
             className="form-control"
             min="0"
-            value={currentConfig.offset ?? ""}
+            value={currentConfig?.offset ?? ""}
             onChange={(e) => {
               const value =
                 e.target.value === ""
@@ -110,7 +110,7 @@ const SmoothingSection = React.memo(function SmoothingSection({
           <label className="form-label">Type</label>
           <select
             className="form-select"
-            value={currentConfig.maType || "none"}
+            value={currentConfig?.maType || "none"}
             onChange={(e) => updateProperty("maType", e.target.value)}
           >
             {smoothingTypes.map((opt) => (
@@ -128,7 +128,7 @@ const SmoothingSection = React.memo(function SmoothingSection({
             type="number"
             className="form-control"
             min="1"
-            value={currentConfig.maLength}
+            value={currentConfig?.maLength}
             onChange={(e) => {
               const value =
                 e.target.value === ""
@@ -146,8 +146,8 @@ const SmoothingSection = React.memo(function SmoothingSection({
             type="number"
             className="form-control"
             min="0"
-            disabled={currentConfig.maType !== "SMA + Bollinger Bands"}
-            value={currentConfig.bbStdDev}
+            disabled={currentConfig?.maType !== "SMA + Bollinger Bands"}
+            value={currentConfig?.bbStdDev}
             onChange={(e) => {
               const value =
                 e.target.value === ""
@@ -458,7 +458,7 @@ export default function IndicatorPropertyDialog({
 
               <select
                 className="form-select"
-                value={currentConfig.displayMode}
+                value={currentConfig?.displayMode}
                 onChange={(e) => updateProperty("displayMode", e.target.value)}
               >
                 <option value="FULL_DISPLAY">Full Display</option>
@@ -481,7 +481,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Baseline Type</label>
               <select
                 className="form-select"
-                value={currentConfig.maType}
+                value={currentConfig?.maType}
                 onChange={(e) => updateProperty("maType", e.target.value)}
               >
                 {[
@@ -512,7 +512,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.baseLen}
+                value={currentConfig?.baseLen}
                 onChange={(e) =>
                   updateProperty("baseLen", Math.max(1, Number(e.target.value)))
                 }
@@ -523,7 +523,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Source</label>
               <select
                 className="form-select"
-                value={currentConfig.src}
+                value={currentConfig?.src}
                 onChange={(e) => updateProperty("src", e.target.value)}
               >
                 {["Close", "Open", "High", "Low", "HL2", "HLC3", "OHLC4"].map(
@@ -542,7 +542,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 step="0.1"
                 className="form-control"
-                value={currentConfig.multy}
+                value={currentConfig?.multy}
                 onChange={(e) =>
                   updateProperty("multy", Number(e.target.value))
                 }
@@ -558,7 +558,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">SSL2 Type</label>
               <select
                 className="form-select"
-                value={currentConfig.ssl2Type}
+                value={currentConfig?.ssl2Type}
                 onChange={(e) => updateProperty("ssl2Type", e.target.value)}
               >
                 {[
@@ -586,7 +586,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.ssl2Len}
+                value={currentConfig?.ssl2Len}
                 onChange={(e) =>
                   updateProperty("ssl2Len", Math.max(1, Number(e.target.value)))
                 }
@@ -599,7 +599,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 step="0.1"
                 className="form-control"
-                value={currentConfig.atrCrit}
+                value={currentConfig?.atrCrit}
                 onChange={(e) =>
                   updateProperty("atrCrit", Number(e.target.value))
                 }
@@ -615,7 +615,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Exit Type</label>
               <select
                 className="form-select"
-                value={currentConfig.ssl3Type}
+                value={currentConfig?.ssl3Type}
                 onChange={(e) => updateProperty("ssl3Type", e.target.value)}
               >
                 {[
@@ -642,7 +642,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.ssl3Len}
+                value={currentConfig?.ssl3Len}
                 onChange={(e) =>
                   updateProperty("ssl3Len", Math.max(1, Number(e.target.value)))
                 }
@@ -659,7 +659,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.atrLen}
+                value={currentConfig?.atrLen}
                 onChange={(e) =>
                   updateProperty("atrLen", Math.max(1, Number(e.target.value)))
                 }
@@ -672,7 +672,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 step="0.1"
                 className="form-control"
-                value={currentConfig.atrMult}
+                value={currentConfig?.atrMult}
                 onChange={(e) =>
                   updateProperty("atrMult", Number(e.target.value))
                 }
@@ -683,7 +683,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">ATR Smoothing</label>
               <select
                 className="form-select"
-                value={currentConfig.atrSmoothing}
+                value={currentConfig?.atrSmoothing}
                 onChange={(e) => updateProperty("atrSmoothing", e.target.value)}
               >
                 {["RMA", "SMA", "EMA", "WMA"].map((opt) => (
@@ -698,7 +698,7 @@ export default function IndicatorPropertyDialog({
               <input
                 className="form-check-input"
                 type="checkbox"
-                checked={currentConfig.showAtrBands}
+                checked={currentConfig?.showAtrBands}
                 onChange={(e) =>
                   updateProperty("showAtrBands", e.target.checked)
                 }
@@ -716,7 +716,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.riskLookback}
+                value={currentConfig?.riskLookback}
                 onChange={(e) =>
                   updateProperty(
                     "riskLookback",
@@ -732,7 +732,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 step="0.1"
                 className="form-control"
-                value={currentConfig.riskSensitivity}
+                value={currentConfig?.riskSensitivity}
                 onChange={(e) =>
                   updateProperty("riskSensitivity", Number(e.target.value))
                 }
@@ -743,7 +743,7 @@ export default function IndicatorPropertyDialog({
               <input
                 className="form-check-input"
                 type="checkbox"
-                checked={currentConfig.enableRiskGradient}
+                checked={currentConfig?.enableRiskGradient}
                 onChange={(e) =>
                   updateProperty("enableRiskGradient", e.target.checked)
                 }
@@ -761,7 +761,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.phase}
+                value={currentConfig?.phase}
                 onChange={(e) =>
                   updateProperty("phase", Number(e.target.value))
                 }
@@ -773,7 +773,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.power}
+                value={currentConfig?.power}
                 onChange={(e) =>
                   updateProperty("power", Number(e.target.value))
                 }
@@ -790,7 +790,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.kijunDivider}
+                value={currentConfig?.kijunDivider}
                 onChange={(e) =>
                   updateProperty("kijunDivider", Number(e.target.value))
                 }
@@ -807,7 +807,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.volatilityLookback}
+                value={currentConfig?.volatilityLookback}
                 onChange={(e) =>
                   updateProperty(
                     "volatilityLookback",
@@ -828,7 +828,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 step="0.1"
                 className="form-control"
-                value={currentConfig.beta}
+                value={currentConfig?.beta}
                 onChange={(e) => updateProperty("beta", Number(e.target.value))}
               />
             </div>
@@ -837,7 +837,7 @@ export default function IndicatorPropertyDialog({
               <input
                 className="form-check-input"
                 type="checkbox"
-                checked={currentConfig.feedback}
+                checked={currentConfig?.feedback}
                 onChange={(e) => updateProperty("feedback", e.target.checked)}
               />
               <label className="form-check-label">Feedback</label>
@@ -849,7 +849,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 step="0.1"
                 className="form-control"
-                value={currentConfig.feedbackWeighting}
+                value={currentConfig?.feedbackWeighting}
                 onChange={(e) =>
                   updateProperty("feedbackWeighting", Number(e.target.value))
                 }
@@ -866,7 +866,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.superSmootherLength}
+                value={currentConfig?.superSmootherLength}
                 onChange={(e) =>
                   updateProperty(
                     "superSmootherLength",
@@ -881,7 +881,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.superSmootherPoles}
+                value={currentConfig?.superSmootherPoles}
                 onChange={(e) =>
                   updateProperty(
                     "superSmootherPoles",
@@ -939,7 +939,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 className="form-control"
                 min="0"
-                value={currentConfig.ERlength}
+                value={currentConfig?.ERlength}
                 onChange={(e) => {
                   const value = Math.max(1, Number(e.target.value));
                   updateProperty("ERlength", value);
@@ -953,7 +953,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 className="form-control"
                 min="0"
-                value={currentConfig.fastLength}
+                value={currentConfig?.fastLength}
                 onChange={(e) => {
                   const value = Math.max(1, Number(e.target.value));
                   updateProperty("fastLength", value);
@@ -967,7 +967,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 className="form-control"
                 min=""
-                value={currentConfig.slowLength}
+                value={currentConfig?.slowLength}
                 onChange={(e) => {
                   const value = Math.max(1, Number(e.target.value));
                   updateProperty("slowLength", value);
@@ -1079,7 +1079,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.atrLength}
+                value={currentConfig?.atrLength}
                 onChange={(e) =>
                   updateProperty("atrLength", Number(e.target.value))
                 }
@@ -1091,7 +1091,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.factor}
+                value={currentConfig?.factor}
                 onChange={(e) =>
                   updateProperty("factor", Number(e.target.value))
                 }
@@ -1138,7 +1138,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.smoothing}
+                value={currentConfig?.smoothing}
                 onChange={(e) =>
                   updateProperty("smoothing", Number(e.target.value))
                 }
@@ -1150,7 +1150,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.diLength}
+                value={currentConfig?.diLength}
                 onChange={(e) =>
                   updateProperty("diLength", Number(e.target.value))
                 }
@@ -1167,7 +1167,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.atrLength}
+                value={currentConfig?.atrLength}
                 onChange={(e) =>
                   updateProperty("atrLength", Number(e.target.value))
                 }
@@ -1179,7 +1179,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.atrCoefficient}
+                value={currentConfig?.atrCoefficient}
                 onChange={(e) =>
                   updateProperty("atrCoefficient", Number(e.target.value))
                 }
@@ -1191,7 +1191,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.stopLength}
+                value={currentConfig?.stopLength}
                 onChange={(e) =>
                   updateProperty("stopLength", Number(e.target.value))
                 }
@@ -1223,7 +1223,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.kLength}
+                value={currentConfig?.kLength}
                 onChange={(e) =>
                   updateProperty("kLength", Number(e.target.value))
                 }
@@ -1235,7 +1235,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.kSmoothing}
+                value={currentConfig?.kSmoothing}
                 onChange={(e) =>
                   updateProperty("kSmoothing", Number(e.target.value))
                 }
@@ -1247,7 +1247,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.dSmoothing}
+                value={currentConfig?.dSmoothing}
                 onChange={(e) =>
                   updateProperty("dSmoothing", Number(e.target.value))
                 }
@@ -1272,7 +1272,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 className="form-control"
                 min={1}
-                value={currentConfig.kSmoothing}
+                value={currentConfig?.kSmoothing}
                 onChange={(e) =>
                   updateProperty("kSmoothing", Number(e.target.value))
                 }
@@ -1285,7 +1285,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 className="form-control"
                 min={1}
-                value={currentConfig.dSmoothing}
+                value={currentConfig?.dSmoothing}
                 onChange={(e) =>
                   updateProperty("dSmoothing", Number(e.target.value))
                 }
@@ -1297,7 +1297,7 @@ export default function IndicatorPropertyDialog({
                 type="number"
                 className="form-control"
                 min={1}
-                value={currentConfig.lengthRSI}
+                value={currentConfig?.lengthRSI}
                 onChange={(e) =>
                   updateProperty("lengthRSI", Number(e.target.value))
                 }
@@ -1308,7 +1308,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label"> RSI Source</label>
               <select
                 className="form-select"
-                value={currentConfig.source}
+                value={currentConfig?.source}
                 onChange={(e) => updateProperty("source", e.target.value)}
               >
                 {["Close", "Open", "High", "Low", "HL2", "HLC3", "OHLC4"].map(
@@ -1337,7 +1337,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.fastLength}
+                value={currentConfig?.fastLength}
                 onChange={(e) =>
                   updateProperty("fastLength", Number(e.target.value))
                 }
@@ -1349,7 +1349,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.slowLength}
+                value={currentConfig?.slowLength}
                 onChange={(e) =>
                   updateProperty("slowLength", Number(e.target.value))
                 }
@@ -1361,7 +1361,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.signalLength}
+                value={currentConfig?.signalLength}
                 onChange={(e) =>
                   updateProperty("signalLength", Number(e.target.value))
                 }
@@ -1372,7 +1372,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Oscillator MA Type</label>
               <select
                 className="form-control"
-                value={currentConfig.oscillatorMAType}
+                value={currentConfig?.oscillatorMAType}
                 onChange={(e) =>
                   updateProperty("oscillatorMAType", e.target.value)
                 }
@@ -1386,7 +1386,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Signal MA Type</label>
               <select
                 className="form-control"
-                value={currentConfig.signalMAType}
+                value={currentConfig?.signalMAType}
                 onChange={(e) => updateProperty("signalMAType", e.target.value)}
               >
                 <option value="EMA">EMA</option>
@@ -1446,7 +1446,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.fastLength}
+                value={currentConfig?.fastLength}
                 onChange={(e) =>
                   updateProperty("fastLength", Number(e.target.value))
                 }
@@ -1458,7 +1458,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.middleLength}
+                value={currentConfig?.middleLength}
                 onChange={(e) =>
                   updateProperty("middleLength", Number(e.target.value))
                 }
@@ -1470,7 +1470,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.slowLength}
+                value={currentConfig?.slowLength}
                 onChange={(e) =>
                   updateProperty("slowLength", Number(e.target.value))
                 }
@@ -1521,7 +1521,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Smoothing</label>
               <select
                 className="form-control"
-                value={currentConfig.smoothing}
+                value={currentConfig?.smoothing}
                 onChange={(e) => updateProperty("smoothing", e.target.value)}
               >
                 <option value="RMA">RMA</option>
@@ -1544,7 +1544,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Basic MA Type</label>
               <select
                 className="form-control"
-                value={currentConfig.maType}
+                value={currentConfig?.maType}
                 onChange={(e) => updateProperty("maType", e.target.value)}
               >
                 <option value="SMA">SMA</option>
@@ -1560,7 +1560,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.stdDev}
+                value={currentConfig?.stdDev}
                 onChange={(e) =>
                   updateProperty("stdDev", Number(e.target.value))
                 }
@@ -1630,7 +1630,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.lowestContractionLength}
+                value={currentConfig?.lowestContractionLength}
                 onChange={(e) =>
                   updateProperty(
                     "lowestContractionLength",
@@ -1667,7 +1667,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.multiplier}
+                value={currentConfig?.multiplier}
                 onChange={(e) =>
                   updateProperty("multiplier", Number(e.target.value))
                 }
@@ -1679,7 +1679,7 @@ export default function IndicatorPropertyDialog({
                 className="form-check-input"
                 type="checkbox"
                 id="useEMA"
-                checked={currentConfig.useEMA}
+                checked={currentConfig?.useEMA}
                 onChange={(e) => updateProperty("useEMA", e.target.checked)}
               />
               <label className="form-check-label" htmlFor="useEMA">
@@ -1691,7 +1691,7 @@ export default function IndicatorPropertyDialog({
               <label className="form-label">Bands Style</label>
               <select
                 className="form-control"
-                value={currentConfig.bandsStyle}
+                value={currentConfig?.bandsStyle}
                 onChange={(e) => updateProperty("bandsStyle", e.target.value)}
               >
                 <option value="Average True Range">Average True Range</option>
@@ -1705,7 +1705,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.atrLength}
+                value={currentConfig?.atrLength}
                 onChange={(e) =>
                   updateProperty("atrLength", Number(e.target.value))
                 }
@@ -1753,7 +1753,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="number"
                 className="form-control"
-                value={currentConfig.maLength}
+                value={currentConfig?.maLength}
                 onChange={(e) =>
                   updateProperty("maLength", Number(e.target.value))
                 }
@@ -1786,7 +1786,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.fastLength}
+                  value={currentConfig?.fastLength}
                   onChange={(e) =>
                     updateProperty("fastLength", Number(e.target.value))
                   }
@@ -1806,7 +1806,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.slowLength}
+                  value={currentConfig?.slowLength}
                   onChange={(e) =>
                     updateProperty("slowLength", Number(e.target.value))
                   }
@@ -1826,7 +1826,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.signalLength}
+                  value={currentConfig?.signalLength}
                   onChange={(e) =>
                     updateProperty("signalLength", Number(e.target.value))
                   }
@@ -1845,7 +1845,7 @@ export default function IndicatorPropertyDialog({
               </Form.Label>
               <Col>
                 <Form.Select
-                  value={currentConfig.oscMaType}
+                  value={currentConfig?.oscMaType}
                   onChange={(e) => updateProperty("oscMaType", e.target.value)}
                 >
                   <option value="EMA">EMA</option>
@@ -1865,7 +1865,7 @@ export default function IndicatorPropertyDialog({
               </Form.Label>
               <Col>
                 <Form.Select
-                  value={currentConfig.signalMaType}
+                  value={currentConfig?.signalMaType}
                   onChange={(e) =>
                     updateProperty("signalMaType", e.target.value)
                   }
@@ -1922,7 +1922,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.divisor}
+                  value={currentConfig?.divisor}
                   onChange={(e) =>
                     updateProperty("divisor", Number(e.target.value))
                   }
@@ -1946,7 +1946,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.emaLength}
+                  value={currentConfig?.emaLength}
                   onChange={(e) =>
                     updateProperty("emaLength", Number(e.target.value))
                   }
@@ -1970,7 +1970,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.emaLength}
+                  value={currentConfig?.emaLength}
                   onChange={(e) =>
                     updateProperty("emaLength", Number(e.target.value))
                   }
@@ -1991,7 +1991,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.atrLength}
+                  value={currentConfig?.atrLength}
                   onChange={(e) =>
                     updateProperty("atrLength", Number(e.target.value))
                   }
@@ -2008,7 +2008,7 @@ export default function IndicatorPropertyDialog({
                 <Form.Control
                   type="number"
                   step="0.1"
-                  value={currentConfig.atrCoefficient}
+                  value={currentConfig?.atrCoefficient}
                   onChange={(e) =>
                     updateProperty("atrCoefficient", Number(e.target.value))
                   }
@@ -2024,7 +2024,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.stopLength}
+                  value={currentConfig?.stopLength}
                   onChange={(e) =>
                     updateProperty("stopLength", Number(e.target.value))
                   }
@@ -2055,7 +2055,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Control
                   type="number"
-                  value={currentConfig.signal.length || 255} // default 255 agar undefined ho
+                  value={currentConfig?.signal?.length || 255} // default 255 agar undefined ho
                   onChange={(e) =>
                     updateProperty("signal.length", Number(e.target.value))
                   }
@@ -2076,7 +2076,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Check
                   type="checkbox"
-                  checked={currentConfig.hideOnDailyOrAbove}
+                  checked={currentConfig?.hideOnDailyOrAbove}
                   onChange={(e) =>
                     updateProperty("hideOnDailyOrAbove", e.target.checked)
                   }
@@ -2091,7 +2091,7 @@ export default function IndicatorPropertyDialog({
               </Form.Label>
               <Col>
                 <Form.Select
-                  value={currentConfig.anchorPeriod}
+                  value={currentConfig?.anchorPeriod}
                   onChange={(e) =>
                     updateProperty("anchorPeriod", e.target.value)
                   }
@@ -2126,7 +2126,7 @@ export default function IndicatorPropertyDialog({
               <Col>
                 <Form.Select
                   value={
-                    currentConfig.bandMode === "STD"
+                    currentConfig?.bandMode === "STD"
                       ? "Standard Deviation"
                       : "Percentage"
                   }
@@ -2153,7 +2153,7 @@ export default function IndicatorPropertyDialog({
               <Col className="d-flex align-items-center gap-3">
                 <Form.Check
                   type="checkbox"
-                  checked={currentConfig.band1.enabled}
+                  checked={currentConfig?.band1.enabled}
                   onChange={(e) =>
                     updateNestedDoubleProperty(
                       "band1",
@@ -2164,9 +2164,9 @@ export default function IndicatorPropertyDialog({
                 />
                 <Form.Control
                   type="number"
-                  disabled={!currentConfig.band1.enabled}
+                  disabled={!currentConfig?.band1.enabled}
                   style={{ maxWidth: "120px" }}
-                  value={currentConfig.band1.multiplier}
+                  value={currentConfig?.band1.multiplier}
                   onChange={(e) =>
                     updateNestedDoubleProperty(
                       "band1",
@@ -2186,7 +2186,7 @@ export default function IndicatorPropertyDialog({
               <Col className="d-flex align-items-center gap-3">
                 <Form.Check
                   type="checkbox"
-                  checked={currentConfig.band2.enabled}
+                  checked={currentConfig?.band2.enabled}
                   onChange={(e) =>
                     updateNestedDoubleProperty(
                       "band2",
@@ -2197,9 +2197,9 @@ export default function IndicatorPropertyDialog({
                 />
                 <Form.Control
                   type="number"
-                  disabled={!currentConfig.band2.enabled}
+                  disabled={!currentConfig?.band2.enabled}
                   style={{ maxWidth: "120px" }}
-                  value={currentConfig.band2.multiplier}
+                  value={currentConfig?.band2.multiplier}
                   onChange={(e) =>
                     updateNestedDoubleProperty(
                       "band2",
@@ -2219,7 +2219,7 @@ export default function IndicatorPropertyDialog({
               <Col className="d-flex align-items-center gap-3">
                 <Form.Check
                   type="checkbox"
-                  checked={currentConfig.band3.enabled}
+                  checked={currentConfig?.band3.enabled}
                   onChange={(e) =>
                     updateNestedDoubleProperty(
                       "band3",
@@ -2230,9 +2230,9 @@ export default function IndicatorPropertyDialog({
                 />
                 <Form.Control
                   type="number"
-                  disabled={!currentConfig.band3.enabled}
+                  disabled={!currentConfig?.band3.enabled}
                   style={{ maxWidth: "120px" }}
-                  value={currentConfig.band3.multiplier}
+                  value={currentConfig?.band3.multiplier}
                   onChange={(e) =>
                     updateNestedDoubleProperty(
                       "band3",
@@ -2260,7 +2260,7 @@ export default function IndicatorPropertyDialog({
                 <input
                   type="number"
                   className="form-control"
-                  value={currentConfig.deviation}
+                  value={currentConfig?.deviation}
                   onChange={(e) =>
                     updateProperty("deviation", Number(e.target.value))
                   }
@@ -2277,7 +2277,7 @@ export default function IndicatorPropertyDialog({
                 <input
                   type="number"
                   className="form-control"
-                  value={currentConfig.depth}
+                  value={currentConfig?.depth}
                   onChange={(e) =>
                     updateProperty("depth", Number(e.target.value))
                   }
@@ -2290,7 +2290,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="checkbox"
                 className="form-check-input"
-                checked={currentConfig.extendToLastBar}
+                checked={currentConfig?.extendToLastBar}
                 onChange={(e) =>
                   updateProperty("extendToLastBar", e.target.checked)
                 }
@@ -2303,7 +2303,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="checkbox"
                 className="form-check-input"
-                checked={currentConfig.displayReversalPrice}
+                checked={currentConfig?.displayReversalPrice}
                 onChange={(e) =>
                   updateProperty("displayReversalPrice", e.target.checked)
                 }
@@ -2316,7 +2316,7 @@ export default function IndicatorPropertyDialog({
               <input
                 type="checkbox"
                 className="form-check-input"
-                checked={currentConfig.displayCumulativeVolume}
+                checked={currentConfig?.displayCumulativeVolume}
                 onChange={(e) =>
                   updateProperty("displayCumulativeVolume", e.target.checked)
                 }

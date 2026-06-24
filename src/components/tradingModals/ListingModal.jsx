@@ -191,22 +191,22 @@ export const ListingModal = ({
 
     if (title === "Symbol Search") {
       if (activeTab === "ALL") {
-        if (equity.length === 0) fetchCurrencies();
-        if (futures.length === 0) fetchFutures();
-        // if (options.length === 0) fetchOptions();
+        if (equity?.length === 0) fetchCurrencies();
+        if (futures?.length === 0) fetchFutures();
+        // if (options?.length === 0) fetchOptions();
       }
-      if (activeTab === "EQUITY" && equity.length === 0) {
+      if (activeTab === "EQUITY" && equity?.length === 0) {
         fetchCurrencies();
       }
 
-      if (activeTab === "FUTURES" && futures.length === 0) {
+      if (activeTab === "FUTURES" && futures?.length === 0) {
         fetchFutures();
       }
 
       // if (activeTab === "OPTIONS" && options.length === 0) {
       //   fetchOptions();
       // }
-      if (activeTab === "INDICES" && indices.length === 0) {
+      if (activeTab === "INDICES" && indices?.length === 0) {
         fetchIndices();
       }
     }
@@ -304,22 +304,22 @@ export const ListingModal = ({
   };
 
   const mergedList = [
-    ...equity.map((e) => normalize(e, "EQUITY")),
-    ...futures.map((f) => normalize(f, "FUTURES")),
+    ...equity?.map((e) => normalize(e, "EQUITY")),
+    ...futures?.map((f) => normalize(f, "FUTURES")),
     // ...options.map((o) => normalize(o, "OPTIONS")),
-    ...indices.map((i) => normalize(i, "INDICES")),
+    ...indices?.map((i) => normalize(i, "INDICES")),
   ];
 
   // 🔥 Active List
   const getActiveList = () => {
     if (activeTab === "EQUITY")
-      return equity.map((e) => normalize(e, "EQUITY"));
+      return equity?.map((e) => normalize(e, "EQUITY"));
     if (activeTab === "FUTURES")
-      return futures.map((f) => normalize(f, "FUTURES"));
+      return futures?.map((f) => normalize(f, "FUTURES"));
     // if (activeTab === "OPTIONS")
     //   return options.map((o) => normalize(o, "OPTIONS"));
     if (activeTab === "INDICES")
-      return indices.map((o) => normalize(o, "INDICES"));
+      return indices?.map((o) => normalize(o, "INDICES"));
     return mergedList;
   };
 
@@ -365,7 +365,7 @@ export const ListingModal = ({
                 borderBottom: "1px solid var(--border-color)",
               }}
             >
-              {TABS.map((tab) => (
+              {TABS?.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -443,7 +443,7 @@ export const ListingModal = ({
                 <Spinner />
               ) : filteredList?.length > 0 ? (
                 <ListGroup variant="flush">
-                  {filteredList.map((item, index) => {
+                  {filteredList?.map((item, index) => {
                     // const logo = getStockLogo(item?.userCode);
                     return (
                       <ListGroup.Item
@@ -564,9 +564,9 @@ export const ListingModal = ({
             >
               {loading ? (
                 <Spinner />
-              ) : filteredIndicators.length > 0 ? (
+              ) : filteredIndicators?.length > 0 ? (
                 <ListGroup variant="flush">
-                  {filteredIndicators.map((item, index) => {
+                  {filteredIndicators?.map((item, index) => {
                     return (
                       <ListGroup.Item
                         key={index}

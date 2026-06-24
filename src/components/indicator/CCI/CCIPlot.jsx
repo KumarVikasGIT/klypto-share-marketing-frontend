@@ -181,7 +181,7 @@ export default function CCIPlot({
     const upperData = cciGroup.bbUpperData || [];
     const lowerData = cciGroup.bbLowerData || [];
 
-    if (!upperData.length || !lowerData.length) return;
+    if (!upperData?.length || !lowerData?.length) return;
 
     const style = indicatorStyle?.[id] || indicatorStyle?.CCI;
     const fill = style?.bbFill;
@@ -191,7 +191,7 @@ export default function CCIPlot({
     ctx.translate(leftOffset, topOffset);
 
     ctx.beginPath();
-    for (let i = 0; i < upperData.length; i++) {
+    for (let i = 0; i < upperData?.length; i++) {
       const p = upperData[i];
       const x = paneChart.timeScale().timeToCoordinate(p.time);
       const y = cciGroup.bbUpper.priceToCoordinate(p.value);
@@ -200,10 +200,10 @@ export default function CCIPlot({
       else ctx.lineTo(x, y);
     }
 
-    for (let i = lowerData.length - 1; i >= 0; i--) {
+    for (let i = lowerData?.length - 1; i >= 0; i--) {
       const p = lowerData[i];
-      const x = paneChart.timeScale().timeToCoordinate(p.time);
-      const y = cciGroup.bbLower.priceToCoordinate(p.value);
+      const x = paneChart?.timeScale().timeToCoordinate(p.time);
+      const y = cciGroup?.bbLower?.priceToCoordinate(p.value);
       if (x == null || y == null) continue;
       ctx.lineTo(x, y);
     }
@@ -217,7 +217,7 @@ export default function CCIPlot({
   /* ================= REDRAW HOOKS ================= */
 
   useEffect(() => {
-    const pane = panesRef.current?.[id];
+    const pane = panesRef?.current?.[id];
     const paneChart = pane?.chart;
     if (!paneChart) return;
 
@@ -225,12 +225,12 @@ export default function CCIPlot({
       if (canvasRef.current) drawBBCloud();
     };
 
-    paneChart.timeScale().subscribeVisibleTimeRangeChange(redraw);
-    paneChart.timeScale().subscribeVisibleLogicalRangeChange(redraw);
-    paneChart.subscribeCrosshairMove(redraw);
+    paneChart?.timeScale().subscribeVisibleTimeRangeChange(redraw);
+    paneChart?.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    paneChart?.subscribeCrosshairMove(redraw);
 
     return () => {
-      paneChart.timeScale().unsubscribeVisibleTimeRangeChange(redraw);
+      paneChart?.timeScale().unsubscribeVisibleTimeRangeChange(redraw);
       paneChart.timeScale().unsubscribeVisibleLogicalRangeChange(redraw);
       paneChart.unsubscribeCrosshairMove(redraw);
     };
@@ -239,7 +239,7 @@ export default function CCIPlot({
   /* ================= STYLE UPDATE ================= */
 
   useEffect(() => {
-    const cciGroup = indicatorSeriesRef.current?.[id];
+    const cciGroup = indicatorSeriesRef?.current?.[id];
     if (!cciGroup) return;
 
     const style = indicatorStyle?.[id] || indicatorStyle?.CCI;
@@ -265,16 +265,16 @@ export default function CCIPlot({
         });
     }
 
-    if (canvasRef.current) drawBBCloud();
+    if (canvasRef?.current) drawBBCloud();
   }, [indicatorStyle, result, id]);
 
   /* ================= CLEANUP ================= */
 
   useEffect(() => {
     return () => {
-      if (canvasRef.current) canvasRef.current.remove();
-      canvasRef.current = null;
-      if (indicatorSeriesRef.current?.[id]) {
+      if (canvasRef?.current) canvasRef.current.remove();
+      if (canvasRef) canvasRef.current = null;
+      if (indicatorSeriesRef?.current?.[id]) {
         indicatorSeriesRef.current[id] = null;
       }
     };

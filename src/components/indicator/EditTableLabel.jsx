@@ -37,10 +37,10 @@ export function EditableSelect({ value, options, onChange }) {
           className="position-absolute bg-white border rounded shadow-sm mt-1 w-100"
           style={{ maxHeight: "150px", overflowY: "auto", zIndex: 1000 }}
         >
-          {filteredOptions.length === 0 ? (
+          {filteredOptions?.length === 0 ? (
             <div className="px-2 py-1 text-muted small">No results</div>
           ) : (
-            filteredOptions.map((opt, index) => (
+            filteredOptions?.map((opt, index) => (
               <div
                 key={index}
                 onMouseDown={() => {
@@ -152,15 +152,15 @@ export default function EditableMultiSelect({
   }
 
   function toggleAll() {
-    onChange?.(value.length === filteredOptions.length ? [] : filteredOptions);
+    onChange?.(value?.length === filteredOptions?.length ? [] : filteredOptions);
   }
 
   const allSelected =
-    filteredOptions.length > 0 && value.length === filteredOptions.length;
+    filteredOptions?.length > 0 && value?.length === filteredOptions?.length;
 
   /* ---------------- DISPLAY ---------------- */
   const display =
-    value.length === 0 ? (
+    value?.length === 0 ? (
       <span className="text-secondary">{placeholder}</span>
     ) : (
       <div className="d-flex flex-wrap gap-1">
@@ -258,7 +258,7 @@ export default function EditableMultiSelect({
               />
             ))}
 
-            {filteredOptions.length === 0 && (
+            {filteredOptions?.length === 0 && (
               <div
                 className="px-3 py-3 text-muted small"
                 style={{ gridColumn: "1 / -1" }}
