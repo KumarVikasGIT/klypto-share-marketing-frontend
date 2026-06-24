@@ -340,7 +340,7 @@ export const ListingModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-99 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60">
       <div className="w-full px-5 py-4 max-w-2xl max-h-[85vh] rounded-md bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-color)] shadow-lg flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between">

@@ -180,9 +180,8 @@ export default function IndicatorPropertyDialog({
 }) {
   const labelStyle = {
     display: "inline-block",
-    width: "150px",
+    width: "60%",
     textAlign: "left",
-    marginRight: "1rem",
   };
 
   // activeBarIndicator is now {id, type} — fall back to string for legacy compat
@@ -893,12 +892,423 @@ export default function IndicatorPropertyDialog({
           </>
         );
 
+      case "SUPERSMOOTHER":
+        return (
+          <>
+            {/* Price Smoothing Length */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Price Smoothing Length
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.smoothingLength}
+                  onChange={(e) =>
+                    updateProperty("smoothingLength", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            <hr />
+            <h6 className="mb-3">Moving Average Settings</h6>
+
+            {/* Fast MA */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Fast MA
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.fastLength}
+                  onChange={(e) =>
+                    updateProperty("fastLength", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Slow MA */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Slow MA
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.slowLength}
+                  onChange={(e) =>
+                    updateProperty("slowLength", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Source */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Source
+              </Form.Label>
+              <Col>
+                <Form.Select
+                  value={currentConfig?.source ?? "close"}
+                  onChange={(e) => updateProperty("source", e.target.value)}
+                >
+                  {["Close", "Open", "High", "Low", "HL2", "HLC3", "OHLC4"].map(
+                    (opt) => (
+                      <option key={opt} value={opt.toLowerCase()}>
+                        {opt}
+                      </option>
+                    ),
+                  )}
+                </Form.Select>
+              </Col>
+            </Form.Group>
+
+            <hr />
+            <h6 className="mb-3">Signal Generation</h6>
+
+            {/* ATR Length */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                ATR Length
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.atrLength}
+                  onChange={(e) =>
+                    updateProperty("atrLength", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* ATR Multiplier */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                ATR Multiplier
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.1"
+                  value={currentConfig?.atrMultiplier}
+                  onChange={(e) =>
+                    updateProperty("atrMultiplier", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Signal Sensitivity */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Signal Sensitivity
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.01"
+                  value={currentConfig?.signalSensitivity}
+                  onChange={(e) =>
+                    updateProperty("signalSensitivity", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+          </>
+        );
+
+      case "HEALTHY_BOX":
+        return (
+          <>
+            {/* ATR Length */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                ATR Length
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.atrLength}
+                  onChange={(e) =>
+                    updateProperty("atrLength", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Box Size */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Box Size = ATR x
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.05"
+                  value={currentConfig?.atrMultiplier}
+                  onChange={(e) =>
+                    updateProperty("atrMultiplier", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Minimum Healthy Body Boxes */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Minimum Healthy Body Boxes
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.1"
+                  value={currentConfig?.minBodyBox}
+                  onChange={(e) =>
+                    updateProperty("minBodyBox", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Max Total Wick / Body */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Max Total Wick / Body
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.05"
+                  value={currentConfig?.maxWickBody}
+                  onChange={(e) =>
+                    updateProperty("maxWickBody", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Max Single Wick / Body */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Max Single Wick / Body
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.05"
+                  value={currentConfig?.maxOneWick}
+                  onChange={(e) =>
+                    updateProperty("maxOneWick", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+          </>
+        );
       case "WMA":
         return (
           <BaseSettings
             currentConfig={currentConfig}
             updateProperty={updateProperty}
           />
+        );
+
+      case "HMA60_BOX_DISTANCE":
+        return (
+          <>
+            {/* Hull MA Length */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Hull MA Length
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.hullLength}
+                  onChange={(e) =>
+                    updateProperty("hullLength", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* ATR Length */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                ATR Length
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.atrLength}
+                  onChange={(e) =>
+                    updateProperty("atrLength", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Box Size = ATR x */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Box Size = ATR ×
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.05"
+                  value={currentConfig?.boxAtrMult}
+                  onChange={(e) =>
+                    updateProperty("boxAtrMult", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Show Current Box Values */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Show Current Box Values
+              </Form.Label>
+              <Col>
+                <Form.Check
+                  type="checkbox"
+                  checked={currentConfig?.showTable}
+                  onChange={(e) =>
+                    updateProperty("showTable", e.target.checked)
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Upper Extreme Box Level */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Upper Extreme Box Level
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.1"
+                  value={currentConfig?.upperZone}
+                  onChange={(e) =>
+                    updateProperty("upperZone", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Lower Extreme Box Level */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Lower Extreme Box Level
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="0.1"
+                  value={currentConfig?.lowerZone}
+                  onChange={(e) =>
+                    updateProperty("lowerZone", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+          </>
+        );
+      case "BODY915DNA":
+        return (
+          <>
+            {/* Past 9:15 Candles Lookback */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Past 9:15 Candles Lookback
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  value={currentConfig?.lookback915}
+                  onChange={(e) =>
+                    updateProperty("lookback915", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Average Body = How Many Boxes? */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Average Body = How Many Boxes?
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  step="1"
+                  value={currentConfig?.boxDivisor}
+                  onChange={(e) =>
+                    updateProperty("boxDivisor", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Market Candle Hour */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Market Candle Hour
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={currentConfig?.marketHour}
+                  onChange={(e) =>
+                    updateProperty("marketHour", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Market Candle Minute */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Market Candle Minute
+              </Form.Label>
+              <Col>
+                <Form.Control
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={currentConfig?.marketMinute}
+                  onChange={(e) =>
+                    updateProperty("marketMinute", Number(e.target.value))
+                  }
+                />
+              </Col>
+            </Form.Group>
+
+            {/* Show 9:15 DNA Table */}
+            <Form.Group as={Row} className="mb-3 align-items-center">
+              <Form.Label style={labelStyle} className="mb-0">
+                Show 9:15 DNA Table
+              </Form.Label>
+              <Col>
+                <Form.Check
+                  type="checkbox"
+                  checked={currentConfig?.showTable}
+                  onChange={(e) =>
+                    updateProperty("showTable", e.target.checked)
+                  }
+                />
+              </Col>
+            </Form.Group>
+          </>
         );
 
       case "HMA":

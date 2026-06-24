@@ -108,6 +108,10 @@ import TMAInput from "./TMA/TMAInput";
 import SSLPlot from "./SSL/SSLPlot";
 import MARibbonPlot from "./MARibbon/MARibbonPlot";
 import MARibbonInput from "./MARibbon/MARibbonInput";
+import SuperSmootherPlot from "./SuperSmoother/SUPERSMOOTHERPlot";
+import HealthyBoxPlot from "./HealthyBox/HealthyBoxPlot";
+import BodyDNAPlot from "./Body915DNA/BodyDNAPlot";
+import HMABoxPlot from "./HMA60BOX/HMABoxPlot";
 
 export const indicatorComponents = {
   VWAP: VWAPPlot,
@@ -168,6 +172,10 @@ export const indicatorComponents = {
   TMA: TMAPlot,
   SSL_HYBRID: SSLPlot,
   MA_RIBBON: MARibbonPlot,
+  SUPERSMOOTHER: SuperSmootherPlot,
+  HEALTHY_BOX: HealthyBoxPlot,
+  BODY915DNA: BodyDNAPlot,
+  HMA60_BOX_DISTANCE: HMABoxPlot,
 };
 
 export const indicatorInputs = {

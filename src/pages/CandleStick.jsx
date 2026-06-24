@@ -168,7 +168,7 @@ plot_markers(markers)`,
       const resp = await apiService.get(`${apiUrl}/api/predictResult`);
       console.log("predictResult API Raw Response:", resp);
 
-      const data = Array.isArray(resp) ? resp : resp?.data || [];
+      const data = Array.isArray(resp) ? resp : resp?.signals || [];
       const filtered = data.filter((item) => item.symbol && item.response);
       console.log("Filtered predictResult Data:", filtered);
 
@@ -1147,7 +1147,7 @@ json.dumps(result, default=json_default)
   //  GET PANE INDEX
   // Instance ids look like "RSI_1747xxx_abc12" — extract base type for pane check
   const getBaseTypeFromId = (instanceId) => {
-    const match = instanceId.match(/^([A-Z_]+?)_\d/);
+    const match = instanceId.match(/^([A-Z0-9_]+?)_\d/);
     return match ? match[1] : instanceId;
   };
 
@@ -1179,8 +1179,8 @@ json.dumps(result, default=json_default)
     const series = chartRef.current.addSeries(
       SeriesType,
       {
-        ...options,
         ...(paneIndex !== 0 && { priceScaleId: `pane_${paneIndex}` }),
+        ...options,
       },
       paneIndex,
     );
@@ -2366,7 +2366,7 @@ json.dumps(result, default=json_default)
                             top: "50%",
                             left: "50%",
                             transform: "translate(-50%, -50%)",
-                            zIndex: 1000,
+                            zIndex: 50,
                           }}
                         >
                           <Spinner />
@@ -2379,7 +2379,7 @@ json.dumps(result, default=json_default)
                               top: "50%",
                               left: "50%",
                               transform: "translate(-50%, -50%)",
-                              zIndex: 1000,
+                              zIndex: 50,
                             }}
                           >
                             <Spinner />
