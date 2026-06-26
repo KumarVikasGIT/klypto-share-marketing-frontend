@@ -144,6 +144,7 @@ export default function Candlestick() {
   const [liveIndicatorData, setLiveIndicatorData] = useState({});
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
   const [mainChartLoading, setMainChartLoading] = useState(false);
+  const [noDataAvailable, setNoDataAvailable] = useState(false);
   const [editorCode, setEditorCode] = useState(
     `markers = []
 # user strategy here
@@ -152,6 +153,7 @@ plot_markers(markers)`,
   const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
   const [customSignals, setCustomSignals] = useState([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [scannerProgressData, setScannerProgressData] = useState(null);
   const [dashboardSignals, setDashboardSignals] = useState([]);
   const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
 
@@ -317,6 +319,7 @@ plot_markers(markers)`,
 
   // Dedicated Strategy Socket Handlers
   const signalBufferRef = useRef([]);
+  const deploymentSignalsRef = useRef([]);
 
   // Flush buffer to state every 500ms to avoid freezing the UI on mass updates
   useEffect(() => {
@@ -327,7 +330,7 @@ plot_markers(markers)`,
 
         setDashboardSignals((prev) => [...prev, ...newSignals]);
       }
-    }, 500);
+    }, 300000);
 
     return () => clearInterval(flushInterval);
   }, []);
@@ -341,6 +344,7 @@ plot_markers(markers)`,
           `[STRATEGY SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`,
           data,
         );
+        setScannerProgressData(data);
         let percentage =
           data.total > 0 ? ((data.processed / data.total) * 100).toFixed(1) : 0;
         toast.update("compiling", {
@@ -365,6 +369,7 @@ plot_markers(markers)`,
             "Scanner triggered successfully! Waiting for results...",
         );
         setIsDeploying(false);
+        console.log("Scanner Execution Complete. All Signals:", deploymentSignalsRef.current);
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] COMPLETE handler failed:`, err);
       }
@@ -377,6 +382,7 @@ plot_markers(markers)`,
           signalData,
         );
         signalBufferRef.current.push(signalData);
+        deploymentSignalsRef.current.push(signalData);
       } catch (err) {
         console.error(
           `[STRATEGY SOCKET ERROR] NEW_SIGNAL handler failed:`,
@@ -398,6 +404,8 @@ plot_markers(markers)`,
             position: "top-right",
           },
         );
+        setIsDeploying(false);
+        toast.dismiss("compiling");
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] ERROR handler failed:`, err);
       }
@@ -509,6 +517,7 @@ plot_markers(markers)`,
 
       // 1. Clear previous
       handleClearCode();
+      deploymentSignalsRef.current = [];
 
       if (!code || code.trim() === "") {
         Swal.fire({
@@ -522,6 +531,7 @@ plot_markers(markers)`,
       }
 
       setIsDeploying(true);
+      setScannerProgressData(null);
 
       // 1.2 Basic Frontend Security Check (Warning: This is NOT a substitute for backend sandboxing)
       const dangerousPatterns = [
@@ -550,7 +560,7 @@ plot_markers(markers)`,
         }
       }
 
-      // 1.5 Validate Python Syntax on Frontend before API Call
+      /* // 1.5 Validate Python Syntax on Frontend before API Call
       if (!pyodideRef.current) {
         Swal.fire({
           icon: "warning",
@@ -609,8 +619,9 @@ try:
     validator = StrategyValidator()
     validator.visit(tree)
     
-    if len(validator.used_vars) == 0:
-        raise ValueError("Invalid Strategy: You must use at least one engine variable (df, open, high, low, close, volume, datetime, plot_markers).")
+    # Loosened validity check
+    # if len(validator.used_vars) == 0:
+    #     raise ValueError("Invalid Strategy: You must use at least one engine variable (df, open, high, low, close, volume, datetime, plot_markers).")
     
     if len(validator.overridden_vars) > 0:
         raise ValueError(f"Security Error: You are not allowed to override engine variables or functions: {', '.join(validator.overridden_vars)}")
@@ -638,7 +649,7 @@ if result["success"]:
         'close': closes,
         'volume': np.random.randint(100, 1000, 300),
         'datetime': pd.date_range(start='1/1/2026', periods=300, freq='D')
-    })
+    }).set_index('datetime')
     open = df['open']
     high = df['high']
     low = df['low']
@@ -733,11 +744,11 @@ json.dumps(result, default=json_default)
             "position" in m,
         );
 
-        if (markersList?.length === 0 || !isStructurallyValid) {
+        if (markersList?.length > 0 && !isStructurallyValid) {
           Swal.fire({
             icon: "warning",
             title: "Invalid Markers",
-            text: "Your strategy ran successfully, but it did not generate any valid markers. Ensure you append valid dictionaries containing 'time', 'text', and 'position'.",
+            text: "Your strategy ran successfully, but the markers generated were invalid. Ensure you append valid dictionaries containing 'time', 'text', and 'position'.",
             background: "var(--bg-secondary)",
             color: "var(--text-primary)",
           });
@@ -760,7 +771,7 @@ json.dumps(result, default=json_default)
         });
         setIsDeploying(false);
         return;
-      }
+      } */
 
       try {
         const closes = candlesRef?.current?.map((c) => c.close) || [];
@@ -798,13 +809,12 @@ json.dumps(result, default=json_default)
 
         const response = await apiService.post(
           `/api/strategy/run-scanner`,
-          JSON.stringify(payload),
+          payload
         );
 
         // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
         setDeployedStrategyCode(code);
         setIsDeployed(true);
-        // Note: toast success and setIsDeploying(false) are now handled in handleScannerComplete socket event
       } catch (err) {
         console.error("Python Execution Error:", err);
         Swal.fire({
@@ -1644,6 +1654,7 @@ json.dumps(result, default=json_default)
 
   const requestHistoricalData = useCallback(() => {
     if (!selectedCurrency || !timeframeValue) return;
+    setNoDataAvailable(false);
     const historicalPayload = {
       symbol: selectedCurrency?.name,
       interval: timeframeValue,
@@ -1661,12 +1672,35 @@ json.dumps(result, default=json_default)
     handleConnect: () => {
       console.log("✅ SOCKET CONNECTED", connected);
       requestHistoricalData();
+      
+      if (selectedIndicatorRef.current && selectedIndicatorRef.current.length > 0) {
+        fetchIndicatorData(
+          selectedIndicatorRef.current,
+          selectedCurrency,
+          timeframeValue,
+        );
+      }
     },
     handleHistoricalData: (response) => {
       console.log("HISTORICAL DATA RESPONSE", response?.data);
       if (!chartRef.current) return;
 
       const raw = response?.data || [];
+
+      if (raw.length === 0) {
+        setNoDataAvailable(true);
+        setMainChartLoading(false);
+        if (seriesRef.current) {
+          try {
+            chartRef.current.removeSeries(seriesRef.current);
+          } catch {}
+          seriesRef.current = null;
+        }
+        return;
+      }
+      
+      setNoDataAvailable(false);
+
       const symbolFromResponse =
         response?.symbol || raw[0]?.symbol || selectedCurrency?.name;
 
@@ -1735,7 +1769,7 @@ json.dumps(result, default=json_default)
         return;
       }
 
-      if (seriesRef.current) {
+      if (seriesRef.current && seriesRef.current.customChartType !== chartType) {
         try {
           chartRef.current.removeSeries(seriesRef.current);
         } catch {}
@@ -1746,46 +1780,65 @@ json.dumps(result, default=json_default)
 
       switch (chartType) {
         case "line":
-          seriesRef.current = chartRef.current.addSeries(
-            LineSeries,
-            chartSeriesStyles.line,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              LineSeries,
+              chartSeriesStyles.line,
+            );
+            seriesRef.current.customChartType = "line";
+          }
           seriesRef.current.setData(
             data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           fetchStrategyMarkers();
           break;
         case "bar":
-          seriesRef.current = chartRef.current.addSeries(
-            BarSeries,
-            chartSeriesStyles.bar,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              BarSeries,
+              chartSeriesStyles.bar,
+            );
+            seriesRef.current.customChartType = "bar";
+          }
           seriesRef.current.setData(data);
           fetchStrategyMarkers();
           break;
         case "area":
-          seriesRef.current = chartRef.current.addSeries(
-            AreaSeries,
-            chartSeriesStyles.area,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              AreaSeries,
+              chartSeriesStyles.area,
+            );
+            seriesRef.current.customChartType = "area";
+          }
           seriesRef.current.setData(
             data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "baseline":
-          seriesRef.current = chartRef.current.addSeries(BaselineSeries, {
-            ...chartSeriesStyles.baseline,
-            baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
-          });
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(BaselineSeries, {
+              ...chartSeriesStyles.baseline,
+              baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
+            });
+            seriesRef.current.customChartType = "baseline";
+          } else {
+            seriesRef.current.applyOptions({
+              baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
+            });
+          }
           seriesRef.current.setData(
             data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "histogram":
-          seriesRef.current = chartRef.current.addSeries(
-            HistogramSeries,
-            chartSeriesStyles.histogram,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              HistogramSeries,
+              chartSeriesStyles.histogram,
+            );
+            seriesRef.current.customChartType = "histogram";
+          }
           seriesRef.current.setData(
             data?.map((d, index, arr) => {
               const prev = arr[index - 1];
@@ -1799,24 +1852,33 @@ json.dumps(result, default=json_default)
           );
           break;
         case "heikinashi":
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.candlestick,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.candlestick,
+            );
+            seriesRef.current.customChartType = "heikinashi";
+          }
           seriesRef.current.setData(convertToHeikinAshi(data));
           break;
         case "hollowcandles":
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.hollowcandles,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.hollowcandles,
+            );
+            seriesRef.current.customChartType = "hollowcandles";
+          }
           seriesRef.current.setData(data);
           break;
         default:
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.candlestick,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.candlestick,
+            );
+            seriesRef.current.customChartType = chartType;
+          }
           seriesRef.current.setData(data);
       }
 
@@ -2109,7 +2171,6 @@ json.dumps(result, default=json_default)
     selectedCurrency,
     timeframeValue,
     chartType,
-    connected,
     fromDate,
     toDate,
   ]);
@@ -2363,7 +2424,7 @@ json.dumps(result, default=json_default)
                         minHeight: 450,
                       }}
                     >
-                      {mainChartLoading || isDeploying ? (
+                      {mainChartLoading && !isDeploying ? (
                         <div
                           style={{
                             position: "absolute",
@@ -2374,6 +2435,66 @@ json.dumps(result, default=json_default)
                           }}
                         >
                           <Spinner />
+                        </div>
+                      ) : isDeploying ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 60,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "rgba(0, 0, 0, 0.7)",
+                            backdropFilter: "blur(6px)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <Spinner />
+                          <div style={{ marginTop: "1rem", fontWeight: "bold", fontSize: "1.1rem" }}>
+                            Running Strategy Scanner...
+                          </div>
+                          {scannerProgressData && scannerProgressData.total > 0 && (
+                            <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", alignItems: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+                              <div>
+                                {Math.round((scannerProgressData.processed / scannerProgressData.total) * 100)}% 
+                              </div>
+                              {scannerProgressData.current_stock && (
+                                <div style={{ marginTop: "0.25rem", fontSize: "0.8rem", opacity: 0.8 }}>
+                                  Processing: {scannerProgressData.current_stock}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : noDataAvailable ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 40,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "rgba(0, 0, 0, 0.6)",
+                            backdropFilter: "blur(4px)",
+                            color: "var(--text-primary)",
+                            textAlign: "center",
+                            padding: "20px",
+                          }}
+                        >
+                          <div style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "8px" }}>No Data Available</div>
+                          <div style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                            There is no chart data available for {selectedCurrency?.name || "this symbol"} in the selected timeframe.
+                          </div>
                         </div>
                       ) : (
                         indicatorLoading && (

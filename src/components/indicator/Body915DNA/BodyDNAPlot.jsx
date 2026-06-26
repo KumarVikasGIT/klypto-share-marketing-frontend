@@ -40,7 +40,7 @@ export default function BodyDNAPlot({
       priceLineVisible: false,
     });
 
-    bodySeries.setData(result.data.directionalBodyBoxes);
+    bodySeries.setData(result.data.directionalBodyBoxes || []);
     groupedSeries.directionalBodyBoxes = bodySeries;
 
     // ===========================
@@ -77,7 +77,7 @@ export default function BodyDNAPlot({
     });
 
     zeroLine.setData(
-      result.data.directionalBodyBoxes.map((x) => ({
+      (result.data.directionalBodyBoxes || []).map((x) => ({
         time: x.time,
         value: 0,
       }))
