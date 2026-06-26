@@ -31,13 +31,13 @@ export default function BBInput(
         value: Number(d.basis),
       })) ?? [];
 
-  group.upper?.setData(upper);
-  group.lower?.setData(lower);
-  group.basis?.setData(basis);
+  group?.upper?.setData(upper);
+  group?.lower?.setData(lower);
+  group?.basis?.setData(basis);
 
   latestIndicatorValuesRef.current[instanceId || "BB"] = {
-    upper: upper[upper.length - 1]?.value ?? null,
-    lower: lower[lower.length - 1]?.value ?? null,
-    basis: basis[basis.length - 1]?.value ?? null,
+    upper: upper[upper?.length - 1]?.value ?? null,
+    lower: lower[lower?.length - 1]?.value ?? null,
+    basis: basis[basis?.length - 1]?.value ?? null,
   };
 }

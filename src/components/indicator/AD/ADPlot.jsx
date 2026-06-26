@@ -42,22 +42,22 @@ export default function ADPlot({
       adData,
     };
 
-    console.log("✅ AD plotted successfully", adData.length);
+    console.log("✅ AD plotted successfully", adData?.length);
   }, [result]);
 
   // ================= STYLE UPDATE =================
   useEffect(() => {
-    const g = indicatorSeriesRef.current?.AD;
+    const g = indicatorSeriesRef?.current?.AD;
     if (!g) return;
 
     const style = indicatorStyle?.AD?.ad;
     if (!style) return;
 
     g.ad?.applyOptions({
-      color: style.color,
-      lineWidth: style.width,
-      lineStyle: style.lineStyle,
-      visible: style.visible,
+      color: style?.color,
+      lineWidth: style?.width,
+      lineStyle: style?.lineStyle,
+      visible: style?.visible,
     });
   }, [indicatorStyle?.AD]);
 

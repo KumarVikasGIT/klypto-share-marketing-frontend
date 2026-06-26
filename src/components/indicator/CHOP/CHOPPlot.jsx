@@ -28,14 +28,14 @@ export default function CHOPPlot({
     const grouped = {};
 
     const chopData = result.data.chopLine ?? [];
-    if (!chopData.length) return;
+    if (!chopData?.length) return;
 
     const upper = indicatorStyle?.CHOP?.upper?.value ?? 61.8;
     const middle = indicatorStyle?.CHOP?.middle?.value ?? 50;
     const lower = indicatorStyle?.CHOP?.lower?.value ?? 38.2;
 
     const makeLevel = (v) =>
-      chopData.map((p) => ({
+      chopData?.map((p) => ({
         time: p.time,
         value: v,
       }));
@@ -52,7 +52,7 @@ export default function CHOPPlot({
       lastValueVisible: true,
     });
 
-    chopSeries.setData(chopData);
+    chopSeries?.setData(chopData);
 
     grouped.chopLine = chopSeries;
 
@@ -132,11 +132,11 @@ export default function CHOPPlot({
 
   useEffect(() => {
 
-    const group = indicatorSeriesRef.current?.CHOP;
+    const group = indicatorSeriesRef?.current?.CHOP;
     if (!group) return;
 
     const chopData = group.chopData ?? [];
-    if (!chopData.length) return;
+    if (!chopData?.length) return;
 
     const upper = indicatorStyle?.CHOP?.upper?.value ?? 61.8;
     const middle = indicatorStyle?.CHOP?.middle?.value ?? 50;

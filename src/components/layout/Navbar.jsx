@@ -372,7 +372,7 @@ const Navbar = ({ setSelectedCurrency, predictCount = 0 }) => {
               >
                 Loading…
               </div>
-            ) : filteredStocks.length === 0 ? (
+            ) : filteredStocks?.length === 0 ? (
               <div
                 style={{
                   padding: "16px",

@@ -13,13 +13,15 @@ export default function ATRInput(
       value: Number(d.atr),
     }));
 
-  const series = indicatorSeriesRef.current?.[instanceId || "ATR"];
+  const series = indicatorSeriesRef?.current?.[instanceId || "ATR"];
   if (!series) return;
 
   series.atr?.setData(atrData);
 
-  latestIndicatorValuesRef.current[instanceId || "ATR"] = {
-    atr: atrData[atrData.length - 1]?.value,
-  };
+  if (latestIndicatorValuesRef?.current) {
+    latestIndicatorValuesRef.current[instanceId || "ATR"] = {
+      atr: atrData[atrData?.length - 1]?.value,
+    };
+  }
 
 }

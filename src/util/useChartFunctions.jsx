@@ -634,6 +634,116 @@ export default function useChartFunctions({
 
         break;
       }
+
+      case "SUPERSMOOTHER": {
+        const oscillator = result?.data?.oscillator ?? [];
+        const signalLine = result?.data?.signalLine ?? [];
+        const histogram = result?.data?.histogram ?? [];
+        const buySignals = result?.data?.buySignals ?? [];
+        const sellSignals = result?.data?.sellSignals ?? [];
+        const strongBuySignals = result?.data?.strongBuySignals ?? [];
+        const strongSellSignals = result?.data?.strongSellSignals ?? [];
+
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          oscillator: oscillator[oscillator.length - 1]?.value ?? null,
+          signalLine: signalLine[signalLine.length - 1]?.value ?? null,
+          histogram: histogram[histogram.length - 1]?.value ?? null,
+          bullishSignal: buySignals.length > 0,
+          bearishSignal: sellSignals.length > 0,
+          strongBullishSignal: strongBuySignals.length > 0,
+          strongBearishSignal: strongSellSignals.length > 0,
+        };
+
+        break;
+      }
+
+      case "HEALTHY_BOX": {
+        const directionalScore = result?.data?.directionalScore ?? [];
+        const bodyBoxes = result?.data?.bodyBoxes ?? [];
+        const totalWickBoxes = result?.data?.totalWickBoxes ?? [];
+
+        const bullSignals = result?.data?.bullSignals ?? [];
+        const bearSignals = result?.data?.bearSignals ?? [];
+
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          directionalScore:
+            directionalScore[directionalScore.length - 1]?.value ?? null,
+
+          bodyBoxes: bodyBoxes[bodyBoxes.length - 1]?.value ?? null,
+
+          totalWickBoxes:
+            totalWickBoxes[totalWickBoxes.length - 1]?.value ?? null,
+
+          bull: bullSignals.length > 0,
+
+          bear: bearSignals.length > 0,
+        };
+
+        break;
+      }
+      case "BODY915DNA": {
+        const directionalBodyBoxes = result?.data?.directionalBodyBoxes ?? [];
+        const avgBoxes = result?.data?.avgBoxes ?? [];
+        const maxBoxes = result?.data?.maxBoxes ?? [];
+        const minBoxes = result?.data?.minBoxes ?? [];
+        const bodyPercentile = result?.data?.bodyPercentile ?? [];
+        const expansionScore = result?.data?.expansionScore ?? [];
+        const zScore = result?.data?.zScore ?? [];
+        const bullSignals = result?.data?.bullSignals ?? [];
+        const bearSignals = result?.data?.bearSignals ?? [];
+        const monsterSignals = result?.data?.monsterSignals ?? [];
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          directionalBodyBoxes:
+            directionalBodyBoxes[directionalBodyBoxes.length - 1]?.value ??
+            null,
+          avgBoxes: avgBoxes[avgBoxes.length - 1]?.value ?? null,
+          maxBoxes: maxBoxes[maxBoxes.length - 1]?.value ?? null,
+          minBoxes: minBoxes[minBoxes.length - 1]?.value ?? null,
+          bodyPercentile:
+            bodyPercentile[bodyPercentile.length - 1]?.value ?? null,
+          expansionScore:
+            expansionScore[expansionScore.length - 1]?.value ?? null,
+          zScore: zScore[zScore.length - 1]?.value ?? null,
+          bullSignal: bullSignals.length > 0,
+          bearSignal: bearSignals.length > 0,
+          monsterSignal: monsterSignals.length > 0,
+        };
+
+        break;
+      }
+
+      case "HMA60_BOX_DISTANCE": {
+        const hma60 = result?.data?.hma60 ?? [];
+        const closeToHmaBoxes = result?.data?.closeToHmaBoxes ?? [];
+        const highToHmaBoxes = result?.data?.highToHmaBoxes ?? [];
+        const lowToHmaBoxes = result?.data?.lowToHmaBoxes ?? [];
+        const upperZone = result?.data?.upperZone ?? [];
+        const lowerZone = result?.data?.lowerZone ?? [];
+        const upperSignals = result?.data?.upperSignals ?? [];
+        const lowerSignals = result?.data?.lowerSignals ?? [];
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          hma60: hma60[hma60.length - 1]?.value ?? null,
+          closeToHmaBoxes:
+            closeToHmaBoxes[closeToHmaBoxes.length - 1]?.value ?? null,
+          highToHmaBoxes:
+            highToHmaBoxes[highToHmaBoxes.length - 1]?.value ?? null,
+          lowToHmaBoxes: lowToHmaBoxes[lowToHmaBoxes.length - 1]?.value ?? null,
+          upperZone: upperZone[upperZone.length - 1]?.value ?? null,
+          lowerZone: lowerZone[lowerZone.length - 1]?.value ?? null,
+          upperExtreme: upperSignals.length > 0,
+          lowerExtreme: lowerSignals.length > 0,
+        };
+
+        break;
+      }
       default:
         indicatorDataRef.current[id] = { result, rows };
         break;
@@ -1988,6 +2098,269 @@ async function fetchDataForIndicators(
                 })) ?? [],
           },
         };
+
+      case "SUPERSMOOTHER": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            oscillator: rows
+              .filter((d) => d?.oscillator != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+                color: d.oscillatorColor || undefined,
+              })),
+
+            signalLine: rows
+              .filter((d) => d?.signalLine != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.signalLine),
+                color: d.signalColor || undefined,
+              })),
+
+            histogram: rows
+              .filter((d) => d?.histogram != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.histogram),
+                color: d.histogramColor,
+              })),
+
+            buySignals: rows
+              .filter((d) => d?.bullishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+
+            sellSignals: rows
+              .filter((d) => d?.bearishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+
+            strongBuySignals: rows
+              .filter((d) => d?.strongBullishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+
+            strongSellSignals: rows
+              .filter((d) => d?.strongBearishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+          },
+        };
+      }
+
+      case "HEALTHY_BOX": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            directionalScore: rows
+              .filter((d) => d?.directionalScore != null)
+              .map((d) => {
+                let color = "rgba(128,128,128,1)"; // gray
+                if (d.healthySignal || d.healthy) {
+                  color =
+                    d.bullSignal || d.bull
+                      ? "rgba(0,255,0,1)"
+                      : "rgba(255,0,0,1)";
+                }
+                return {
+                  time: Number(d.time) + IST_OFFSET,
+                  value: Number(d.directionalScore),
+                  color,
+                };
+              }),
+
+            bodyBoxes: rows
+              .filter((d) => d?.bodyBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.bodyBoxes),
+              })),
+
+            totalWickBoxes: rows
+              .filter((d) => d?.totalWickBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.totalWickBoxes),
+              })),
+
+            bullSignals: rows
+              .filter((d) => d?.bullSignal || d?.bull)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalScore || 0),
+              })),
+
+            bearSignals: rows
+              .filter((d) => d?.bearSignal || d?.bear)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalScore || 0),
+              })),
+          },
+        };
+      }
+
+      case "BODY915DNA": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            directionalBodyBoxes: rows
+              .filter((d) => d?.directionalBodyBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+
+            avgBoxes: rows
+              .filter((d) => d?.avgBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.avgBoxes),
+              })),
+
+            maxBoxes: rows
+              .filter((d) => d?.maxBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.maxBoxes),
+              })),
+
+            minBoxes: rows
+              .filter((d) => d?.minBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.minBoxes),
+              })),
+
+            bodyPercentile: rows
+              .filter((d) => d?.bodyPercentile != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.bodyPercentile),
+              })),
+
+            expansionScore: rows
+              .filter((d) => d?.expansionScore != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.expansionScore),
+              })),
+
+            zScore: rows
+              .filter((d) => d?.zScore != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.zScore),
+              })),
+
+            bullSignals: rows
+              .filter((d) => d?.healthy915 && d?.bull915)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+
+            bearSignals: rows
+              .filter((d) => d?.healthy915 && d?.bear915)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+
+            monsterSignals: rows
+              .filter((d) => d?.monsterBody)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+          },
+        };
+      }
+
+      case "HMA60_BOX_DISTANCE": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            hma60: rows
+              .filter((d) => d?.hma60 != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.hma60),
+              })),
+
+            closeToHmaBoxes: rows
+              .filter((d) => d?.closeToHmaBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.closeToHmaBoxes),
+              })),
+
+            highToHmaBoxes: rows
+              .filter((d) => d?.highToHmaBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.highToHmaBoxes),
+              })),
+
+            lowToHmaBoxes: rows
+              .filter((d) => d?.lowToHmaBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.lowToHmaBoxes),
+              })),
+
+            upperZone: rows.map((d) => ({
+              time: Number(d.time) + IST_OFFSET,
+              value: Number(d.upperZone),
+            })),
+
+            lowerZone: rows.map((d) => ({
+              time: Number(d.time) + IST_OFFSET,
+              value: Number(d.lowerZone),
+            })),
+
+            upperSignals: rows
+              .filter((d) => d?.upperExtreme)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.closeToHmaBoxes),
+              })),
+
+            lowerSignals: rows
+              .filter((d) => d?.lowerExtreme)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.closeToHmaBoxes),
+              })),
+
+            bgColors: rows
+              .filter((d) => d?.bgColor)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                color: d.bgColor,
+                value: 1,
+              })),
+          },
+        };
+      }
 
       default:
         return {

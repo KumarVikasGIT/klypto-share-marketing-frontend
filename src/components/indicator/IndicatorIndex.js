@@ -108,6 +108,14 @@ import TMAInput from "./TMA/TMAInput";
 import SSLPlot from "./SSL/SSLPlot";
 import MARibbonPlot from "./MARibbon/MARibbonPlot";
 import MARibbonInput from "./MARibbon/MARibbonInput";
+import SuperSmootherPlot from "./SuperSmoother/SUPERSMOOTHERPlot";
+import HealthyBoxPlot from "./HealthyBox/HealthyBoxPlot";
+import BodyDNAPlot from "./Body915DNA/BodyDNAPlot";
+import HMABoxPlot from "./HMA60BOX/HMABoxPlot";
+import SUPERSMOOTHERInput from "./SuperSmoother/SUPERSMOOTHERInput";
+import HealthyBoxInput from "./HealthyBox/HealthyBoxInput";
+import BodyDNAInput from "./Body915DNA/BodyDNAInput";
+import HMABoxInput from "./HMA60BOX/HMABoxInput";
 
 export const indicatorComponents = {
   VWAP: VWAPPlot,
@@ -168,6 +176,10 @@ export const indicatorComponents = {
   TMA: TMAPlot,
   SSL_HYBRID: SSLPlot,
   MA_RIBBON: MARibbonPlot,
+  SUPERSMOOTHER: SuperSmootherPlot,
+  HEALTHY_BOX: HealthyBoxPlot,
+  BODY915DNA: BodyDNAPlot,
+  HMA60_BOX_DISTANCE: HMABoxPlot,
 };
 
 export const indicatorInputs = {
@@ -227,6 +239,10 @@ export const indicatorInputs = {
   VWMA: VWMAInput,
   TMA: TMAInput,
   MA_RIBBON: MARibbonInput,
+   SUPERSMOOTHER: SUPERSMOOTHERInput,
+  HEALTHY_BOX: HealthyBoxInput,
+  BODY915DNA: BodyDNAInput,
+  HMA60_BOX_DISTANCE: HMABoxInput,
 };
 
 export function updateIndicatorFromInput(
@@ -245,9 +261,9 @@ export function updateIndicatorFromInput(
 
   const args = [response, indicatorSeriesRef, latestIndicatorValuesRef];
 
-  if (handler.length >= 5) {
+  if (handler?.length >= 5) {
     args.push(maType, instanceId);
-  } else if (handler.length === 4) {
+  } else if (handler?.length === 4) {
     args.push(instanceId);
   }
 

@@ -10,6 +10,7 @@ import {
   createSeriesMarkers,
 } from "lightweight-charts";
 import React from "react";
+import { createPortal } from "react-dom";
 // import IndicatorRuleBuilder from "../components/scanner/IndicatorRuleBuilder";
 import { LuCirclePlus, LuCircleMinus } from "react-icons/lu";
 import { RiResetRightLine } from "react-icons/ri";
@@ -143,6 +144,7 @@ export default function Candlestick() {
   const [liveIndicatorData, setLiveIndicatorData] = useState({});
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
   const [mainChartLoading, setMainChartLoading] = useState(false);
+  const [noDataAvailable, setNoDataAvailable] = useState(false);
   const [editorCode, setEditorCode] = useState(
     `markers = []
 # user strategy here
@@ -151,6 +153,7 @@ plot_markers(markers)`,
   const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
   const [customSignals, setCustomSignals] = useState([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [scannerProgressData, setScannerProgressData] = useState(null);
   const [dashboardSignals, setDashboardSignals] = useState([]);
   const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
 
@@ -168,7 +171,7 @@ plot_markers(markers)`,
       const resp = await apiService.get(`${apiUrl}/api/predictResult`);
       console.log("predictResult API Raw Response:", resp);
 
-      const data = Array.isArray(resp) ? resp : resp?.data || [];
+      const data = Array.isArray(resp) ? resp : resp?.signals || [];
       const filtered = data.filter((item) => item.symbol && item.response);
       console.log("Filtered predictResult Data:", filtered);
 
@@ -316,17 +319,18 @@ plot_markers(markers)`,
 
   // Dedicated Strategy Socket Handlers
   const signalBufferRef = useRef([]);
+  const deploymentSignalsRef = useRef([]);
 
   // Flush buffer to state every 500ms to avoid freezing the UI on mass updates
   useEffect(() => {
     const flushInterval = setInterval(() => {
-      if (signalBufferRef.current.length > 0) {
+      if (signalBufferRef.current?.length > 0) {
         const newSignals = [...signalBufferRef.current];
         signalBufferRef.current = []; // Clear immediately
 
         setDashboardSignals((prev) => [...prev, ...newSignals]);
       }
-    }, 500);
+    }, 300000);
 
     return () => clearInterval(flushInterval);
   }, []);
@@ -340,6 +344,7 @@ plot_markers(markers)`,
           `[STRATEGY SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`,
           data,
         );
+        setScannerProgressData(data);
         let percentage =
           data.total > 0 ? ((data.processed / data.total) * 100).toFixed(1) : 0;
         toast.update("compiling", {
@@ -364,6 +369,7 @@ plot_markers(markers)`,
             "Scanner triggered successfully! Waiting for results...",
         );
         setIsDeploying(false);
+        console.log("Scanner Execution Complete. All Signals:", deploymentSignalsRef.current);
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] COMPLETE handler failed:`, err);
       }
@@ -376,6 +382,7 @@ plot_markers(markers)`,
           signalData,
         );
         signalBufferRef.current.push(signalData);
+        deploymentSignalsRef.current.push(signalData);
       } catch (err) {
         console.error(
           `[STRATEGY SOCKET ERROR] NEW_SIGNAL handler failed:`,
@@ -397,6 +404,8 @@ plot_markers(markers)`,
             position: "top-right",
           },
         );
+        setIsDeploying(false);
+        toast.dismiss("compiling");
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] ERROR handler failed:`, err);
       }
@@ -476,7 +485,7 @@ plot_markers(markers)`,
       console.log("Final markersToSet to plot on chart:", markersToSet);
 
       // Auto-open Alerts panel if we have signals
-      if (newSignals.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
+      if (newSignals?.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
         if (typeof setActiveTab === "function") {
           setActiveTab("Alerts");
         }
@@ -485,7 +494,7 @@ plot_markers(markers)`,
 
     lastDeployedMarkersRef.current = markersToSet;
 
-    if (markersToSet.length > 0 && seriesRef.current) {
+    if (markersToSet?.length > 0 && seriesRef.current) {
       if (!customScriptMarkersRef.current) {
         customScriptMarkersRef.current = createSeriesMarkers(
           seriesRef.current,
@@ -508,6 +517,7 @@ plot_markers(markers)`,
 
       // 1. Clear previous
       handleClearCode();
+      deploymentSignalsRef.current = [];
 
       if (!code || code.trim() === "") {
         Swal.fire({
@@ -520,7 +530,48 @@ plot_markers(markers)`,
         return;
       }
 
+      // Detect if user has only left the default boilerplate template with no real logic
+      const BOILERPLATE_LINES = new Set([
+        "markers = []",
+        "# user strategy here",
+        "plot_markers(markers)",
+      ]);
+      const meaningfulLines = code
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && !BOILERPLATE_LINES.has(l));
+
+      if (meaningfulLines.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "No Strategy Found",
+          text: "Please write your strategy logic before deploying. The editor only contains the default template.",
+          background: "var(--bg-secondary)",
+          color: "var(--text-primary)",
+        });
+        return;
+      }
+
+      // Require that the strategy actually references financial data variables.
+      // A strategy with only print() / comments isn't a valid signal generator.
+      const STRATEGY_VARIABLES = /\b(close|open|high|low|volume|df)\b/;
+      const hasStrategyLogic = meaningfulLines.some((l) =>
+        STRATEGY_VARIABLES.test(l)
+      );
+      if (!hasStrategyLogic) {
+        Swal.fire({
+          icon: "warning",
+          title: "No Strategy Logic Detected",
+          text: "Your code must use at least one market data variable (close, open, high, low, volume, or df) to generate signals.",
+          background: "var(--bg-secondary)",
+          color: "var(--text-primary)",
+        });
+        return;
+      }
+
+
       setIsDeploying(true);
+      setScannerProgressData(null);
 
       // 1.2 Basic Frontend Security Check (Warning: This is NOT a substitute for backend sandboxing)
       const dangerousPatterns = [
@@ -549,7 +600,7 @@ plot_markers(markers)`,
         }
       }
 
-      // 1.5 Validate Python Syntax on Frontend before API Call
+       // 1.5 Validate Python Syntax on Frontend before API Call
       if (!pyodideRef.current) {
         Swal.fire({
           icon: "warning",
@@ -566,131 +617,23 @@ plot_markers(markers)`,
         const sanitizedCode = code.replace(/\u00A0/g, " ");
         pyodideRef.current.globals.set("__code_to_validate", sanitizedCode);
         const resultJson = await pyodideRef.current.runPythonAsync(`
-import pandas as pd
-import numpy as np
-import sys
-import io
-import time
 import ast
 import json
+import sys
 import traceback
 
 result = { "success": True, "error_type": None, "error_message": None, "output": "", "markers": [] }
 
-class StrategyValidator(ast.NodeVisitor):
-    def __init__(self):
-        self.used_vars = set()
-        self.overridden_vars = set()
-        self.forbidden_imports = set()
-        self.reserved = {'df', 'open', 'high', 'low', 'close', 'volume', 'datetime', 'plot_markers'}
-        
-    def visit_Name(self, node):
-        if isinstance(node.ctx, ast.Load) and node.id in self.reserved:
-            self.used_vars.add(node.id)
-        elif isinstance(node.ctx, ast.Store) and node.id in self.reserved:
-            self.overridden_vars.add(node.id)
-        self.generic_visit(node)
-        
-    def visit_Import(self, node):
-        for alias in node.names:
-            if alias.name in ['os', 'sys', 'subprocess']:
-                self.forbidden_imports.add(alias.name)
-        self.generic_visit(node)
-        
-    def visit_ImportFrom(self, node):
-        if node.module in ['os', 'sys', 'subprocess']:
-            self.forbidden_imports.add(node.module)
-        self.generic_visit(node)
-
-# Step 1: AST Validation
 try:
-    tree = ast.parse(__code_to_validate)
-    validator = StrategyValidator()
-    validator.visit(tree)
-    
-    if len(validator.used_vars) == 0:
-        raise ValueError("Invalid Strategy: You must use at least one engine variable (df, open, high, low, close, volume, datetime, plot_markers).")
-    
-    if len(validator.overridden_vars) > 0:
-        raise ValueError(f"Security Error: You are not allowed to override engine variables or functions: {', '.join(validator.overridden_vars)}")
-        
-    if len(validator.forbidden_imports) > 0:
-        raise ValueError(f"Security Error: Forbidden imports detected: {', '.join(validator.forbidden_imports)}")
-except Exception as e:
+    ast.parse(__code_to_validate)
+except SyntaxError as e:
     result["success"] = False
-    result["error_type"] = type(e).__name__
-    if isinstance(e, SyntaxError):
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        result["error_message"] = "".join(tb_lines).strip()
-    else:
-        result["error_message"] = str(e)
+    result["error_type"] = "SyntaxError"
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    result["error_message"] = "".join(tb_lines).strip()
 
-if result["success"]:
-    # Step 2: Setup Globals
-    np.random.seed(42)
-    closes = np.random.normal(0, 1, 300).cumsum() + 100
-    df = pd.DataFrame({
-        'open': closes + np.random.normal(0, 0.5, 300),
-        'high': closes + np.random.uniform(0.1, 1.5, 300),
-        'low': closes - np.random.uniform(0.1, 1.5, 300),
-        'close': closes,
-        'volume': np.random.randint(100, 1000, 300),
-        'datetime': pd.date_range(start='1/1/2026', periods=300, freq='D')
-    })
-    open = df['open']
-    high = df['high']
-    low = df['low']
-    close = df['close']
-    volume = df['volume']
-    datetime = df['datetime']
-    def plot_markers(m): pass
-
-    # Step 3: Execution and Sandboxing
-    old_stdout = sys.stdout
-    new_stdout = io.StringIO()
-    sys.stdout = new_stdout
-
-    sys.setrecursionlimit(100)
-    start_time = time.time()
-
-    def trace_calls(frame, event, arg):
-        if time.time() - start_time > 300.0:
-            raise TimeoutError("Execution timed out (infinite loop or heavy computation detected). Limit is 5 minutes.")
-        return trace_calls
-
-    try:
-        sys.settrace(trace_calls)
-        exec(__code_to_validate)
-        sys.settrace(None)
-        
-        # Extract markers
-        if 'markers' in globals() and isinstance(markers, list):
-            # Only keep dict markers to avoid json.dumps crashing
-            clean_markers = [m for m in markers if isinstance(m, dict)]
-            result["markers"] = clean_markers
-        else:
-            result["markers"] = []
-
-    except Exception as e:
-        sys.settrace(None)
-        result["success"] = False
-        result["error_type"] = type(e).__name__
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        result["error_message"] = "".join(tb_lines[-2:]).strip()
-    finally:
-        sys.stdout = old_stdout
-        result["output"] = new_stdout.getvalue()
-
-def json_default(obj):
-    if hasattr(obj, 'isoformat'): return obj.isoformat()
-    if isinstance(obj, np.integer): return int(obj)
-    if isinstance(obj, np.floating): return float(obj)
-    if isinstance(obj, np.ndarray): return obj.tolist()
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-json.dumps(result, default=json_default)
+json.dumps(result)
         `);
 
         const result = JSON.parse(resultJson);
@@ -732,11 +675,11 @@ json.dumps(result, default=json_default)
             "position" in m,
         );
 
-        if (markersList.length === 0 || !isStructurallyValid) {
+        if (markersList?.length > 0 && !isStructurallyValid) {
           Swal.fire({
             icon: "warning",
             title: "Invalid Markers",
-            text: "Your strategy ran successfully, but it did not generate any valid markers. Ensure you append valid dictionaries containing 'time', 'text', and 'position'.",
+            text: "Your strategy ran successfully, but the markers generated were invalid. Ensure you append valid dictionaries containing 'time', 'text', and 'position'.",
             background: "var(--bg-secondary)",
             color: "var(--text-primary)",
           });
@@ -759,11 +702,11 @@ json.dumps(result, default=json_default)
         });
         setIsDeploying(false);
         return;
-      }
+      } 
 
       try {
         const closes = candlesRef?.current?.map((c) => c.close) || [];
-        if (closes.length < 4) {
+        if (closes?.length < 4) {
           Swal.fire({
             icon: "warning",
             title: "Insufficient Data",
@@ -795,15 +738,20 @@ json.dumps(result, default=json_default)
         console.log("📦 [API] Payload:", payload);
         console.log("👤 Active User ID (from auth):", userId);
 
+        // Guard: do not call the API if code is effectively empty
+        if (!code || !code.trim()) {
+          setIsDeploying(false);
+          return;
+        }
+
         const response = await apiService.post(
           `/api/strategy/run-scanner`,
-          JSON.stringify(payload),
+          payload
         );
 
         // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
         setDeployedStrategyCode(code);
         setIsDeployed(true);
-        // Note: toast success and setIsDeploying(false) are now handled in handleScannerComplete socket event
       } catch (err) {
         console.error("Python Execution Error:", err);
         Swal.fire({
@@ -1005,7 +953,7 @@ json.dumps(result, default=json_default)
         }
       }
 
-      const markers = response.markers
+      const markers = response?.markers
         .map((marker) => ({
           // marker.datetimeUTC is in seconds (UTC) — align with candle times (which use IST_OFFSET)
           time: Number(marker.datetimeUTC) + IST_OFFSET,
@@ -1017,7 +965,7 @@ json.dumps(result, default=json_default)
         }))
         .filter((m) => Number.isFinite(m.time));
 
-      console.log("Strategy markers:", markers.length);
+      console.log("Strategy markers:", markers?.length);
 
       if (!strategyMarkersRef.current) {
         strategyMarkersRef.current = createSeriesMarkers(
@@ -1026,7 +974,7 @@ json.dumps(result, default=json_default)
         );
         seriesRef.current.attachPrimitive(strategyMarkersRef.current);
       } else {
-        strategyMarkersRef.current.setMarkers(markers);
+        strategyMarkersRef?.current.setMarkers(markers);
       }
     } catch (error) {
       console.error("Failed to fetch strategy markers:", error);
@@ -1042,7 +990,7 @@ json.dumps(result, default=json_default)
   }, [selectedCurrency?.name]);
 
   useEffect(() => {
-    if (!selectedIndicator.length) return;
+    if (!selectedIndicator?.length) return;
 
     const isContextChange =
       prevTimeframeRef.current !== timeframeValue ||
@@ -1057,7 +1005,7 @@ json.dumps(result, default=json_default)
         (ind) => !fetchedIndicatorsRef.current.has(ind.id),
       );
 
-      if (indicatorsToFetch.length === 0) return;
+      if (indicatorsToFetch?.length === 0) return;
     } else {
       // 🔥 Reset on timeframe / currency / chartType change
       fetchedIndicatorsRef.current.clear();
@@ -1147,7 +1095,7 @@ json.dumps(result, default=json_default)
   //  GET PANE INDEX
   // Instance ids look like "RSI_1747xxx_abc12" — extract base type for pane check
   const getBaseTypeFromId = (instanceId) => {
-    const match = instanceId.match(/^([A-Z_]+?)_\d/);
+    const match = instanceId.match(/^([A-Z0-9_]+?)_\d/);
     return match ? match[1] : instanceId;
   };
 
@@ -1160,7 +1108,7 @@ json.dumps(result, default=json_default)
       return paneIndexRef.current[indicator];
     }
 
-    const nextPane = Object.keys(paneIndexRef.current).length + 1;
+    const nextPane = Object.keys(paneIndexRef.current)?.length + 1;
     paneIndexRef.current[indicator] = nextPane;
 
     return nextPane;
@@ -1179,8 +1127,8 @@ json.dumps(result, default=json_default)
     const series = chartRef.current.addSeries(
       SeriesType,
       {
-        ...options,
         ...(paneIndex !== 0 && { priceScaleId: `pane_${paneIndex}` }),
+        ...options,
       },
       paneIndex,
     );
@@ -1225,7 +1173,7 @@ json.dumps(result, default=json_default)
     syncingRef.current = true;
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ];
 
     charts.forEach((chart) => {
@@ -1328,7 +1276,8 @@ json.dumps(result, default=json_default)
   // RENDER INDICATOR VALUE
 
   const renderValue = (id, type, value) => {
-    if (value == null) return "--";
+    const emptySymbol = "Ø";
+    if (value == null) return emptySymbol;
 
     const showPercent = type === "AROON"; // Only show % for Aroon
 
@@ -1347,7 +1296,7 @@ json.dumps(result, default=json_default)
       const color = style?.color || "#333";
 
       return (
-        <span style={{ color }}>
+        <span style={{ color }} title={type}>
           {Number(value).toFixed(2)}
           {showPercent ? "%" : ""}
         </span>
@@ -1448,20 +1397,20 @@ json.dumps(result, default=json_default)
             "#333";
 
           return (
-            <span key={key} style={{ marginRight: 8, color }}>
+            <span key={key} style={{ marginRight: 8, color }} title={key}>
               {Number.isFinite(val)
                 ? `${Number(val).toFixed(2)}${showPercent ? "%" : ""}`
-                : "--"}
+                : emptySymbol}
             </span>
           );
         });
     }
 
-    return "--";
+    return emptySymbol;
   };
 
   const renderIndicators = () => {
-    return selectedIndicator.map((ind) => {
+    return selectedIndicator?.map((ind) => {
       const { id, type } = ind;
       const Component = indicatorComponents[type];
       if (!Component) return null;
@@ -1519,6 +1468,8 @@ json.dumps(result, default=json_default)
           panesRef={panesRef}
           indicatorConfigs={indicatorConfigs}
           pane={seriesRef.current}
+          mainSeriesRef={seriesRef}
+          candlesRef={candlesRef}
           timeframeValue={timeframeValue}
           selectedCurrency={selectedCurrency}
         />
@@ -1545,14 +1496,14 @@ json.dumps(result, default=json_default)
         }
       });
 
-      if (Object.keys(indicatorValues).length === 1) {
+      if (Object.keys(indicatorValues)?.length === 1) {
         updates[indicator] = Object.values(indicatorValues)[0];
-      } else if (Object.keys(indicatorValues).length > 0) {
+      } else if (Object.keys(indicatorValues)?.length > 0) {
         updates[indicator] = indicatorValues;
       }
     });
 
-    if (Object.keys(updates).length > 0) {
+    if (Object.keys(updates)?.length > 0) {
       latestIndicatorValuesRef.current = updates;
       setLiveIndicatorData(updates); // <- triggers renderValue
     }
@@ -1564,7 +1515,7 @@ json.dumps(result, default=json_default)
     const handler = (param) => {
       const charts = [
         chartRef.current,
-        ...Object.values(panesRef.current).map((p) => p.chart),
+        ...Object.values(panesRef.current)?.map((p) => p.chart),
       ].filter(Boolean);
 
       // clear crosshair if invalid
@@ -1628,7 +1579,7 @@ json.dumps(result, default=json_default)
       chartRef.current,
       ...Object.values(panesRef.current).map((p) => p.chart),
     ].filter(Boolean);
-    const detachHandlers = charts.map((c) => attachCrosshair(c));
+    const detachHandlers = charts?.map((c) => attachCrosshair(c));
 
     return () => detachHandlers.forEach((d) => d());
   }, [indicatorSeriesRef.current, timeframeValue]);
@@ -1640,6 +1591,7 @@ json.dumps(result, default=json_default)
 
   const requestHistoricalData = useCallback(() => {
     if (!selectedCurrency || !timeframeValue) return;
+    setNoDataAvailable(false);
     const historicalPayload = {
       symbol: selectedCurrency?.name,
       interval: timeframeValue,
@@ -1657,16 +1609,39 @@ json.dumps(result, default=json_default)
     handleConnect: () => {
       console.log("✅ SOCKET CONNECTED", connected);
       requestHistoricalData();
+      
+      if (selectedIndicatorRef.current && selectedIndicatorRef.current.length > 0) {
+        fetchIndicatorData(
+          selectedIndicatorRef.current,
+          selectedCurrency,
+          timeframeValue,
+        );
+      }
     },
     handleHistoricalData: (response) => {
       console.log("HISTORICAL DATA RESPONSE", response?.data);
       if (!chartRef.current) return;
 
       const raw = response?.data || [];
+
+      if (raw.length === 0) {
+        setNoDataAvailable(true);
+        setMainChartLoading(false);
+        if (seriesRef.current) {
+          try {
+            chartRef.current.removeSeries(seriesRef.current);
+          } catch {}
+          seriesRef.current = null;
+        }
+        return;
+      }
+      
+      setNoDataAvailable(false);
+
       const symbolFromResponse =
         response?.symbol || raw[0]?.symbol || selectedCurrency?.name;
 
-      const parsedData = new Array(raw.length);
+      const parsedData = new Array(raw?.length);
       for (let i = 0; i < raw.length; i++) {
         const d = raw[i];
         parsedData[i] = {
@@ -1731,7 +1706,7 @@ json.dumps(result, default=json_default)
         return;
       }
 
-      if (seriesRef.current) {
+      if (seriesRef.current && seriesRef.current.customChartType !== chartType) {
         try {
           chartRef.current.removeSeries(seriesRef.current);
         } catch {}
@@ -1742,48 +1717,67 @@ json.dumps(result, default=json_default)
 
       switch (chartType) {
         case "line":
-          seriesRef.current = chartRef.current.addSeries(
-            LineSeries,
-            chartSeriesStyles.line,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              LineSeries,
+              chartSeriesStyles.line,
+            );
+            seriesRef.current.customChartType = "line";
+          }
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           fetchStrategyMarkers();
           break;
         case "bar":
-          seriesRef.current = chartRef.current.addSeries(
-            BarSeries,
-            chartSeriesStyles.bar,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              BarSeries,
+              chartSeriesStyles.bar,
+            );
+            seriesRef.current.customChartType = "bar";
+          }
           seriesRef.current.setData(data);
           fetchStrategyMarkers();
           break;
         case "area":
-          seriesRef.current = chartRef.current.addSeries(
-            AreaSeries,
-            chartSeriesStyles.area,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              AreaSeries,
+              chartSeriesStyles.area,
+            );
+            seriesRef.current.customChartType = "area";
+          }
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "baseline":
-          seriesRef.current = chartRef.current.addSeries(BaselineSeries, {
-            ...chartSeriesStyles.baseline,
-            baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
-          });
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(BaselineSeries, {
+              ...chartSeriesStyles.baseline,
+              baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
+            });
+            seriesRef.current.customChartType = "baseline";
+          } else {
+            seriesRef.current.applyOptions({
+              baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
+            });
+          }
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "histogram":
-          seriesRef.current = chartRef.current.addSeries(
-            HistogramSeries,
-            chartSeriesStyles.histogram,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              HistogramSeries,
+              chartSeriesStyles.histogram,
+            );
+            seriesRef.current.customChartType = "histogram";
+          }
           seriesRef.current.setData(
-            data.map((d, index, arr) => {
+            data?.map((d, index, arr) => {
               const prev = arr[index - 1];
               const isUp = prev ? d.close >= prev.close : true;
               return {
@@ -1795,24 +1789,33 @@ json.dumps(result, default=json_default)
           );
           break;
         case "heikinashi":
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.candlestick,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.candlestick,
+            );
+            seriesRef.current.customChartType = "heikinashi";
+          }
           seriesRef.current.setData(convertToHeikinAshi(data));
           break;
         case "hollowcandles":
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.hollowcandles,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.hollowcandles,
+            );
+            seriesRef.current.customChartType = "hollowcandles";
+          }
           seriesRef.current.setData(data);
           break;
         default:
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.candlestick,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.candlestick,
+            );
+            seriesRef.current.customChartType = chartType;
+          }
           seriesRef.current.setData(data);
       }
 
@@ -1820,7 +1823,7 @@ json.dumps(result, default=json_default)
 
       if (
         lastDeployedMarkersRef.current &&
-        lastDeployedMarkersRef.current.length > 0 &&
+        lastDeployedMarkersRef.current?.length > 0 &&
         seriesRef.current
       ) {
         if (!customScriptMarkersRef.current) {
@@ -1836,10 +1839,10 @@ json.dumps(result, default=json_default)
         }
       }
 
-      currentCandleRef.current = data[data.length - 1];
+      currentCandleRef.current = data[data?.length - 1];
 
       setTimeout(() => {
-        const last = data[data.length - 1];
+        const last = data[data?.length - 1];
         if (last && ohlcvDisplayRef.current) {
           const el = ohlcvDisplayRef.current;
           const isUp = last.close >= last.open;
@@ -2105,7 +2108,6 @@ json.dumps(result, default=json_default)
     selectedCurrency,
     timeframeValue,
     chartType,
-    connected,
     fromDate,
     toDate,
   ]);
@@ -2113,7 +2115,7 @@ json.dumps(result, default=json_default)
   const zoomCharts = (delta) => {
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ].filter(Boolean);
     charts.forEach((chart) => {
       const range = chart.timeScale().getVisibleLogicalRange();
@@ -2130,7 +2132,7 @@ json.dumps(result, default=json_default)
   const resetZoom = () => {
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ].filter(Boolean);
     charts.forEach((chart) => chart.timeScale().fitContent());
   };
@@ -2139,7 +2141,7 @@ json.dumps(result, default=json_default)
     <>
       <Navbar
         setSelectedCurrency={setSelectedCurrency}
-        predictCount={predictResultData.length}
+        predictCount={predictResultData?.length}
       />
       <section
         className="trading-view-wrapper overflow-x-hidden"
@@ -2359,17 +2361,77 @@ json.dumps(result, default=json_default)
                         minHeight: 450,
                       }}
                     >
-                      {mainChartLoading || isDeploying ? (
+                      {mainChartLoading && !isDeploying ? (
                         <div
                           style={{
                             position: "absolute",
                             top: "50%",
                             left: "50%",
                             transform: "translate(-50%, -50%)",
-                            zIndex: 1000,
+                            zIndex: 50,
                           }}
                         >
                           <Spinner />
+                        </div>
+                      ) : isDeploying ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 60,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "rgba(0, 0, 0, 0.7)",
+                            backdropFilter: "blur(6px)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <Spinner />
+                          <div style={{ marginTop: "1rem", fontWeight: "bold", fontSize: "1.1rem" }}>
+                            Running Strategy Scanner...
+                          </div>
+                          {scannerProgressData && scannerProgressData.total > 0 && (
+                            <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", alignItems: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+                              <div>
+                                {Math.round((scannerProgressData.processed / scannerProgressData.total) * 100)}% 
+                              </div>
+                              {scannerProgressData.current_stock && (
+                                <div style={{ marginTop: "0.25rem", fontSize: "0.8rem", opacity: 0.8 }}>
+                                  Processing: {scannerProgressData.current_stock}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : noDataAvailable ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 40,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "rgba(0, 0, 0, 0.6)",
+                            backdropFilter: "blur(4px)",
+                            color: "var(--text-primary)",
+                            textAlign: "center",
+                            padding: "20px",
+                          }}
+                        >
+                          <div style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "8px" }}>No Data Available</div>
+                          <div style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                            There is no chart data available for {selectedCurrency?.name || "this symbol"} in the selected timeframe.
+                          </div>
                         </div>
                       ) : (
                         indicatorLoading && (
@@ -2379,7 +2441,7 @@ json.dumps(result, default=json_default)
                               top: "50%",
                               left: "50%",
                               transform: "translate(-50%, -50%)",
-                              zIndex: 1000,
+                              zIndex: 50,
                             }}
                           >
                             <Spinner />
@@ -2646,6 +2708,99 @@ json.dumps(result, default=json_default)
                       {/* -----------------INDICATOR BAR------------------- */}
 
                       {selectedIndicator?.length > 0 && (
+                        <>
+                          {/* Main Chart Indicators */}
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 90,
+                              left: 8,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 4,
+                              zIndex: 50,
+                            }}
+                          >
+                            {selectedIndicator
+                              .filter((ind) => getPaneIndex(ind.id) === 0)
+                              .map((ind) => {
+                                const { id, type } = ind;
+                                const value = liveIndicatorData[id];
+                                return (
+                                  <IndicatorBar
+                                    key={id}
+                                    indicator={id}
+                                    type={type}
+                                    timeframeValue={timeframeValue}
+                                    value={value}
+                                    renderValue={(indId, val) => renderValue(indId, type, val)}
+                                    indicatorVisibility={indicatorVisibility}
+                                    toggleIndicatorVisibility={toggleIndicatorVisibility}
+                                    removeIndicator={removeIndicator}
+                                    setActiveBarIndicator={() => setActiveBarIndicator({ id, type })}
+                                    setIndicatorProperty={setIndicatorProperty}
+                                    setActiveSourceIndicator={() => setActiveSourceIndicator(type)}
+                                    setShowSourcePanel={setShowSourcePanel}
+                                    indicatorConfigDefault={indicatorConfigDefault}
+                                    indicatorConfigs={indicatorConfigs}
+                                  />
+                                );
+                              })}
+                          </div>
+
+                          {/* Pane Indicators (Portals) */}
+                          {selectedIndicator
+                            .filter((ind) => getPaneIndex(ind.id) !== 0)
+                            .map((ind) => {
+                              const { id, type } = ind;
+                              const value = liveIndicatorData[id];
+                              const paneDiv = panesRef.current[id]?.pane?.getHTMLElement();
+                              
+                              if (!paneDiv) return null;
+                              const portalTarget = paneDiv.tagName?.toLowerCase() === 'tr' 
+                                ? (paneDiv.querySelector('td') || paneDiv) 
+                                : paneDiv;
+
+                              portalTarget.style.position = "relative"; // Ensure the pane is a positioning context
+
+                              return createPortal(
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    top: 5,
+                                    left: 8,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 4,
+                                    zIndex: 50,
+                                  }}
+                                >
+                                  <IndicatorBar
+                                    indicator={id}
+                                    type={type}
+                                    timeframeValue={timeframeValue}
+                                    value={value}
+                                    renderValue={(indId, val) => renderValue(indId, type, val)}
+                                    indicatorVisibility={indicatorVisibility}
+                                    toggleIndicatorVisibility={toggleIndicatorVisibility}
+                                    removeIndicator={removeIndicator}
+                                    setActiveBarIndicator={() => setActiveBarIndicator({ id, type })}
+                                    setIndicatorProperty={setIndicatorProperty}
+                                    setActiveSourceIndicator={() => setActiveSourceIndicator(type)}
+                                    setShowSourcePanel={setShowSourcePanel}
+                                    indicatorConfigDefault={indicatorConfigDefault}
+                                    indicatorConfigs={indicatorConfigs}
+                                  />
+                                </div>,
+                                portalTarget
+                              );
+                            })}
+                        </>
+                      )}
+
+                      {/* -----------------OLD INDICATOR BAR (COMMENTED)------------------- */}
+                      {/*
+                      {selectedIndicator?.length > 0 && (
                         <div
                           style={{
                             position: "absolute",
@@ -2693,7 +2848,6 @@ json.dumps(result, default=json_default)
                                     whiteSpace: "nowrap",
                                   }}
                                 >
-                                  {/* Label + value */}
                                   <span
                                     style={{
                                       color: "var(--text-secondary)",
@@ -2717,7 +2871,7 @@ json.dumps(result, default=json_default)
                                         ...(indicatorConfigs?.[id] || {}),
                                       };
                                       const len =
-                                        cfg.length ?? cfg.baseLen ?? "";
+                                        cfg?.length ?? cfg.baseLen ?? "";
                                       const src = cfg.source ?? "";
                                       return `${len}${src ? " " + src : ""}`;
                                     })()}
@@ -2726,7 +2880,6 @@ json.dumps(result, default=json_default)
                                     </span>
                                   </span>
 
-                                  {/* Action buttons */}
                                   <div
                                     style={{
                                       display: "flex",
@@ -2754,24 +2907,24 @@ json.dumps(result, default=json_default)
 
                                     <button
                                       className="ind-btn"
-                                      title="Indicator Settings"
+                                      title="Settings"
                                       onClick={() => {
                                         setActiveBarIndicator({ id, type });
                                         setIndicatorProperty((prev) => !prev);
                                       }}
                                     >
-                                      <IoSettingsOutline size={15} />
+                                      <IoSettingsOutline size={14} />
                                     </button>
 
                                     <button
                                       className="ind-btn"
-                                      title="Source Code"
-                                      // onClick={() => {
-                                      //   setActiveSourceIndicator(type);
-                                      //   setShowSourcePanel(true);
-                                      // }}
+                                      title="Source code"
+                                      onClick={() => {
+                                        setActiveSourceIndicator(type);
+                                        setShowSourcePanel(true);
+                                      }}
                                     >
-                                      <FaCode size={15} />
+                                      <FaCode size={14} />
                                     </button>
 
                                     <button
@@ -2779,10 +2932,22 @@ json.dumps(result, default=json_default)
                                       title="Remove"
                                       onClick={() => removeIndicator(id)}
                                     >
-                                      <IoCloseSharp size={15} />
+                                      <IoCloseSharp size={16} />
+                                    </button>
+
+                                    <button
+                                      className="ind-btn"
+                                      title="More"
+                                      style={{ marginLeft: 4 }}
+                                    >
+                                      <FiMoreHorizontal size={16} />
                                     </button>
                                   </div>
-
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
                                   {showAlertForm && (
                                     <IndicatorAlert
                                       onClose={closeAlert}
@@ -2796,7 +2961,8 @@ json.dumps(result, default=json_default)
                             })}
                         </div>
                       )}
-                      {/* {selectedIndicator.map((indicator, index) => {
+                      */}
+                      {/* {selectedIndicator?.map((indicator, index) => {
                 const value = liveIndicatorData[indicator];
                 const paneIndex = paneIndexRef.current[indicator];
                 if (paneIndex === undefined || paneIndex === 0) return null;

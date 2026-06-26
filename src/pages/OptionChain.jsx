@@ -856,6 +856,7 @@ const OptionChain = () => {
                   type="date"
                   ref={fromDateRef}
                   value={fromDate}
+                  min="2025-01-01"
                   max={todayDateStr}
                   onChange={(e) => setFromDate(e.target.value)}
                   className="oc-select oc-date-input"
@@ -876,6 +877,7 @@ const OptionChain = () => {
                   type="date"
                   ref={toDateRef}
                   value={toDate}
+                  min="2025-01-01"
                   max={todayDateStr}
                   onChange={(e) => setToDate(e.target.value)}
                   className="oc-select oc-date-input"

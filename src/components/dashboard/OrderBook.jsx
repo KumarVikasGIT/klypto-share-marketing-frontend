@@ -146,7 +146,7 @@ const OrderBook = ({ orders, setOrders }) => {
   };
 
   const counts = FILTERS.slice(1).reduce((acc, f) => {
-    acc[f] = orders.filter((o) => o.status === f).length;
+    acc[f] = orders?.filter((o) => o?.status === f)?.length;
     return acc;
   }, {});
 
@@ -206,7 +206,7 @@ const OrderBook = ({ orders, setOrders }) => {
               border: "1px solid var(--border-color)",
             }}
           >
-            {orders.length} orders
+            {orders?.length} orders
           </span>
         </div>
 
@@ -330,7 +330,7 @@ const OrderBook = ({ orders, setOrders }) => {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {filtered?.length === 0 ? (
               <tr>
                 <td
                   colSpan={9}

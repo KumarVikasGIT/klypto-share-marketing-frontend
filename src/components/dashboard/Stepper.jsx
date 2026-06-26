@@ -78,7 +78,7 @@ const Stepper = ({ currentStep = 1, filledSteps = {} }) => {
             </div>
 
             {/* Connector */}
-            {i < STEPS.length - 1 && (
+            {i < STEPS?.length - 1 && (
               <div style={{ flexShrink: 0, width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 <div style={{
                   height: 1.5, width: '100%',

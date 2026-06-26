@@ -35,6 +35,10 @@ export function resolvePaneKey(type) {
     case "KVO":
     case "AWO":
     case "BBPERB":
+    case "SUPERSMOOTHER":
+    case "HEALTHY_BOX":
+    case "HMA60_BOX_DISTANCE":
+    case "BODY915DNA":
     case "TR":
       return type; // Return full type to keep panes separate
     default:
@@ -76,6 +80,10 @@ export const PANE_INDICATORS = new Set([
   "AWO",
   "BBPERB",
   "TR",
+  "SUPERSMOOTHER",
+  "HEALTHY_BOX",
+  "BODY915DNA",
+  "HMA60_BOX_DISTANCE",
 ]);
 
 export let indicatorConfigDefault = {
@@ -359,31 +367,62 @@ export let indicatorConfigDefault = {
     displayMode: "FULL_DISPLAY",
   },
   MA_RIBBON: {
-  ma1: {
-    enabled: true,
-    type: "EMA",
+    ma1: {
+      enabled: true,
+      type: "EMA",
+      source: "close",
+      length: 20,
+    },
+    ma2: {
+      enabled: true,
+      type: "SMA",
+      source: "hl2",
+      length: 50,
+    },
+    ma3: {
+      enabled: true,
+      type: "WMA",
+      source: "close",
+      length: 100,
+    },
+    ma4: {
+      enabled: true,
+      type: "VWMA",
+      source: "close",
+      length: 200,
+    },
+  },
+  SUPERSMOOTHER: {
+    smoothingLength: 5,
+    fastLength: 20,
+    slowLength: 50,
     source: "close",
-    length: 20,
+    atrLength: 20,
+    atrMultiplier: 1.2,
+    signalSensitivity: 0.03,
   },
-  ma2: {
-    enabled: true,
-    type: "SMA",
-    source: "hl2",
-    length: 50,
+  HEALTHY_BOX: {
+    atrLength: 14,
+    atrMultiplier: 0.25,
+    minBodyBox: 1.5,
+    maxWickBody: 0.6,
+    maxOneWick: 0.45,
   },
-  ma3: {
-    enabled: true,
-    type: "WMA",
-    source: "close",
-    length: 100,
+  BODY915DNA: {
+    lookback915: 60,
+    boxDivisor: 10.0,
+    marketHour: 9,
+    marketMinute: 15,
+    showTable: true,
   },
-  ma4: {
-    enabled: true,
-    type: "VWMA",
-    source: "close",
-    length: 200,
+  HMA60_BOX_DISTANCE: {
+    hullLength: 60,
+    atrLength: 14,
+    boxAtrMult: 0.25,
+    minTick: 0.05,
+    upperZone: 5.0,
+    lowerZone: -5.0,
   },
-},
 };
 
 export let indicatorStyleDefault = {
@@ -1626,33 +1665,257 @@ export let indicatorStyleDefault = {
     },
   },
   MA_RIBBON: {
-  ma1: {
-    color: "rgba(255,255,255,1)",
-    width: 1,
-    lineStyle: 0,
-    opacity: 100,
-    visible: true,
+    ma1: {
+      color: "rgba(255,255,255,1)",
+      width: 1,
+      lineStyle: 0,
+      opacity: 100,
+      visible: true,
+    },
+    ma2: {
+      color: "rgba(255,202,28,1)",
+      width: 1,
+      lineStyle: 0,
+      opacity: 100,
+      visible: true,
+    },
+    ma3: {
+      color: "rgba(38,166,154,1)",
+      width: 1,
+      lineStyle: 0,
+      opacity: 100,
+      visible: true,
+    },
+    ma4: {
+      color: "rgba(239,83,80,1)",
+      width: 1,
+      lineStyle: 0,
+      opacity: 100,
+      visible: true,
+    },
   },
-  ma2: {
-    color: "rgba(255,202,28,1)",
-    width: 1,
-    lineStyle: 0,
-    opacity: 100,
-    visible: true,
+  SUPERSMOOTHER: {
+    oscillator: {
+      color: "rgba(1,255,0,1)",
+      width: 2,
+      visible: true,
+    },
+
+    signalLine: {
+      color: "rgba(255,107,53,1)",
+      width: 1,
+      visible: true,
+    },
+
+    histogram: {
+      color: "rgba(255,20,147,0.6)",
+      visible: true,
+    },
+
+    buySignals: {
+      color: "rgba(0,255,0,1)",
+      visible: true,
+    },
+
+    sellSignals: {
+      color: "rgba(255,0,0,1)",
+      visible: true,
+    },
+
+    strongBuySignals: {
+      color: "rgba(124,252,0,1)",
+      visible: true,
+    },
+
+    strongSellSignals: {
+      color: "rgba(128,0,0,1)",
+      visible: true,
+    },
+
+    zeroLine: {
+      color: "rgba(128,128,128,1)",
+      width: 1,
+      visible: true,
+    },
   },
-  ma3: {
-    color: "rgba(38,166,154,1)",
-    width: 1,
-    lineStyle: 0,
-    opacity: 100,
-    visible: true,
+  HEALTHY_BOX: {
+    directionalScore: {
+      color: "rgba(255,165,0,1)",
+      width: 1,
+      visible: true,
+    },
+    bodyBoxes: {
+      color: "rgba(33,150,243,1)", // blue
+      width: 2,
+      visible: true,
+    },
+    totalWickBoxes: {
+      color: "rgba(255,235,59,1)", // yellow
+      width: 2,
+      visible: true,
+    },
+    bullSignals: {
+      color: "rgba(0,255,0,1)",
+      visible: true,
+    },
+    bearSignals: {
+      color: "rgba(255,0,0,1)",
+      visible: true,
+    },
+    zeroLine: {
+      color: "rgba(128,128,128,1)",
+      width: 1,
+      visible: true,
+      value: 0,
+    },
+    strongHealthyLine: {
+      color: "rgba(76,175,80,1)", // green
+      width: 1,
+      visible: true,
+      value: 80,
+    },
+    healthyLine: {
+      color: "rgba(255,152,0,1)", // orange
+      width: 1,
+      visible: true,
+      value: 60,
+    },
+    healthyBearLine: {
+      color: "rgba(255,152,0,1)", // orange
+      width: 1,
+      visible: true,
+      value: -60,
+    },
+    strongBearLine: {
+      color: "rgba(244,67,54,1)", // red
+      width: 1,
+      visible: true,
+      value: -80,
+    },
   },
-  ma4: {
-    color: "rgba(239,83,80,1)",
-    width: 1,
-    lineStyle: 0,
-    opacity: 100,
-    visible: true,
+  BODY915DNA: {
+    directionalBodyBoxes: {
+      color: "rgba(128,128,128,1)", // changes dynamically in markers
+      visible: true,
+    },
+
+    avgBoxes: {
+      color: "rgba(255,255,0,1)", // Yellow
+      width: 2,
+      visible: true,
+    },
+
+    maxBoxes: {
+      color: "rgba(0,255,0,1)", // Green
+      width: 2,
+      visible: true,
+    },
+
+    minBoxes: {
+      color: "rgba(255,0,0,1)", // Red
+      width: 2,
+      visible: true,
+    },
+
+    bodyPercentile: {
+      color: "rgba(0,255,255,1)", // Aqua
+      width: 2,
+      visible: true,
+    },
+
+    expansionScore: {
+      color: "rgba(128,0,128,1)", // Purple
+      width: 2,
+      visible: true,
+    },
+
+    zScore: {
+      color: "rgba(255,165,0,1)", // Orange
+      width: 2,
+      visible: true,
+    },
+
+    bullSignals: {
+      color: "rgba(0,255,0,1)", // Lime
+      visible: true,
+    },
+
+    bearSignals: {
+      color: "rgba(255,0,0,1)", // Red
+      visible: true,
+    },
+
+    monsterSignals: {
+      color: "rgba(255,0,255,1)", // Fuchsia
+      visible: true,
+    },
+
+    zeroLine: {
+      color: "rgba(128,128,128,1)",
+      width: 1,
+      visible: true,
+      value: 0,
+    },
+
+    avgZone: {
+      color: "rgba(255,165,0,1)",
+      width: 1,
+      visible: true,
+      value: 10,
+    },
+
+    avgZoneBearish: {
+      color: "rgba(255,165,0,1)",
+      width: 1,
+      visible: true,
+      value: -10,
+    },
   },
-},
+  HMA60_BOX_DISTANCE: {
+    highToHmaBoxes: {
+      color: "rgba(0,255,0,1)", // Green
+      width: 2,
+      visible: true,
+    },
+
+    lowToHmaBoxes: {
+      color: "rgba(255,0,0,1)", // Red
+      width: 2,
+      visible: true,
+    },
+
+    closeToHmaBoxes: {
+      color: "rgba(0,102,255,1)", // Blue
+      width: 1,
+      visible: true,
+    },
+
+    upperZone: {
+      color: "rgba(0,255,0,0.4)",
+      width: 1,
+      visible: true,
+    },
+
+    lowerZone: {
+      color: "rgba(255,0,0,0.4)",
+      width: 1,
+      visible: true,
+    },
+
+    upperSignals: {
+      color: "rgba(0,255,0,1)",
+      visible: true,
+    },
+
+    lowerSignals: {
+      color: "rgba(255,0,0,1)",
+      visible: true,
+    },
+
+    zeroLine: {
+      color: "rgba(128,128,128,1)",
+      width: 1,
+      visible: true,
+    },
+  },
 };

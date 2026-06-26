@@ -11,7 +11,7 @@ export default function AroonOscillatorInput(
 
   console.log("AO RAW ROWS:", rows);
 
-  if (!rows.length) {
+  if (!rows?.length) {
     console.warn("AO rows empty");
     return;
   }
@@ -41,7 +41,7 @@ export default function AroonOscillatorInput(
 
   console.log("AO CLEAN DATA:", oscData);
 
-  if (!oscData.length) {
+  if (!oscData?.length) {
     console.warn("AO clean data empty");
     return;
   }
@@ -49,7 +49,9 @@ export default function AroonOscillatorInput(
   /* ================= ALWAYS STORE DATA ================= */
 
   // ✅ store globally so plot can pick it later
-  indicatorSeriesRef.current[instanceId || "AOData"] = oscData;
+  if (indicatorSeriesRef?.current) {
+    indicatorSeriesRef.current[instanceId || "AOData"] = oscData;
+  }
 
   /* ================= TRY LIVE UPDATE (if series exists) ================= */
 
@@ -57,7 +59,7 @@ export default function AroonOscillatorInput(
 
   if (series) {
     try {
-      series.oscillator?.setData(oscData);
+      series?.oscillator?.setData(oscData);
       console.log("AO oscillator updated");
     } catch (err) {
       console.error("AO oscillator update error:", err);

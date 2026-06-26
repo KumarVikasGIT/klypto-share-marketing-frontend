@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { IoEyeOutline, IoEyeOffOutline, IoSettingsOutline, IoCloseSharp } from "react-icons/io5";
 import { FiMoreHorizontal } from "react-icons/fi";
 import { FaCode } from "react-icons/fa";
@@ -13,26 +14,50 @@ export default function IndicatorBar({
   setActiveBarIndicator,
   setIndicatorProperty,
   setActiveSourceIndicator,
-  setShowSourcePanel
+  setShowSourcePanel,
+  type,
+  indicatorConfigDefault,
+  indicatorConfigs
 }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Reconstruct configuration string (e.g., "14 close")
+  const cfg = {
+    ...(indicatorConfigDefault?.[type] || {}),
+    ...(indicatorConfigs?.[indicator] || {}),
+  };
+  const len = cfg?.length ?? cfg?.baseLen ?? "";
+  const src = cfg?.source ?? "";
+  const configString = `${len}${src ? " " + src : ""}`;
 
   return (
     <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         display: "flex",
         alignItems: "center",
+        justifyContent: "space-between",
         gap: 10,
-        background: "#ffffff",
-        border: "1px solid #e2e8f0",
+        background: isHovered ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.2)",
+        border: isHovered ? "1px solid white" : "1px solid transparent",
         borderRadius: 6,
-        padding: "4px 8px",
-        fontSize: 12
+        color: "var(--text-primary)",
+        padding: "2px 8px",
+        height: 24,
+        fontSize: 12,
+        whiteSpace: "nowrap",
+        transition: "all 0.2s ease-in-out"
       }}
     >
 
-      <span className="flex items-center gap-2 text-slate-800">
+      <span className="flex items-center gap-2 text-[var(--text-secondary)]">
 
-        {indicator} : {timeframeValue} :
+        <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+          {type}
+        </span>
+        {" : "}
+        {configString && <span>{configString}</span>}
 
         <span style={{ display: "flex", gap: 6 }}>
           {renderValue(indicator, value)}
@@ -40,7 +65,17 @@ export default function IndicatorBar({
 
       </span>
 
-      <div className="flex items-center gap-2">
+      <div 
+        className="text-[var(--text-secondary)]"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          opacity: isHovered ? 1 : 0,
+          visibility: isHovered ? "visible" : "hidden",
+          transition: "opacity 0.2s ease-in-out"
+        }}
+      >
 
         <button
           onClick={() => toggleIndicatorVisibility(indicator)}

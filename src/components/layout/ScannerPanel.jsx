@@ -9,7 +9,7 @@ const CONDITIONS = [
 ];
 
 const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins, removeCoin, setSelectedCurrency, activeIndicators }) => {
-  const dynamicIndicators = activeIndicators && activeIndicators.length > 0 
+  const dynamicIndicators = activeIndicators && activeIndicators?.length > 0 
     ? Array.from(new Set(activeIndicators.map(ind => ind.type)))
     : ["RSI"];
 
@@ -180,12 +180,12 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
 
         <div style={s.matchedHeader}>
           <span style={s.matchedTitle}>Matched Stocks</span>
-          {matchedCoins.length > 0 && (
-            <span style={s.matchedCount}>{matchedCoins.length}</span>
+          {matchedCoins?.length > 0 && (
+            <span style={s?.matchedCount}>{matchedCoins?.length}</span>
           )}
         </div>
 
-        <div className="scanner-scroll" style={s.matchedList}>
+        <div className="scanner-scroll" style={s?.matchedList}>
           <style>{`
             .scanner-scroll::-webkit-scrollbar { width: 5px; }
             .scanner-scroll::-webkit-scrollbar-track { background: var(--bg-primary); }
@@ -193,14 +193,14 @@ const ScannerPanel = ({ onClose, addAlert, clearAllCoins, scanner, matchedCoins,
             .scanner-matched-item:hover { background: var(--border-color) !important; }
           `}</style>
 
-          {matchedCoins.length === 0 ? (
+          {matchedCoins?.length === 0 ? (
             <div style={s.emptyState}>
               <FiBellOff size={22} style={{ marginBottom: 8, opacity: 0.4 }} />
               <div>No matches yet</div>
               <div style={{ marginTop: 4, fontSize: "0.72rem" }}>Activate scanner to start watching</div>
             </div>
           ) : (
-            matchedCoins.map((coin, idx) => (
+            matchedCoins?.map((coin, idx) => (
               <div
                 key={idx}
                 className="scanner-matched-item"

@@ -9,6 +9,8 @@ export default function SSLPlot({
   addSeries,
   chart,
   containerRef,
+  mainSeriesRef,
+  candlesRef,
 }) {
   const canvasRef = useRef(null);
   const closeMapRef = useRef(new Map());
@@ -65,12 +67,6 @@ export default function SSLPlot({
   };
 
   // ssl2_color = buy_atr ? bullish : sell_atr ? bearish : neutral
-  // buy_atr  = buy_inatr  && buy_cont
-  //   buy_cont   = close > BBMC && close > sslDown2
-  //   buy_inatr  = (close - atr * 0.9) < sslDown2
-  // sell_atr = sell_inatr && sell_cont
-  //   sell_cont  = close < BBMC && close < sslDown2
-  //   sell_inatr = (atr * 0.9 + close) > sslDown2
   const getSsl2Color = (close, ssl2, baseline, atr) => {
     if (close == null || ssl2 == null || baseline == null || atr == null)
       return NEUTRAL;
@@ -86,6 +82,41 @@ export default function SSLPlot({
     if (buy_atr) return BULLISH;
     if (sell_atr) return BEARISH;
     return NEUTRAL;
+  };
+
+  /* ================= APPLY BAR COLORS TO MAIN CANDLES ================= */
+
+  const applyBarColors = (closeMap, upperArr, lowerArr) => {
+    // Only color bars if color_bars is enabled (default true) and series exists
+    const colorBars = indicatorStyle?.SSL_HYBRID?.candles?.visible ?? true;
+    if (!colorBars) return;
+
+    const mainSeries = mainSeriesRef?.current;
+    const candles = candlesRef?.current;
+    if (!mainSeries || !candles?.length) return;
+
+    const upperByTime = new Map(upperArr.map((p) => [p.time, p.value]));
+    const lowerByTime = new Map(lowerArr.map((p) => [p.time, p.value]));
+
+    const coloredCandles = candles.map((candle) => {
+      const t = candle.time;
+      const close = closeMap.get(t) ?? candle.close;
+      const upper = upperByTime.get(t) ?? null;
+      const lower = lowerByTime.get(t) ?? null;
+      const barColor = getBaselineColor(close, upper, lower);
+      return {
+        ...candle,
+        color: barColor,
+        wickColor: barColor,
+        borderColor: barColor,
+      };
+    });
+
+    try {
+      mainSeries.setData(coloredCandles);
+    } catch (e) {
+      console.warn("SSL bar color apply failed:", e);
+    }
   };
 
   /* ================= CREATE SSL ================= */
@@ -111,10 +142,6 @@ export default function SSLPlot({
     // result.data is nested: { baseline: [{time,value}], upperChannel: [...], ... }
     const nestedData = result?.data || {};
 
-    // raw flat array still available for cross-referencing atr, close etc.
-    // We build a time-indexed lookup from the raw response if available
-    // Since your mapper doesn't carry close/atr onto the series points yet,
-    // we rebuild a lookup map from all available line arrays by index
     const baselineArr = nestedData.baseline || [];
     const upperArr = nestedData.upperChannel || [];
     const lowerArr = nestedData.lowerChannel || [];
@@ -123,23 +150,8 @@ export default function SSLPlot({
     const atrUpperArr = nestedData.atrUpper || [];
     const atrLowerArr = nestedData.atrLower || [];
 
-    // Build index lookup: time → { baseline, upperChannel, lowerChannel, ssl1, ssl2, atr }
-    // atr = (atrUpper - close) / mult — but we don't have close here.
-    // Instead carry the needed fields at mapping stage (see mapper fix below).
-    // For now use point.close / point.atr if present, else fallback gracefully.
-
-    const lineNames = [
-      "baseline",
-      "upperChannel",
-      "lowerChannel",
-      "ssl1",
-      "ssl2",
-      "atrUpper",
-      "atrLower",
-    ];
-
+    // Build time → close lookup from all available data
     const closeMap = new Map();
-
     const allSeries = [
       ...baselineArr,
       ...upperArr,
@@ -154,7 +166,26 @@ export default function SSLPlot({
       }
     });
 
+    // Also seed from candlesRef for reliability
+    if (candlesRef?.current) {
+      candlesRef.current.forEach((c) => {
+        if (c?.time != null && c?.close != null) {
+          closeMap.set(c.time, c.close);
+        }
+      });
+    }
+
     closeMapRef.current = closeMap;
+
+    const lineNames = [
+      "baseline",
+      "upperChannel",
+      "lowerChannel",
+      "ssl1",
+      "ssl2",
+      "atrUpper",
+      "atrLower",
+    ];
 
     lineNames.forEach((lineName) => {
       const lineData = nestedData[lineName] || [];
@@ -253,6 +284,9 @@ export default function SSLPlot({
     groupedSeries.upperChannelData = upperChannelData;
     groupedSeries.lowerChannelData = lowerChannelData;
     indicatorSeriesRef.current.SSL_HYBRID = groupedSeries;
+
+    // Apply bar colors to the main candlestick series
+    applyBarColors(closeMap, upperArr, lowerArr);
   }, [result]);
 
   /* ================= CANVAS INIT ================= */
@@ -349,12 +383,28 @@ export default function SSLPlot({
     });
 
     drawBaselineCloud();
+
+    // Re-apply bar colors when style changes (e.g., color_bars toggled)
+    const nestedData = result?.data || {};
+    const upperArr = nestedData.upperChannel || [];
+    const lowerArr = nestedData.lowerChannel || [];
+    applyBarColors(closeMapRef.current, upperArr, lowerArr);
   }, [indicatorStyle, result]);
 
   /* ================= CLEANUP ================= */
 
   useEffect(() => {
     return () => {
+      // Restore default candle colors on indicator removal
+      const mainSeries = mainSeriesRef?.current;
+      const candles = candlesRef?.current;
+      if (mainSeries && candles?.length) {
+        try {
+          const restored = candles.map(({ color, wickColor, borderColor, ...rest }) => rest);
+          mainSeries.setData(restored);
+        } catch {}
+      }
+
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext("2d");

@@ -112,7 +112,7 @@ const SidePanel = ({ stock, expiry }) => {
         });
       }
 
-      if (chainData.length > 0) {
+      if (chainData?.length > 0) {
         let finalStrikes = chainData;
 
         // Group flat array (strike_price + option_type format)
@@ -260,7 +260,7 @@ const SidePanel = ({ stock, expiry }) => {
               </tr>
             </thead>
             <tbody>
-              {strikes.length === 0 ? (
+              {strikes?.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}

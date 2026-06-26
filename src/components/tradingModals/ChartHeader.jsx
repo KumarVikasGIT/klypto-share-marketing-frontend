@@ -193,7 +193,7 @@ export default function ChartHeader({
             style={d.select}
           >
             {!timeframe && <option value="5m">5 Minute</option>}
-            {timeframe && Object.keys(timeframe).length === 0 && <option value="5m">5 Minute</option>}
+            {timeframe && Object.keys(timeframe)?.length === 0 && <option value="5m">5 Minute</option>}
             {timeframe && Object.entries(timeframe)?.map(([group, items]) => (
               <optgroup key={group} label={group?.toUpperCase()} style={{ background: "var(--bg-secondary)" }}>
                 {items?.map((item) => (
@@ -219,7 +219,7 @@ export default function ChartHeader({
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content sideOffset={6} style={d.dropdownContent}>
-              {chartOptions.map((item) => (
+              {chartOptions?.map((item) => (
                 <DropdownMenu.Item key={item.value} asChild>
                   <button
                     onClick={() => setChartType(item.value)}

@@ -18,6 +18,6 @@ export default function BBWInput(
   group.bbwLine?.setData(bbwData);
 
   latestIndicatorValuesRef.current[instanceId || "BBW"] = {
-    bbw: bbwData[bbwData.length - 1]?.value ?? null,
+    bbw: bbwData[bbwData?.length - 1]?.value ?? null,
   };
 }

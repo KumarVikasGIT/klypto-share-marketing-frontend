@@ -11,13 +11,13 @@ export default function AWOPlot({
   useEffect(() => {
     if (!result?.data) return;
 
-    const awo = result.data || [];
+    const awo = result?.data || [];
 
-    if (!Array.isArray(awo) || awo.length === 0) return;
+    if (!Array.isArray(awo) || awo?.length === 0) return;
 
     // ---------- REMOVE OLD SERIES ----------
-    if (indicatorSeriesRef.current?.AWO) {
-      Object.values(indicatorSeriesRef.current.AWO).forEach((s) => {
+    if (indicatorSeriesRef?.current?.AWO) {
+      Object.values(indicatorSeriesRef?.current?.AWO).forEach((s) => {
         try {
           s?.setData?.([]);
         } catch {}
