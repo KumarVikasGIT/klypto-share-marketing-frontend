@@ -3,7 +3,7 @@ name: Build and Deploy to Hostinger
 on:
   push:
     branches:
-      - feature/optionChain
+      - main
 
 jobs:
   build-and-deploy:
