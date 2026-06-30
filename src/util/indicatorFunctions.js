@@ -1708,8 +1708,12 @@ export let indicatorStyleDefault = {
     },
 
     histogram: {
-      color: "rgba(255,20,147,0.6)",
+      color: "rgba(255,20,147,0.28)",
       visible: true,
+      palette: {
+        pr: "rgba(0,255,127,0.2)",
+        pf: "rgba(255, 0, 140, 0.2)",
+      },
     },
 
     buySignals: {

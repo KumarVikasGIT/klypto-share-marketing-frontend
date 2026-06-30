@@ -52,13 +52,20 @@ export default function SuperSmootherPlot({
       if (lineName === "histogram") {
 
         const series = addSeries(id, HistogramSeries, {
-          color: styleConfig?.color || "rgba(0,255,127,0.4)",
           priceLineVisible: false,
           lastValueVisible: false,
           visible: styleConfig?.visible ?? true,
         });
+        
+        const styledData = lineData.map((d) => {
+          const isRising = d.value >= 0;
+          const color = isRising 
+            ? (styleConfig?.palette?.pr || "rgba(0,255,127,0.6)")
+            : (styleConfig?.palette?.pf || "rgba(255,0,0,0.6)");
+          return { ...d, color };
+        });
 
-        series.setData(lineData);
+        series.setData(styledData);
 
         groupedSeries[lineName] = series;
 
@@ -66,7 +73,7 @@ export default function SuperSmootherPlot({
       }
 
       //------------------------------------
-      // BUY/SELL MARKERS
+      // BUY/SELL MARKERS (Handled in second useEffect)
       //------------------------------------
       if (
         lineName === "buySignals" ||
@@ -74,7 +81,6 @@ export default function SuperSmootherPlot({
         lineName === "strongBuySignals" ||
         lineName === "strongSellSignals"
       ) {
-
         groupedSeries[lineName] = lineData;
         return;
       }
@@ -88,10 +94,10 @@ export default function SuperSmootherPlot({
           baseValue: { type: "price", price: 0 },
           topLineColor: "rgba(0, 0, 0, 0)", // Transparent line
           bottomLineColor: "rgba(0, 0, 0, 0)", // Transparent line
-          topFillColor1: "rgba(0, 255, 0, 0.3)",
+          topFillColor1: "rgba(0, 255, 0, 0.5)",
           topFillColor2: "rgba(0, 255, 0, 0.05)",
           bottomFillColor1: "rgba(255, 0, 0, 0.05)",
-          bottomFillColor2: "rgba(255, 0, 0, 0.3)",
+          bottomFillColor2: "rgba(255, 0, 140, 0.5)",
           lineWidth: 0,
           visible: styleConfig?.visible ?? true,
           priceLineVisible: false,
@@ -147,69 +153,19 @@ export default function SuperSmootherPlot({
 
     });
 
-
-    //--------------------------------
-    // MARKERS
-    //--------------------------------
-
-    const oscillatorSeries = groupedSeries.oscillator;
-
-    if (oscillatorSeries) {
-
-      const markers = [
-
-        ...(result.data.buySignals || []).map((p) => ({
-          time: p.time,
-          position: "belowBar",
-          color: "#00ff00",
-          shape: "arrowUp",
-          text: "BUY",
-        })),
-
-        ...(result.data.sellSignals || []).map((p) => ({
-          time: p.time,
-          position: "aboveBar",
-          color: "#ff0000",
-          shape: "arrowDown",
-          text: "SELL",
-        })),
-
-        ...(result.data.strongBuySignals || []).map((p) => ({
-          time: p.time,
-          position: "belowBar",
-          color: "#00ff7f",
-          shape: "arrowUp",
-          text: "STRONG BUY",
-        })),
-
-        ...(result.data.strongSellSignals || []).map((p) => ({
-          time: p.time,
-          position: "aboveBar",
-          color: "#800000",
-          shape: "arrowDown",
-          text: "STRONG SELL",
-        })),
-
-      ];
-      
-      const markersPrimitive = createSeriesMarkers(pane, markers);
-      pane.attachPrimitive(markersPrimitive);
-      groupedSeries.markersPrimitive = markersPrimitive;
-    }
-
     indicatorSeriesRef.current[id] = groupedSeries;
 
   }, [result]);
 
 
   //--------------------------------
-  // STYLE UPDATE
+  // STYLE UPDATE AND DYNAMIC MARKERS
   //--------------------------------
 
   useEffect(() => {
 
     const group = indicatorSeriesRef.current?.[id];
-    if (!group) return;
+    if (!group || !result) return;
 
     const style = indicatorStyle?.[id] || indicatorStyle?.SUPERSMOOTHER;
 
@@ -225,12 +181,68 @@ export default function SuperSmootherPlot({
       visible: style?.signalLine?.visible,
     });
 
-    group.histogram?.applyOptions({
-      color: style?.histogram?.color,
-      visible: style?.histogram?.visible,
+    group.zeroLine?.applyOptions({
+      color: style?.zeroLine?.color,
+      lineWidth: style?.zeroLine?.width,
+      visible: style?.zeroLine?.visible,
     });
 
-  }, [indicatorStyle]);
+    if (group.histogram && result.data.histogram) {
+      group.histogram.applyOptions({
+        visible: style?.histogram?.visible,
+      });
+
+      const histData = result.data.histogram;
+      const styledData = histData.map((d) => {
+        const isRising = d.value >= 0;
+        const color = isRising 
+          ? (style?.histogram?.palette?.pr || "rgba(0,255,127,0.6)")
+          : (style?.histogram?.palette?.pf || "rgba(255,0,0,0.6)");
+        return { ...d, color };
+      });
+      group.histogram.setData(styledData);
+    }
+
+    if (group.oscillator) {
+      const markers = [
+        ...(result.data.buySignals || []).map((p) => ({
+          time: p.time,
+          position: "belowBar",
+          color: style?.buySignals?.color || "#00ff00",
+          shape: "arrowUp",
+          text: "BUY",
+        })),
+        ...(result.data.sellSignals || []).map((p) => ({
+          time: p.time,
+          position: "aboveBar",
+          color: style?.sellSignals?.color || "#ff0000",
+          shape: "arrowDown",
+          text: "SELL",
+        })),
+        ...(result.data.strongBuySignals || []).map((p) => ({
+          time: p.time,
+          position: "belowBar",
+          color: style?.strongBuySignals?.color || "#00ff7f",
+          shape: "arrowUp",
+          text: "STRONG BUY",
+        })),
+        ...(result.data.strongSellSignals || []).map((p) => ({
+          time: p.time,
+          position: "aboveBar",
+          color: style?.strongSellSignals?.color || "#800000",
+          shape: "arrowDown",
+          text: "STRONG SELL",
+        })),
+      ];
+      
+      try {
+        group.oscillator.setMarkers(markers.sort((a, b) => a.time - b.time));
+      } catch (e) {
+        console.warn("Error setting markers:", e);
+      }
+    }
+
+  }, [indicatorStyle, result, pane]);
 
   return null;
 }

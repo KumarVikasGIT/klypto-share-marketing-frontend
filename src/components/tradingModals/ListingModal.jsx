@@ -184,8 +184,12 @@ export const ListingModal = ({
   }
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (title === "Indicators") {
-      fetchIndicators();
+      if (!indicators || indicators.length === 0) {
+        fetchIndicators();
+      }
       return;
     }
 
@@ -210,7 +214,7 @@ export const ListingModal = ({
         fetchIndices();
       }
     }
-  }, [title, activeTab]);
+  }, [title, activeTab, isOpen]);
 
   // 🔍 Indicator Filter
   const filteredIndicators = (indicators ?? []).filter((item) => {

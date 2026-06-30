@@ -1947,6 +1947,20 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           key: "histogram",
           label: "Histogram",
           type: "histogram",
+          children: [
+            {
+              key: "pr",
+              parent: "histogram",
+              label: "Rising",
+              type: "fill",
+            },
+            {
+              key: "pf",
+              parent: "histogram",
+              label: "Falling",
+              type: "fill",
+            },
+          ]
         },
         {
           key: "buySignals",
