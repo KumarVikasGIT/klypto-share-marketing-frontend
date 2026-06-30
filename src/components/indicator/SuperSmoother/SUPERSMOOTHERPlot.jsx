@@ -203,44 +203,47 @@ export default function SuperSmootherPlot({
       group.histogram.setData(styledData);
     }
 
-    if (group.oscillator) {
-      const markers = [
-        ...(result.data.buySignals || []).map((p) => ({
-          time: p.time,
-          position: "belowBar",
-          color: style?.buySignals?.color || "#00ff00",
-          shape: "arrowUp",
-          text: "BUY",
-        })),
-        ...(result.data.sellSignals || []).map((p) => ({
-          time: p.time,
-          position: "aboveBar",
-          color: style?.sellSignals?.color || "#ff0000",
-          shape: "arrowDown",
-          text: "SELL",
-        })),
-        ...(result.data.strongBuySignals || []).map((p) => ({
-          time: p.time,
-          position: "belowBar",
-          color: style?.strongBuySignals?.color || "#00ff7f",
-          shape: "arrowUp",
-          text: "STRONG BUY",
-        })),
-        ...(result.data.strongSellSignals || []).map((p) => ({
-          time: p.time,
-          position: "aboveBar",
-          color: style?.strongSellSignals?.color || "#800000",
-          shape: "arrowDown",
-          text: "STRONG SELL",
-        })),
-      ];
-      
-      try {
-        group.oscillator.setMarkers(markers.sort((a, b) => a.time - b.time));
-      } catch (e) {
-        console.warn("Error setting markers:", e);
-      }
-    }
+    // if (pane) {
+    //   const markers = [
+    //     ...(result.data.buySignals || []).map((p) => ({
+    //       time: p.time,
+    //       position: "belowBar",
+    //       color: style?.buySignals?.color || "#00ff00",
+    //       shape: "arrowUp",
+    //       text: "BUY",
+    //     })),
+    //     ...(result.data.sellSignals || []).map((p) => ({
+    //       time: p.time,
+    //       position: "aboveBar",
+    //       color: style?.sellSignals?.color || "#ff0000",
+    //       shape: "arrowDown",
+    //       text: "SELL",
+    //     })),
+    //     ...(result.data.strongBuySignals || []).map((p) => ({
+    //       time: p.time,
+    //       position: "belowBar",
+    //       color: style?.strongBuySignals?.color || "#00ff7f",
+    //       shape: "arrowUp",
+    //       text: "STRONG BUY",
+    //     })),
+    //     ...(result.data.strongSellSignals || []).map((p) => ({
+    //       time: p.time,
+    //       position: "aboveBar",
+    //       color: style?.strongSellSignals?.color || "#800000",
+    //       shape: "arrowDown",
+    //       text: "STRONG SELL",
+    //     })),
+    //   ];
+    //   
+    //   const sortedMarkers = markers.sort((a, b) => a.time - b.time);
+    //   
+    //   if (!group.markersPrimitive) {
+    //     group.markersPrimitive = createSeriesMarkers(pane, sortedMarkers);
+    //     pane.attachPrimitive(group.markersPrimitive);
+    //   } else {
+    //     group.markersPrimitive.setMarkers(sortedMarkers);
+    //   }
+    // }
 
   }, [indicatorStyle, result, pane]);
 

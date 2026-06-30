@@ -38,6 +38,7 @@ export default function HMABoxPlot({
       const series = addSeries(id, LineSeries, {
         color: style?.[key]?.color,
         lineWidth: style?.[key]?.width,
+        lineStyle: style?.[key]?.lineStyle,
         visible: style?.[key]?.visible,
         priceLineVisible: false,
       });
@@ -63,6 +64,7 @@ export default function HMABoxPlot({
     const zeroLine = addSeries(id, LineSeries, {
       color: style?.zeroLine?.color,
       lineWidth: style?.zeroLine?.width,
+      lineStyle: style?.zeroLine?.lineStyle,
       visible: style?.zeroLine?.visible,
       lastValueVisible: false,
       priceLineVisible: false,
@@ -123,12 +125,17 @@ export default function HMABoxPlot({
   useEffect(() => {
 
     const group = indicatorSeriesRef.current?.[id];
-
-    if (!group) return;
+    if (!group || !result) return;
 
     const style =
       indicatorStyle?.[id] ??
       indicatorStyle?.HMA60_BOX_DISTANCE;
+
+    const timeSource =
+      result.data.closeToHmaBoxes ??
+      result.data.highToHmaBoxes ??
+      result.data.lowToHmaBoxes ??
+      [];
 
     Object.entries(group).forEach(([key, series]) => {
 
@@ -137,12 +144,25 @@ export default function HMABoxPlot({
       series.applyOptions({
         color: style?.[key]?.color,
         lineWidth: style?.[key]?.width,
+        lineStyle: style?.[key]?.lineStyle,
         visible: style?.[key]?.visible,
       });
 
+      // Instantly update horizontal line values based on user input
+      if (key === "upperZone" || key === "lowerZone" || key === "zeroLine") {
+        const defaultVal = key === "upperZone" ? 5 : key === "lowerZone" ? -5 : 0;
+        const val = style?.[key]?.value !== undefined ? style?.[key]?.value : defaultVal;
+        
+        series.setData(
+          timeSource.map((d) => ({
+            time: d.time,
+            value: Number(val),
+          }))
+        );
+      }
     });
 
-  }, [indicatorStyle]);
+  }, [indicatorStyle, result]);
 
   return null;
 }

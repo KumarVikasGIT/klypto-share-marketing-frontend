@@ -206,7 +206,24 @@ export default function IndicatorStyle({
                     onClick={(e) => {
                       e.stopPropagation();
                       const rect = e.currentTarget.getBoundingClientRect();
-                      setPalettePos({ top: rect.bottom + 8, left: rect.left });
+                      const pHeight = 380; // generous max height estimate
+                      const pWidth = 320;  // palette width with padding
+
+                      let topPos = rect.bottom + 8;
+                      let leftPos = rect.left;
+
+                      if (topPos + pHeight > window.innerHeight) {
+                        topPos = rect.top - pHeight - 8;
+                        if (topPos < 10) {
+                          topPos = Math.max(10, window.innerHeight - pHeight - 10);
+                        }
+                      }
+
+                      if (leftPos + pWidth > window.innerWidth) {
+                        leftPos = Math.max(10, window.innerWidth - pWidth - 10);
+                      }
+
+                      setPalettePos({ top: topPos, left: leftPos });
                       setActivePalette(
                         activePalette === row.key ? null : row.key,
                       );

@@ -2098,12 +2098,12 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           type: "line",
           showValue: true,
         },
-
         {
           key: "upperZone",
           label: "Upper Extreme Zone",
           type: "line",
           showValue: true,
+          value: 5,
         },
 
         {
@@ -2111,24 +2111,14 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           label: "Lower Extreme Zone",
           type: "line",
           showValue: true,
+          value: -5,
         },
-
-        {
-          key: "upperSignals",
-          label: "Upper Extreme Signals",
-          type: "marker",
-        },
-
-        {
-          key: "lowerSignals",
-          label: "Lower Extreme Signals",
-          type: "marker",
-        },
-
         {
           key: "zeroLine",
           label: "Zero Line",
           type: "line",
+          showValue: true,
+          value: 0,
         },
       ];
     default:
