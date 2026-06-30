@@ -104,12 +104,14 @@ export default function SSLPlot({
       const upper = upperByTime.get(t) ?? null;
       const lower = lowerByTime.get(t) ?? null;
       const barColor = getBaselineColor(close, upper, lower);
-      return {
-        ...candle,
-        color: barColor,
-        wickColor: barColor,
-        borderColor: barColor,
-      };
+      
+      const res = { ...candle };
+      if (barColor != null) {
+        res.color = barColor;
+        res.wickColor = barColor;
+        res.borderColor = barColor;
+      }
+      return res;
     });
 
     try {
@@ -215,10 +217,12 @@ export default function SSLPlot({
       /* ================= DYNAMIC COLORS PER LINE ================= */
 
       if (lineName === "baseline") {
-        const colored = lineData.map((point, i) => {
+        const colored = [];
+        lineData.forEach((point, i) => {
+          if (point.value == null || Number.isNaN(Number(point.value))) return;
           const actualClose = closeMap.get(point.time) ?? point.close ?? null;
 
-          return {
+          colored.push({
             time: point.time,
             value: point.value,
             color: getBaselineColor(
@@ -226,15 +230,17 @@ export default function SSLPlot({
               point.upperChannel ?? upperArr[i]?.value ?? null,
               point.lowerChannel ?? lowerArr[i]?.value ?? null,
             ),
-          };
+          });
         });
         series.setData(colored);
       } else if (lineName === "upperChannel" || lineName === "lowerChannel") {
         // Channel lines use same color logic as baseline
-        const colored = lineData.map((point, i) => {
+        const colored = [];
+        lineData.forEach((point, i) => {
+          if (point.value == null || Number.isNaN(Number(point.value))) return;
           const actualClose = closeMap.get(point.time) ?? point.close ?? null;
 
-          return {
+          colored.push({
             time: point.time,
             value: point.value,
             color: getBaselineColor(
@@ -242,25 +248,29 @@ export default function SSLPlot({
               upperArr[i]?.value ?? null,
               lowerArr[i]?.value ?? null,
             ),
-          };
+          });
         });
         series.setData(colored);
       } else if (lineName === "ssl1") {
-        const colored = lineData.map((point) => {
+        const colored = [];
+        lineData.forEach((point) => {
+          if (point.value == null || Number.isNaN(Number(point.value))) return;
           const actualClose = closeMap.get(point.time) ?? point.close ?? null;
 
-          return {
+          colored.push({
             time: point.time,
             value: point.value,
             color: getSsl1Color(actualClose, point.value),
-          };
+          });
         });
         series.setData(colored);
       } else if (lineName === "ssl2") {
-        const colored = lineData.map((point, i) => {
+        const colored = [];
+        lineData.forEach((point, i) => {
+          if (point.value == null || Number.isNaN(Number(point.value))) return;
           const actualClose = closeMap.get(point.time) ?? point.close ?? null;
 
-          return {
+          colored.push({
             time: point.time,
             value: point.value,
             color: getSsl2Color(
@@ -269,11 +279,12 @@ export default function SSLPlot({
               baselineArr[i]?.value ?? null,
               point.atr ?? null,
             ),
-          };
+          });
         });
         series.setData(colored);
       } else {
-        series.setData(lineData);
+        const validData = lineData.filter(p => p.value != null && !Number.isNaN(Number(p.value)));
+        series.setData(validData);
       }
 
       groupedSeries[lineName] = series;
@@ -374,12 +385,14 @@ export default function SSLPlot({
       const style = indicatorStyle?.SSL_HYBRID?.[key];
       if (!style) return;
       const shouldShow = getDisplayVisibility(key);
-      series.applyOptions({
-        color: style.color,
-        lineWidth: style.width,
-        lineStyle: style.lineStyle,
+      const options = {
         visible: (style.visible ?? true) && shouldShow,
-      });
+      };
+      if (style.color != null) options.color = style.color;
+      if (style.width != null) options.lineWidth = style.width;
+      if (style.lineStyle != null) options.lineStyle = style.lineStyle;
+      
+      series.applyOptions(options);
     });
 
     drawBaselineCloud();
@@ -420,3 +433,4 @@ export default function SSLPlot({
 
   return null;
 }
+

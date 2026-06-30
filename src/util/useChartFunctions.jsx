@@ -1,5 +1,6 @@
 import apiService from "../services/apiServices";
 import { getRowsByIndicator } from "./common";
+import socket from "../services/websocket/socket";
 
 const IST_OFFSET = 19800;
 
@@ -777,9 +778,9 @@ async function fetchDataForIndicators(
     const response = await new Promise((resolve, reject) => {
       indicatorFetchQueue = indicatorFetchQueue.then(() => {
         return new Promise((innerResolve) => {
-          if (!socketRef.current) {
+          if (!socketRef.current || !socket.connected) {
             innerResolve();
-            return reject(new Error("No socket"));
+            return reject(new Error("Socket disconnected"));
           }
 
           socketRef.current?.emit("getIndicatorDetails", {
@@ -791,13 +792,23 @@ async function fetchDataForIndicators(
             candles,
           });
 
+          const timeoutId = setTimeout(() => {
+            socketRef.current?.off("indicatorDetailsError", onError);
+            socketRef.current?.off("indicatorDetailsResponse", onResponse);
+            innerResolve();
+            reject(new Error("Timeout fetching indicator data"));
+          }, 15000);
+
           const onResponse = (data) => {
+            clearTimeout(timeoutId);
             socketRef.current?.off("indicatorDetailsError", onError);
             innerResolve();
             resolve(data);
           };
 
           const onError = (err) => {
+            clearTimeout(timeoutId);
+            console.error("fetchDataForIndicators error:", err);
             socketRef.current?.off("indicatorDetailsResponse", onResponse);
             innerResolve();
             reject(err);

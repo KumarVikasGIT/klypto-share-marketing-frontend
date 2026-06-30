@@ -924,7 +924,8 @@ json.dumps(result)
   const isUp = liveOhlcv?.close >= liveOhlcv?.open;
   const valueColor = isUp ? "text-green-500" : "text-red-500";
   const hasPaneIndicators = selectedIndicator.some((ind) =>
-    PANE_INDICATORS.has(typeof ind === "object" ? ind.type : ind),
+    PANE_INDICATORS.has(typeof ind === "object" ? ind.type : ind) &&
+    indicatorDataRef.current?.[typeof ind === "object" ? ind.id : ind] !== undefined
   );
 
   const fetchStrategyMarkers = async () => {
@@ -1024,33 +1025,9 @@ json.dumps(result)
     } else {
       // 🔥 Reset on timeframe / currency / chartType change
       fetchedIndicatorsRef.current.clear();
-
-      // Clear existing indicator chart series
-      selectedIndicator.forEach((ind) => {
-        const { id } = ind;
-        const entry = indicatorSeriesRef.current[id];
-        if (!entry) return;
-
-        const paneKey = id; // each instance has its own pane key
-        const pane = panesRef.current[paneKey];
-        const chartToUse = pane?.chart ?? chartRef.current;
-        if (!chartToUse) return;
-
-        if (typeof entry === "object" && !entry.priceScale) {
-          Object.values(entry).forEach((series) => {
-            if (!series || typeof series.setData !== "function") return;
-            try {
-              chartToUse.removeSeries(series);
-            } catch {}
-          });
-        } else {
-          try {
-            chartToUse.removeSeries(entry);
-          } catch {}
-        }
-        delete indicatorSeriesRef.current[id];
-        delete indicatorDataRef.current[id];
-      });
+      // We purposefully DO NOT clear indicatorSeriesRef or indicatorDataRef here.
+      // They will be overwritten with new data once the fetch completes,
+      // avoiding a visual glitch where indicators disappear during loading or disconnects.
     }
 
     setIndicatorLoading(true);
@@ -2170,8 +2147,8 @@ json.dumps(result)
   // Keep emitRef and socketRef up to date
   useEffect(() => {
     emitRef.current = emit;
-    socketRef.current = { emit, once, off };
-  }, [emit, once, off]);
+    socketRef.current = { emit, once, off, connected };
+  }, [emit, once, off, connected]);
 
   // Main useEffect for chart type/data changes
   useEffect(() => {
@@ -2228,10 +2205,40 @@ json.dumps(result)
     charts.forEach((chart) => chart.timeScale().fitContent());
   };
 
+  const pendingGoToDateRef = useRef(null);
+
+  useEffect(() => {
+    if (!mainChartLoading && pendingGoToDateRef.current) {
+      const targetDate = pendingGoToDateRef.current;
+      pendingGoToDateRef.current = null;
+      // Slight delay to ensure chart has plotted the new series data
+      setTimeout(() => {
+        handleGoToDate(targetDate);
+      }, 100);
+    }
+  }, [mainChartLoading]);
+
   const handleGoToDate = (targetDate) => {
-    if (!chartRef.current || !candlesRef.current?.length) return;
+    if (!chartRef.current) return;
     
-    const targetTimeSec = Math.floor(targetDate.getTime() / 1000);
+    // Check if the target date is earlier than our currently fetched fromDate
+    const targetTimeMs = targetDate.getTime();
+    const currentFromTimeMs = new Date(fromDate).getTime();
+    
+    if (targetTimeMs < currentFromTimeMs) {
+      // Need to fetch older data first
+      pendingGoToDateRef.current = targetDate;
+      
+      // Update fromDate to 30 days before the target date just to be safe
+      const newFrom = new Date(targetDate);
+      newFrom.setDate(newFrom.getDate() - 30);
+      setFromDate(newFrom.toISOString().split("T")[0]);
+      return; // The useEffect above will call handleGoToDate again once loaded
+    }
+
+    if (!candlesRef.current?.length) return;
+    
+    const targetTimeSec = Math.floor(targetTimeMs / 1000);
     
     // Find the closest candle
     let closestIndex = 0;

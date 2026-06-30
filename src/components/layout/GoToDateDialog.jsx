@@ -37,7 +37,7 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   return (
-    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
+    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
       <div className="bg-[#1e222d] w-[350px] rounded-lg shadow-2xl overflow-hidden flex flex-col text-[#d1d4dc] font-sans border border-[#434651]">
         {/* Header */}
         <div className="flex justify-between items-center p-4 pb-2">
@@ -50,7 +50,6 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
         {/* Tabs */}
         <div className="px-4 border-b border-[#2a2e39] flex gap-4 text-sm font-semibold">
           <div className="border-b-2 border-[#2962ff] text-white pb-2 cursor-pointer">Date</div>
-          <div className="text-[#a3a6af] pb-2 cursor-not-allowed opacity-50">Custom range</div>
         </div>
 
         {/* Inputs */}
