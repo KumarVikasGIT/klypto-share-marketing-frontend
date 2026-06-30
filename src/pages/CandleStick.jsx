@@ -144,6 +144,8 @@ export default function Candlestick() {
   const [liveIndicatorData, setLiveIndicatorData] = useState({});
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
   const [mainChartLoading, setMainChartLoading] = useState(false);
+  const [symbolTransitioning, setSymbolTransitioning] = useState(false);
+  const symbolTransitioningRef = useRef(false);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
   const [editorCode, setEditorCode] = useState(
     `markers = []
@@ -1010,7 +1012,7 @@ json.dumps(result)
 
     const isContextChange =
       prevTimeframeRef.current !== timeframeValue ||
-      prevCurrencyRef.current !== selectedCurrency ||
+      prevCurrencyRef.current !== selectedCurrency?.name ||
       prevChartTypeRef.current !== chartType;
 
     let indicatorsToFetch = selectedIndicator;
@@ -1045,15 +1047,17 @@ json.dumps(result)
 
     // update previous values
     prevTimeframeRef.current = timeframeValue;
-    prevCurrencyRef.current = selectedCurrency;
+    prevCurrencyRef.current = selectedCurrency?.name;
     prevChartTypeRef.current = chartType;
+  // NOTE: fromDate and toDate are intentionally excluded — they affect candle data,
+  // not indicator fetching. Including them caused an infinite loop when GoToDate
+  // updated fromDate, which re-triggered this effect and set state repeatedly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedIndicator,
-    selectedCurrency,
+    selectedCurrency?.name,
     timeframeValue,
     chartType,
-    fromDate,
-    toDate,
   ]);
 
   const toggleIndicatorVisibility = (indicator) => {
@@ -1886,6 +1890,11 @@ json.dumps(result)
           timeframeValue,
         ).then(() => {
           setIndicatorUpdateTrigger((v) => v + 1);
+        }).finally(() => {
+          // Lift the transition overlay once indicators are also ready
+          setMainChartLoading(false);
+          symbolTransitioningRef.current = false;
+          setSymbolTransitioning(false);
         });
       }
 
@@ -1939,8 +1948,15 @@ json.dumps(result)
 
         chartRef.current?.timeScale().fitContent();
 
-        // Remove loader ONLY after chart is fully rendered and fit to content
-        setMainChartLoading(false);
+        // If there are indicators, keep overlay until they load too
+        if (selectedIndicatorRef.current?.length > 0) {
+          // overlay lifted by indicator fetch .finally() below
+        } else {
+          // No indicators — lift overlay now
+          setMainChartLoading(false);
+          symbolTransitioningRef.current = false;
+          setSymbolTransitioning(false);
+        }
       }, 150);
     },
     handleHistoricalError: (err) => {
@@ -2155,6 +2171,10 @@ json.dumps(result)
     if (!selectedCurrency || !timeframeValue) return;
 
     seriesReadyRef.current = false; // Prevent live ticks from squishing the old chart data
+
+    // Show transition overlay whenever symbol/timeframe/chartType changes
+    symbolTransitioningRef.current = true;
+    setSymbolTransitioning(true);
 
     if (connected && selectedCurrency && timeframeValue) {
       emit(EVENTS.CHART.GET, {
@@ -2488,19 +2508,41 @@ json.dumps(result)
                         minHeight: 450,
                       }}
                     >
-                      {mainChartLoading && !isDeploying ? (
+                      {/* Unified chart transition overlay — covers during symbol/timeframe change */}
+                      {(symbolTransitioning || mainChartLoading) && !isDeploying && (
                         <div
                           style={{
                             position: "absolute",
-                            top: "50%",
-                            left: "50%",
-                            transform: "translate(-50%, -50%)",
-                            zIndex: 50,
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 55,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "rgba(10, 11, 14, 0.92)",
+                            backdropFilter: "blur(2px)",
+                            transition: "opacity 0.25s ease",
                           }}
                         >
                           <Spinner />
+                          {symbolTransitioning && (
+                            <div style={{
+                              marginTop: "12px",
+                              fontSize: "13px",
+                              color: "rgba(179,182,190,0.8)",
+                              letterSpacing: "0.04em",
+                              fontWeight: 500,
+                            }}>
+                              Loading {selectedCurrency?.name}...
+                            </div>
+                          )}
                         </div>
-                      ) : isDeploying ? (
+                      )}
+                      {/* Strategy scanner overlay */}
+                      {isDeploying && (
                         <div
                           style={{
                             position: "absolute",
@@ -2525,7 +2567,7 @@ json.dumps(result)
                           {scannerProgressData && scannerProgressData.total > 0 && (
                             <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", alignItems: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                               <div>
-                                {Math.round((scannerProgressData.processed / scannerProgressData.total) * 100)}% 
+                                {Math.round((scannerProgressData.processed / scannerProgressData.total) * 100)}%
                               </div>
                               {scannerProgressData.current_stock && (
                                 <div style={{ marginTop: "0.25rem", fontSize: "0.8rem", opacity: 0.8 }}>
@@ -2535,7 +2577,9 @@ json.dumps(result)
                             </div>
                           )}
                         </div>
-                      ) : noDataAvailable ? (
+                      )}
+                      {/* No data overlay */}
+                      {noDataAvailable && !symbolTransitioning && !mainChartLoading && (
                         <div
                           style={{
                             position: "absolute",
@@ -2560,20 +2604,6 @@ json.dumps(result)
                             There is no chart data available for {selectedCurrency?.name || "this symbol"} in the selected timeframe.
                           </div>
                         </div>
-                      ) : (
-                        indicatorLoading && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              top: "50%",
-                              left: "50%",
-                              transform: "translate(-50%, -50%)",
-                              zIndex: 50,
-                            }}
-                          >
-                            <Spinner />
-                          </div>
-                        )
                       )}
                       {/* -------------------------------sub-header live Values----------------------- */}
                       <div
