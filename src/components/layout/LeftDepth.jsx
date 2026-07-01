@@ -101,9 +101,9 @@ const LeftDepth = ({ onClose, predictResults, setSelectedCurrency, isPredicting 
                 }}
               >
                 <div style={styles.itemTop}>
-                  <span style={styles.symbol}>{item.symbol}</span>
+                  <span style={styles.symbol}>{item?.symbol}</span>
                   <span style={{...styles.badge, ...(isCall ? styles.badgeCall : styles.badgePut)}}>
-                    {isCall ? "BUY" : type.toUpperCase() === "PUT" ? "SELL" : type}
+                    {type}
                   </span>
                 </div>
                 <div style={styles.time}>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX, FiCalendar, FiClock, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
 const GoToDateDialog = ({ onClose, onGoTo }) => {
@@ -36,7 +37,7 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
 
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-  return (
+  return createPortal(
     <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
       <div className="bg-[#1e222d] w-[350px] rounded-lg shadow-2xl overflow-hidden flex flex-col text-[#d1d4dc] font-sans border border-[#434651]">
         {/* Header */}
@@ -120,7 +121,8 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -198,12 +198,7 @@ plot_markers(markers)`,
 
         return {
           symbol: f.symbol,
-          signalType:
-            f.response?.type === "CALL"
-              ? "BUY"
-              : f.response?.type === "PUT"
-                ? "SELL"
-                : "BUY",
+          signalType: f.response?.type,
           timestamp: timeStr,
           segment: "SCRIPT",
         };
@@ -447,9 +442,9 @@ plot_markers(markers)`,
       console.log("Currently selected stock:", selectedCurrency);
 
       dashboardSignals.forEach((item) => {
-        let type = item.signalType;
-        if (!type && item.response?.type) {
-          type = item.response.type === "CALL" ? "BUY" : item.response.type === "PUT" ? "SELL" : "BUY";
+        let type = item.signalType || item.response?.type;
+        if (!type) {
+          type = "BUY";
         }
         let utcStr = item.timestamp || item.createdAt || item.updatedAt || item.tick?.datetime || item.response?.entry_time;
         if (utcStr && typeof utcStr === "string") {
@@ -479,7 +474,7 @@ plot_markers(markers)`,
               position: isBuy ? "belowBar" : "aboveBar",
               color: isBuy ? "#22c55e" : "#ef4444",
               shape: isBuy ? "arrowUp" : "arrowDown",
-              text: isBuy ? "BUY" : "SELL",
+              text: type.toUpperCase(),
               size: 1,
             });
           } else {
@@ -492,7 +487,7 @@ plot_markers(markers)`,
             symbol: item.symbol || selectedCurrency?.name || "STOCK",
             name: item.symbol || selectedCurrency?.name || "STOCK",
             token: item.symbol,
-            signalType: isBuy ? "BUY" : "SELL",
+            signalType: type.toUpperCase(),
             timestamp: new Date(utcStr).toLocaleString(),
             segment: "SCRIPT",
           });
