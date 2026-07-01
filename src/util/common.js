@@ -109,7 +109,7 @@ export function getIndicatorChartProperties() {
     rightPriceScale: {
       ...ChartProprties.rightPriceScale,
       visible: true,
-      scaleMargins: { top: 0.1, bottom: 0.1 },
+      // scaleMargins: { top: 0.1, bottom: 0.1 },
     },
 
     grid: { ...ChartProprties.grid },

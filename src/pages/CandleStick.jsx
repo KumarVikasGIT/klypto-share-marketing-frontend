@@ -1146,7 +1146,7 @@ json.dumps(result)
           if (absPrice >= 1e6) {
             return (price / 1e6).toFixed(2) + "M";
           }
-          return price.toFixed(4);
+          return Number(price.toFixed(4)).toString();
         },
       };
     }
@@ -1161,6 +1161,7 @@ json.dumps(result)
       try {
         series.priceScale().applyOptions({
           autoScale: true,
+          mode: 0, // Explicitly set Normal mode to override global Logarithmic mode
           visible: true,
           position: "right",
           minimumWidth: 85,
