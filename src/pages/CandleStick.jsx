@@ -132,7 +132,7 @@ export default function Candlestick() {
   });
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 90); // At least 3 months default for 5m
+    d.setMonth(d.getMonth() - 7);
     return d.toISOString().split("T")[0];
   });
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
@@ -375,7 +375,10 @@ plot_markers(markers)`,
             "Scanner triggered successfully! Waiting for results...",
         );
         setIsDeploying(false);
-        console.log("Scanner Execution Complete. All Signals:", deploymentSignalsRef.current);
+        console.log(
+          "Scanner Execution Complete. All Signals:",
+          deploymentSignalsRef.current,
+        );
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] COMPLETE handler failed:`, err);
       }
@@ -446,13 +449,19 @@ plot_markers(markers)`,
         if (!type) {
           type = "BUY";
         }
-        let utcStr = item.timestamp || item.createdAt || item.updatedAt || item.tick?.datetime || item.response?.entry_time;
+        let utcStr =
+          item.timestamp ||
+          item.createdAt ||
+          item.updatedAt ||
+          item.tick?.datetime ||
+          item.response?.entry_time;
         if (utcStr && typeof utcStr === "string") {
           utcStr = utcStr.replace(" ", "T");
         }
 
         if (utcStr && type) {
-          const isBuy = type.toUpperCase() === "BUY" || type.toUpperCase() === "CALL";
+          const isBuy =
+            type.toUpperCase() === "BUY" || type.toUpperCase() === "CALL";
 
           // Use unix_timestamp if available, else convert ISO
           let utcTime;
@@ -568,7 +577,7 @@ plot_markers(markers)`,
       // A strategy with only print() / comments isn't a valid signal generator.
       const STRATEGY_VARIABLES = /\b(close|open|high|low|volume|df)\b/;
       const hasStrategyLogic = meaningfulLines.some((l) =>
-        STRATEGY_VARIABLES.test(l)
+        STRATEGY_VARIABLES.test(l),
       );
       if (!hasStrategyLogic) {
         Swal.fire({
@@ -580,7 +589,6 @@ plot_markers(markers)`,
         });
         return;
       }
-
 
       setIsDeploying(true);
       setScannerProgressData(null);
@@ -612,7 +620,7 @@ plot_markers(markers)`,
         }
       }
 
-       // 1.5 Validate Python Syntax on Frontend before API Call
+      // 1.5 Validate Python Syntax on Frontend before API Call
       if (!pyodideRef.current) {
         Swal.fire({
           icon: "warning",
@@ -714,7 +722,7 @@ json.dumps(result)
         });
         setIsDeploying(false);
         return;
-      } 
+      }
 
       try {
         const closes = candlesRef?.current?.map((c) => c.close) || [];
@@ -758,7 +766,7 @@ json.dumps(result)
 
         const response = await apiService.post(
           `/api/strategy/run-scanner`,
-          payload
+          payload,
         );
 
         // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
@@ -922,9 +930,11 @@ json.dumps(result)
   const valueColor = isUp ? "text-green-500" : "text-red-500";
   // eslint-disable-next-line no-unused-expressions
   void indicatorUpdateTrigger; // keep this — forces re-eval when data arrives (ref reads don't re-render)
-  const hasPaneIndicators = selectedIndicator.some((ind) =>
-    PANE_INDICATORS.has(typeof ind === "object" ? ind.type : ind) &&
-    indicatorDataRef.current?.[typeof ind === "object" ? ind.id : ind] !== undefined
+  const hasPaneIndicators = selectedIndicator.some(
+    (ind) =>
+      PANE_INDICATORS.has(typeof ind === "object" ? ind.type : ind) &&
+      indicatorDataRef.current?.[typeof ind === "object" ? ind.id : ind] !==
+        undefined,
   );
 
   const fetchStrategyMarkers = async () => {
@@ -1046,23 +1056,18 @@ json.dumps(result)
     prevTimeframeRef.current = timeframeValue;
     prevCurrencyRef.current = selectedCurrency?.name;
     prevChartTypeRef.current = chartType;
-  // NOTE: fromDate and toDate are intentionally excluded — they affect candle data,
-  // not indicator fetching. Including them caused an infinite loop when GoToDate
-  // updated fromDate, which re-triggered this effect and set state repeatedly.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedIndicator,
-    selectedCurrency?.name,
-    timeframeValue,
-    chartType,
-  ]);
+    // NOTE: fromDate and toDate are intentionally excluded — they affect candle data,
+    // not indicator fetching. Including them caused an infinite loop when GoToDate
+    // updated fromDate, which re-triggered this effect and set state repeatedly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIndicator, selectedCurrency?.name, timeframeValue, chartType]);
 
   const toggleIndicatorVisibility = (indicator) => {
     const currentVisible = indicatorVisibility[indicator] ?? true;
     const newVisibility = !currentVisible;
     const seriesGroup = indicatorSeriesRef.current?.[indicator];
     if (seriesGroup) {
-      if (typeof seriesGroup.applyOptions === 'function') {
+      if (typeof seriesGroup.applyOptions === "function") {
         seriesGroup.applyOptions({ visible: newVisibility });
       } else {
         Object.values(seriesGroup).forEach((series) => {
@@ -1073,7 +1078,7 @@ json.dumps(result)
         if (seriesGroup._priceLines) {
           Object.values(seriesGroup._priceLines).forEach((line) => {
             if (line?.applyOptions) {
-               line.applyOptions({ visible: newVisibility });
+              line.applyOptions({ visible: newVisibility });
             }
           });
         }
@@ -1112,19 +1117,25 @@ json.dumps(result)
   };
 
   //  ADD SERIES
-  const addSeries = (indicator, SeriesType, options = {}, explicitPaneKey = null) => {
+  const addSeries = (
+    indicator,
+    SeriesType,
+    options = {},
+    explicitPaneKey = null,
+  ) => {
     if (!chartRef.current) return null;
 
     const paneKey = explicitPaneKey || indicator;
     const paneIndex = getPaneIndex(paneKey);
 
     // Force visibility to match the master toggle state if it's explicitly set to false
-    const isVisible = indicatorVisibility[paneKey] !== false && (options.visible !== false);
+    const isVisible =
+      indicatorVisibility[paneKey] !== false && options.visible !== false;
 
     const finalOptions = { ...options, visible: isVisible };
     if (paneIndex !== 0 && !finalOptions.priceFormat) {
       finalOptions.priceFormat = {
-        type: 'custom',
+        type: "custom",
         minMove: 0.0001,
         formatter: (price) => {
           if (price === undefined || price === null) return "";
@@ -1133,7 +1144,7 @@ json.dumps(result)
             return price.toExponential(2);
           }
           if (absPrice >= 1e6) {
-            return (price / 1e6).toFixed(2) + 'M';
+            return (price / 1e6).toFixed(2) + "M";
           }
           return price.toFixed(4);
         },
@@ -1159,7 +1170,11 @@ json.dumps(result)
           },
         });
       } catch (err) {
-        console.warn("Could not configure price scale for pane", paneIndex, err);
+        console.warn(
+          "Could not configure price scale for pane",
+          paneIndex,
+          err,
+        );
       }
     }
 
@@ -1230,7 +1245,7 @@ json.dumps(result)
       (key) => key === paneKey,
     );
     if (stillUsed) return;
-    
+
     // In Lightweight Charts v5, removing all series from a pane automatically removes the pane
     // and its splitter. Manual DOM manipulation here causes the library to lose track of
     // elements and leaves orphan splitters/blank spaces behind.
@@ -1473,27 +1488,27 @@ json.dumps(result)
           if (prop === type || prop === id) {
             // instance-specific style takes priority; fall back to type default
             const baseStyle = target[id] ?? target[type];
-            
+
             // Force visible: false deeply if the master toggle is off
             if (indicatorVisibility[id] === false && baseStyle) {
               const overrideStyle = JSON.parse(JSON.stringify(baseStyle));
               const forceVisibleFalse = (obj) => {
                 for (let k in obj) {
-                  if (typeof obj[k] === 'object' && obj[k] !== null) {
+                  if (typeof obj[k] === "object" && obj[k] !== null) {
                     forceVisibleFalse(obj[k]);
-                  } else if (k === 'visible') {
+                  } else if (k === "visible") {
                     obj[k] = false;
                   }
                 }
                 // also force root level properties if any sub-components use them directly
-                if (!obj.hasOwnProperty('visible')) {
+                if (!obj.hasOwnProperty("visible")) {
                   obj.visible = false;
                 }
               };
               forceVisibleFalse(overrideStyle);
               return overrideStyle;
             }
-            
+
             return baseStyle;
           }
           return target[prop];
@@ -1668,8 +1683,11 @@ json.dumps(result)
     handleConnect: () => {
       console.log("✅ SOCKET CONNECTED", connected);
       requestHistoricalData();
-      
-      if (selectedIndicatorRef.current && selectedIndicatorRef.current.length > 0) {
+
+      if (
+        selectedIndicatorRef.current &&
+        selectedIndicatorRef.current.length > 0
+      ) {
         fetchIndicatorData(
           selectedIndicatorRef.current,
           selectedCurrency,
@@ -1694,7 +1712,7 @@ json.dumps(result)
         }
         return;
       }
-      
+
       setNoDataAvailable(false);
 
       const symbolFromResponse =
@@ -1765,7 +1783,10 @@ json.dumps(result)
         return;
       }
 
-      if (seriesRef.current && seriesRef.current.customChartType !== chartType) {
+      if (
+        seriesRef.current &&
+        seriesRef.current.customChartType !== chartType
+      ) {
         try {
           chartRef.current.removeSeries(seriesRef.current);
         } catch {}
@@ -1887,27 +1908,32 @@ json.dumps(result)
 
       seriesReadyRef.current = true;
 
-      if (selectedIndicatorRef.current && selectedIndicatorRef.current.length > 0) {
+      if (
+        selectedIndicatorRef.current &&
+        selectedIndicatorRef.current.length > 0
+      ) {
         fetchIndicatorData(
           selectedIndicatorRef.current,
           selectedCurrencyRef.current,
           timeframeValue,
-        ).then(() => {
-          setIndicatorUpdateTrigger((v) => v + 1);
-          // Defer overlay removal: give React one full render cycle + a
-          // small buffer so indicator Plot useEffects (SSL, RSI, etc.)
-          // complete their series.setData() calls before the overlay lifts.
-          setTimeout(() => {
+        )
+          .then(() => {
+            setIndicatorUpdateTrigger((v) => v + 1);
+            // Defer overlay removal: give React one full render cycle + a
+            // small buffer so indicator Plot useEffects (SSL, RSI, etc.)
+            // complete their series.setData() calls before the overlay lifts.
+            setTimeout(() => {
+              setMainChartLoading(false);
+              symbolTransitioningRef.current = false;
+              setSymbolTransitioning(false);
+            }, 300);
+          })
+          .catch(() => {
+            // Even on error, lift the overlay
             setMainChartLoading(false);
             symbolTransitioningRef.current = false;
             setSymbolTransitioning(false);
-          }, 300);
-        }).catch(() => {
-          // Even on error, lift the overlay
-          setMainChartLoading(false);
-          symbolTransitioningRef.current = false;
-          setSymbolTransitioning(false);
-        });
+          });
       }
 
       if (
@@ -1997,7 +2023,9 @@ json.dumps(result)
 
         // Block ticks after 3:30 PM IST (930 minutes)
         const dateObj = new Date(tickTime * 1000);
-        const istTime = new Date(dateObj.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+        const istTime = new Date(
+          dateObj.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+        );
         const currentMinutes = istTime.getHours() * 60 + istTime.getMinutes();
         if (currentMinutes > 930) return;
 
@@ -2204,13 +2232,7 @@ json.dumps(result)
     }, 10000);
 
     return () => clearTimeout(timeout);
-  }, [
-    selectedCurrency,
-    timeframeValue,
-    chartType,
-    fromDate,
-    toDate,
-  ]);
+  }, [selectedCurrency, timeframeValue, chartType, fromDate, toDate]);
 
   const zoomCharts = (delta) => {
     const charts = [
@@ -2252,15 +2274,15 @@ json.dumps(result)
 
   const handleGoToDate = (targetDate) => {
     if (!chartRef.current) return;
-    
+
     // Check if the target date is earlier than our currently fetched fromDate
     const targetTimeMs = targetDate.getTime();
     const currentFromTimeMs = new Date(fromDate).getTime();
-    
+
     if (targetTimeMs < currentFromTimeMs) {
       // Need to fetch older data first
       pendingGoToDateRef.current = targetDate;
-      
+
       // Update fromDate to 30 days before the target date just to be safe
       const newFrom = new Date(targetDate);
       newFrom.setDate(newFrom.getDate() - 30);
@@ -2269,13 +2291,13 @@ json.dumps(result)
     }
 
     if (!candlesRef.current?.length) return;
-    
+
     const targetTimeSec = Math.floor(targetTimeMs / 1000);
-    
+
     // Find the closest candle
     let closestIndex = 0;
     let minDiff = Infinity;
-    
+
     for (let i = 0; i < candlesRef.current.length; i++) {
       const candle = candlesRef.current[i];
       const diff = Math.abs(candle.time - targetTimeSec);
@@ -2284,11 +2306,11 @@ json.dumps(result)
         closestIndex = i;
       }
     }
-    
+
     // Calculate logical range to put the candle in the center
     const fromIndex = Math.max(0, closestIndex - 25);
     const toIndex = Math.min(candlesRef.current.length - 1, closestIndex + 25);
-    
+
     chartRef.current.timeScale().setVisibleLogicalRange({
       from: fromIndex,
       to: toIndex,
@@ -2313,9 +2335,23 @@ json.dumps(result)
       >
         <div
           className="container-fluid p-0 m-0"
-          style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1, minHeight: "fit-content" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            flex: 1,
+            minHeight: "fit-content",
+          }}
         >
-          <div style={{ display: "flex", flexDirection: "row", width: "100%", flex: 1, minHeight: "fit-content" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              width: "100%",
+              flex: 1,
+              minHeight: "fit-content",
+            }}
+          >
             <style>{`
               @media (max-width: 768px) {
                 .left-panel-mobile.is-open {
@@ -2495,7 +2531,14 @@ json.dumps(result)
                   />
                 </div>
 
-                <div style={{ display: "flex", flex: 1, overflowX: "auto", overflowY: "hidden" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flex: 1,
+                    overflowX: "auto",
+                    overflowY: "hidden",
+                  }}
+                >
                   <div
                     className="chart-and-panes-wrapper mobile-scrollable-chart"
                     style={{
@@ -2521,28 +2564,40 @@ json.dumps(result)
                       }}
                     >
                       {/* Unified chart transition overlay — covers during symbol/timeframe change */}
-                      {(symbolTransitioning || mainChartLoading || indicatorLoading) && !isDeploying && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            zIndex: 55,
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: (symbolTransitioning || mainChartLoading) ? "rgba(10, 11, 14, 0.92)" : "transparent",
-                            backdropFilter: (symbolTransitioning || mainChartLoading) ? "blur(2px)" : "none",
-                            pointerEvents: (symbolTransitioning || mainChartLoading) ? "auto" : "none",
-                            transition: "opacity 0.25s ease",
-                          }}
-                        >
-                          <Spinner />
-                        </div>
-                      )}
+                      {(symbolTransitioning ||
+                        mainChartLoading ||
+                        indicatorLoading) &&
+                        !isDeploying && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              zIndex: 55,
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background:
+                                symbolTransitioning || mainChartLoading
+                                  ? "rgba(10, 11, 14, 0.92)"
+                                  : "transparent",
+                              backdropFilter:
+                                symbolTransitioning || mainChartLoading
+                                  ? "blur(2px)"
+                                  : "none",
+                              pointerEvents:
+                                symbolTransitioning || mainChartLoading
+                                  ? "auto"
+                                  : "none",
+                              transition: "opacity 0.25s ease",
+                            }}
+                          >
+                            <Spinner />
+                          </div>
+                        )}
                       {/* Strategy scanner overlay */}
                       {isDeploying && (
                         <div
@@ -2563,50 +2618,95 @@ json.dumps(result)
                           }}
                         >
                           <Spinner />
-                          <div style={{ marginTop: "1rem", fontWeight: "bold", fontSize: "1.1rem" }}>
+                          <div
+                            style={{
+                              marginTop: "1rem",
+                              fontWeight: "bold",
+                              fontSize: "1.1rem",
+                            }}
+                          >
                             Running Strategy Scanner...
                           </div>
-                          {scannerProgressData && scannerProgressData.total > 0 && (
-                            <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", alignItems: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-                              <div>
-                                {Math.round((scannerProgressData.processed / scannerProgressData.total) * 100)}%
-                              </div>
-                              {scannerProgressData.current_stock && (
-                                <div style={{ marginTop: "0.25rem", fontSize: "0.8rem", opacity: 0.8 }}>
-                                  Processing: {scannerProgressData.current_stock}
+                          {scannerProgressData &&
+                            scannerProgressData.total > 0 && (
+                              <div
+                                style={{
+                                  marginTop: "0.5rem",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  fontSize: "0.9rem",
+                                  color: "var(--text-secondary)",
+                                }}
+                              >
+                                <div>
+                                  {Math.round(
+                                    (scannerProgressData.processed /
+                                      scannerProgressData.total) *
+                                      100,
+                                  )}
+                                  %
                                 </div>
-                              )}
-                            </div>
-                          )}
+                                {scannerProgressData.current_stock && (
+                                  <div
+                                    style={{
+                                      marginTop: "0.25rem",
+                                      fontSize: "0.8rem",
+                                      opacity: 0.8,
+                                    }}
+                                  >
+                                    Processing:{" "}
+                                    {scannerProgressData.current_stock}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                         </div>
                       )}
                       {/* No data overlay */}
-                      {noDataAvailable && !symbolTransitioning && !mainChartLoading && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            zIndex: 40,
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: "rgba(0, 0, 0, 0.6)",
-                            backdropFilter: "blur(4px)",
-                            color: "var(--text-primary)",
-                            textAlign: "center",
-                            padding: "20px",
-                          }}
-                        >
-                          <div style={{ fontSize: "1.25rem", fontWeight: "bold", marginBottom: "8px" }}>No Data Available</div>
-                          <div style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>
-                            There is no chart data available for {selectedCurrency?.name || "this symbol"} in the selected timeframe.
+                      {noDataAvailable &&
+                        !symbolTransitioning &&
+                        !mainChartLoading && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              zIndex: 40,
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: "rgba(0, 0, 0, 0.6)",
+                              backdropFilter: "blur(4px)",
+                              color: "var(--text-primary)",
+                              textAlign: "center",
+                              padding: "20px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: "1.25rem",
+                                fontWeight: "bold",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              No Data Available
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "0.875rem",
+                                color: "var(--text-secondary)",
+                              }}
+                            >
+                              There is no chart data available for{" "}
+                              {selectedCurrency?.name || "this symbol"} in the
+                              selected timeframe.
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                       {/* -------------------------------sub-header live Values----------------------- */}
                       <div
                         className="position-absolute top-0 start-0"
@@ -2892,15 +2992,25 @@ json.dumps(result)
                                     type={type}
                                     timeframeValue={timeframeValue}
                                     value={value}
-                                    renderValue={(indId, val) => renderValue(indId, type, val)}
+                                    renderValue={(indId, val) =>
+                                      renderValue(indId, type, val)
+                                    }
                                     indicatorVisibility={indicatorVisibility}
-                                    toggleIndicatorVisibility={toggleIndicatorVisibility}
+                                    toggleIndicatorVisibility={
+                                      toggleIndicatorVisibility
+                                    }
                                     removeIndicator={removeIndicator}
-                                    setActiveBarIndicator={() => setActiveBarIndicator({ id, type })}
+                                    setActiveBarIndicator={() =>
+                                      setActiveBarIndicator({ id, type })
+                                    }
                                     setIndicatorProperty={setIndicatorProperty}
-                                    setActiveSourceIndicator={() => setActiveSourceIndicator(type)}
+                                    setActiveSourceIndicator={() =>
+                                      setActiveSourceIndicator(type)
+                                    }
                                     setShowSourcePanel={setShowSourcePanel}
-                                    indicatorConfigDefault={indicatorConfigDefault}
+                                    indicatorConfigDefault={
+                                      indicatorConfigDefault
+                                    }
                                     indicatorConfigs={indicatorConfigs}
                                   />
                                 );
@@ -2913,12 +3023,14 @@ json.dumps(result)
                             .map((ind) => {
                               const { id, type } = ind;
                               const value = liveIndicatorData[id];
-                              const paneDiv = panesRef.current[id]?.pane?.getHTMLElement();
-                              
+                              const paneDiv =
+                                panesRef.current[id]?.pane?.getHTMLElement();
+
                               if (!paneDiv) return null;
-                              const portalTarget = paneDiv.tagName?.toLowerCase() === 'tr' 
-                                ? (paneDiv.querySelector('td') || paneDiv) 
-                                : paneDiv;
+                              const portalTarget =
+                                paneDiv.tagName?.toLowerCase() === "tr"
+                                  ? paneDiv.querySelector("td") || paneDiv
+                                  : paneDiv;
 
                               portalTarget.style.position = "relative"; // Ensure the pane is a positioning context
 
@@ -2939,19 +3051,29 @@ json.dumps(result)
                                     type={type}
                                     timeframeValue={timeframeValue}
                                     value={value}
-                                    renderValue={(indId, val) => renderValue(indId, type, val)}
+                                    renderValue={(indId, val) =>
+                                      renderValue(indId, type, val)
+                                    }
                                     indicatorVisibility={indicatorVisibility}
-                                    toggleIndicatorVisibility={toggleIndicatorVisibility}
+                                    toggleIndicatorVisibility={
+                                      toggleIndicatorVisibility
+                                    }
                                     removeIndicator={removeIndicator}
-                                    setActiveBarIndicator={() => setActiveBarIndicator({ id, type })}
+                                    setActiveBarIndicator={() =>
+                                      setActiveBarIndicator({ id, type })
+                                    }
                                     setIndicatorProperty={setIndicatorProperty}
-                                    setActiveSourceIndicator={() => setActiveSourceIndicator(type)}
+                                    setActiveSourceIndicator={() =>
+                                      setActiveSourceIndicator(type)
+                                    }
                                     setShowSourcePanel={setShowSourcePanel}
-                                    indicatorConfigDefault={indicatorConfigDefault}
+                                    indicatorConfigDefault={
+                                      indicatorConfigDefault
+                                    }
                                     indicatorConfigs={indicatorConfigs}
                                   />
                                 </div>,
-                                portalTarget
+                                portalTarget,
                               );
                             })}
                         </>
@@ -3314,7 +3436,16 @@ json.dumps(result)
             </div>
 
             {/* Right Sidebar */}
-            <div className="right-sidebar-mobile" style={{ width: "70px", height: "100%", flexShrink: 0, borderLeft: "1px solid var(--border-color)", zIndex: 50 }}>
+            <div
+              className="right-sidebar-mobile"
+              style={{
+                width: "70px",
+                height: "100%",
+                flexShrink: 0,
+                borderLeft: "1px solid var(--border-color)",
+                zIndex: 50,
+              }}
+            >
               <RightSidebar
                 isWatchlistOpen={activeTab !== "Alerts" && isWatchlistOpen}
                 toggleWatchlist={() => {

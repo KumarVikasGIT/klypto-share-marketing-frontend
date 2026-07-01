@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { FiX, FiCalendar, FiClock, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
 const GoToDateDialog = ({ onClose, onGoTo }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedTime, setSelectedTime] = useState('00:00');
+  const [selectedDate, setSelectedDate] = useState(() => localStorage.getItem('goToDateDialog_date') || new Date().toISOString().split('T')[0]);
+  const [selectedTime, setSelectedTime] = useState(() => localStorage.getItem('goToDateDialog_time') || '00:00');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
@@ -18,6 +18,7 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
     // adjust for local timezone offset when getting ISO string
     const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     setSelectedDate(localDate);
+    localStorage.setItem('goToDateDialog_date', localDate);
   };
 
   const handleGoTo = () => {
@@ -38,8 +39,10 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   return createPortal(
-    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
-      <div className="bg-[#1e222d] w-[350px] rounded-lg shadow-2xl overflow-hidden flex flex-col text-[#d1d4dc] font-sans border border-[#434651]">
+    <>
+      <div className="fixed inset-0 z-[9998]" onClick={onClose}></div>
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
+        <div className="bg-[#1e222d] w-[350px] rounded-lg shadow-2xl overflow-hidden flex flex-col text-[#d1d4dc] font-sans border border-[#434651]">
         {/* Header */}
         <div className="flex justify-between items-center p-4 pb-2">
           <h2 className="text-xl font-bold">Go to</h2>
@@ -62,6 +65,7 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
               value={selectedDate}
               onChange={(e) => {
                 setSelectedDate(e.target.value);
+                localStorage.setItem('goToDateDialog_date', e.target.value);
                 const d = new Date(e.target.value);
                 if (!isNaN(d.getTime())) {
                   setCurrentMonth(d);
@@ -75,7 +79,10 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
               type="text" 
               className="bg-transparent border-none outline-none text-[#d1d4dc] w-full text-sm font-semibold"
               value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
+              onChange={(e) => {
+                setSelectedTime(e.target.value);
+                localStorage.setItem('goToDateDialog_time', e.target.value);
+              }}
             />
             <FiClock className="text-[#a3a6af] ml-2 shrink-0" size={16}/>
           </div>
@@ -121,7 +128,8 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
           </button>
         </div>
       </div>
-    </div>,
+    </div>
+    </>,
     document.body
   );
 };
