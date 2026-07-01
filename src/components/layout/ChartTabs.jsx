@@ -219,25 +219,25 @@ const ChartTabs = ({
             onClick={() => setActiveTab(tab)}
           >
             {tab}
-            {activeTab === tab && <div className="chart-tab-active-indicator" />}
+            {activeTab === tab && (
+              <div className="chart-tab-active-indicator" />
+            )}
           </div>
         ))}
       </div>
 
       <div className="chart-actions-group">
-        <button onClick={() => setShowGoToDate(true)}>
+        <button title="Go to" onClick={() => setShowGoToDate(true)}>
           <FiCalendar size={14} />
         </button>
         <button
+          title="Run Strategy"
           onClick={onStrategyClick}
           className="chart-strategy-btn"
         >
           <SiVitest size={14} /> STRATEGY
         </button>
-        <button
-          className="chart-scalper-btn"
-          onClick={onCodeClick}
-        >
+        <button className="chart-scalper-btn" onClick={onCodeClick}>
           <FaCode />
           CODE EDITOR
         </button>
