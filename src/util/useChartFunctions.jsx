@@ -389,6 +389,40 @@ export default function useChartFunctions({
         };
         break;
       }
+      case "VOLATILITY_MOMENTUM_PRO": {
+        const openingRangeHigh = result?.data?.openingRangeHigh ?? [];
+        const openingRangeLow = result?.data?.openingRangeLow ?? [];
+        const volatilityUpperChannel =
+          result?.data?.volatilityUpperChannel ?? [];
+        const volatilityLowerChannel =
+          result?.data?.volatilityLowerChannel ?? [];
+
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          openingRangeHigh:
+            openingRangeHigh.length > 0
+              ? openingRangeHigh[openingRangeHigh.length - 1]?.value
+              : null,
+
+          openingRangeLow:
+            openingRangeLow.length > 0
+              ? openingRangeLow[openingRangeLow.length - 1]?.value
+              : null,
+
+          volatilityUpperChannel:
+            volatilityUpperChannel.length > 0
+              ? volatilityUpperChannel[volatilityUpperChannel.length - 1]?.value
+              : null,
+
+          volatilityLowerChannel:
+            volatilityLowerChannel.length > 0
+              ? volatilityLowerChannel[volatilityLowerChannel.length - 1]?.value
+              : null,
+        };
+
+        break;
+      }
       case "ATR": {
         indicatorDataRef.current[id] = { result, rows };
         const atr = result?.data?.atr ?? [];
@@ -1918,6 +1952,41 @@ async function fetchDataForIndicators(
                   value: d.stochRsiD,
                 })) ?? [],
           },
+        };
+
+      case "VOLATILITY_MOMENTUM_PRO":
+        return {
+          openingRangeHigh: rows
+            .filter((d) => d.openingRangeHigh != null && d.time != null)
+            .map((d) => ({
+              time: Number(d.time) + IST_OFFSET,
+              value: Number(d.openingRangeHigh),
+            }))
+            .sort((a, b) => a.time - b.time),
+
+          openingRangeLow: rows
+            .filter((d) => d.openingRangeLow != null && d.time != null)
+            .map((d) => ({
+              time: Number(d.time) + IST_OFFSET,
+              value: Number(d.openingRangeLow),
+            }))
+            .sort((a, b) => a.time - b.time),
+
+          volatilityUpperChannel: rows
+            .filter((d) => d.volatilityUpperChannel != null && d.time != null)
+            .map((d) => ({
+              time: Number(d.time) + IST_OFFSET,
+              value: Number(d.volatilityUpperChannel),
+            }))
+            .sort((a, b) => a.time - b.time),
+
+          volatilityLowerChannel: rows
+            .filter((d) => d.volatilityLowerChannel != null && d.time != null)
+            .map((d) => ({
+              time: Number(d.time) + IST_OFFSET,
+              value: Number(d.volatilityLowerChannel),
+            }))
+            .sort((a, b) => a.time - b.time),
         };
 
       case "MACD":
