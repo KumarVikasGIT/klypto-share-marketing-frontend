@@ -84,7 +84,7 @@ export const ChartProprties = {
     horzLine: {
       visible: true,
       labelVisible: true,
-      color: "var(--border-color)",
+      color: "rgba(120, 123, 134, 0.4)",
       width: 1,
       style: 2,
     },

@@ -11,11 +11,9 @@ import {
 } from "lightweight-charts";
 import React from "react";
 import { createPortal } from "react-dom";
-// import IndicatorRuleBuilder from "../components/scanner/IndicatorRuleBuilder";
 import { LuCirclePlus, LuCircleMinus } from "react-icons/lu";
 import { RiResetRightLine } from "react-icons/ri";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { FaCode } from "react-icons/fa6";
 import ChartHeader from "../components/tradingModals/ChartHeader";
 import Navbar from "../components/layout/Navbar";
 import LeftWatchlist from "../components/layout/LeftWatchlist";
@@ -24,8 +22,6 @@ import ChartTabs from "../components/layout/ChartTabs";
 import LeftDepth from "../components/layout/LeftDepth";
 import useSocket from "../util/useSocket";
 import EVENTS from "../services/websocket/socketEvent";
-import { METADATA_API_URL } from "../services/websocket/socket";
-
 // import SEO from "../components/SEO";
 import {
   ChartProprties,
@@ -36,14 +32,6 @@ import {
   getIndicatorChartProperties,
 } from "../util/common";
 import SourceCodePanel from "../components/indicator/SourceCodePanel";
-
-import {
-  IoCloseSharp,
-  IoEyeOffOutline,
-  IoEyeOutline,
-  IoLink,
-  IoSettingsOutline,
-} from "react-icons/io5";
 import IndicatorAlert from "../components/indicator/IndicatorAlert";
 import IndicatorPropertyDialog from "../components/indicator/IndicatorPropertyDialog";
 import useChartFunctions from "../util/useChartFunctions";
@@ -60,16 +48,16 @@ import {
   indicatorStyleDefault,
   PANE_INDICATORS,
 } from "../util/indicatorFunctions";
-import { io } from "socket.io-client";
 import { getStrategySocket } from "../services/websocket/socket";
 import { toast } from "react-toastify";
 import useAlerts from "../util/useAlerts";
-import { Link } from "react-router-dom";
 import CodeEditorPanel from "../components/layout/CodeEditorPanel";
 import OIAnalytics from "../components/tradingModals/OIAnalytics";
-import { FaPlay } from "react-icons/fa";
 import Swal from "sweetalert2";
 import apiService from "../services/apiServices";
+import useDrawingTools from "../util/useDrawingTools";
+import DrawingToolbar from "../components/tradingModals/DrawingToolbar";
+import DrawingToolbox from "../components/tradingModals/DrawingToolbox";
 
 export default function Candlestick() {
   const chartRef = useRef();
@@ -123,13 +111,33 @@ export default function Candlestick() {
       console.warn("Failed to read selectedCurrency from localStorage", e);
     }
     return {
-      symbol: "ADANIPORTS-EQ",
-      name: "ADANIPORTS",
-      token: 15083,
+      name: "TCS",
+      token: "11536",
       segment: "NSE",
-      expiry: "",
+      exchange: "NSE",
     };
   });
+
+  const { 
+    activeTool, 
+    setActiveTool, 
+    clearAllDrawings, 
+    selectedLine, 
+    toolboxPos, 
+    updateHorizontalLine, 
+    deleteHorizontalLine, 
+    closeToolbox,
+    onDragLine,
+    getAnchorY
+  } = useDrawingTools({
+    chartRef,
+    seriesRef,
+    containerRef,
+    symbol: selectedCurrency?.symbol || selectedCurrency?.name,
+    interval: timeframeValue,
+  });
+
+  const [activePropertyDialog, setActivePropertyDialog] = useState(null);
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 7);
@@ -168,8 +176,7 @@ plot_markers(markers)`,
       setIsDetailsOpen(false);
       if (activeTab === "Alerts") setActiveTab("Chart");
 
-      const apiUrl =
-        import.meta.env.VITE_STRATEGY_API_URL || "http://192.168.1.6:3000";
+      const apiUrl = import.meta.env.VITE_STRATEGY_API_URL;
       const resp = await apiService.get(`${apiUrl}/api/predictResult`);
       console.log("predict API result:", resp);
 
@@ -2540,6 +2547,11 @@ json.dumps(result)
                     overflowY: "hidden",
                   }}
                 >
+                  <DrawingToolbar 
+                    activeTool={activeTool} 
+                    setActiveTool={setActiveTool} 
+                    clearAllDrawings={clearAllDrawings} 
+                  />
                   <div
                     className="chart-and-panes-wrapper mobile-scrollable-chart"
                     style={{
@@ -2564,6 +2576,13 @@ json.dumps(result)
                         minHeight: 450,
                       }}
                     >
+                      <DrawingToolbox
+                        selectedLine={selectedLine}
+                        position={toolboxPos}
+                        onUpdate={updateHorizontalLine}
+                        onDelete={deleteHorizontalLine}
+                        onClose={closeToolbox}
+                      />
                       {/* Unified chart transition overlay — covers during symbol/timeframe change */}
                       {(symbolTransitioning ||
                         mainChartLoading ||
