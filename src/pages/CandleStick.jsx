@@ -124,8 +124,8 @@ export default function Candlestick() {
     clearAllDrawings, 
     selectedLine, 
     toolboxPos, 
-    updateHorizontalLine, 
-    deleteHorizontalLine, 
+    updateLine,
+    deleteLine, 
     closeToolbox,
     onDragLine,
     getAnchorY
@@ -2579,8 +2579,8 @@ json.dumps(result)
                       <DrawingToolbox
                         selectedLine={selectedLine}
                         position={toolboxPos}
-                        onUpdate={updateHorizontalLine}
-                        onDelete={deleteHorizontalLine}
+                        onUpdate={updateLine}
+                        onDelete={deleteLine}
                         onClose={closeToolbox}
                       />
                       {/* Unified chart transition overlay — covers during symbol/timeframe change */}

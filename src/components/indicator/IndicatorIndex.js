@@ -116,6 +116,8 @@ import SUPERSMOOTHERInput from "./SuperSmoother/SUPERSMOOTHERInput";
 import HealthyBoxInput from "./HealthyBox/HealthyBoxInput";
 import BodyDNAInput from "./Body915DNA/BodyDNAInput";
 import HMABoxInput from "./HMA60BOX/HMABoxInput";
+import VolatilityMomentumProInput from "./VolatilityMomentum/VolatilityMomentumProInput";
+import VolatilityMomentumProPlot from "./VolatilityMomentum/VolatilityMomentumProPlot";
 
 export const indicatorComponents = {
   VWAP: VWAPPlot,
@@ -180,6 +182,7 @@ export const indicatorComponents = {
   HEALTHY_BOX: HealthyBoxPlot,
   BODY915DNA: BodyDNAPlot,
   HMA60_BOX_DISTANCE: HMABoxPlot,
+  VOLATILITY_MOMENTUM_PRO: VolatilityMomentumProPlot,
 };
 
 export const indicatorInputs = {
@@ -243,6 +246,7 @@ export const indicatorInputs = {
   HEALTHY_BOX: HealthyBoxInput,
   BODY915DNA: BodyDNAInput,
   HMA60_BOX_DISTANCE: HMABoxInput,
+  VOLATILITY_MOMENTUM_PRO: VolatilityMomentumProInput,
 };
 
 export function updateIndicatorFromInput(
