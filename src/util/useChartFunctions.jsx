@@ -1709,10 +1709,10 @@ async function fetchDataForIndicators(
           data: {
             percentB:
               response?.data
-                ?.filter((d) => d.percentB != null && d.time != null)
+                ?.filter((d) => (d.bbperb ?? d.percentB) != null && d.time != null)
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
-                  value: Number(d.percentB),
+                  value: Number(d.bbperb ?? d.percentB),
                 })) ?? [],
           },
         };

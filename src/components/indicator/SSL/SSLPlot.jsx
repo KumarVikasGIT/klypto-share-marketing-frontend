@@ -320,23 +320,27 @@ export default function SSLPlot({
 
     const upper = sslGroup.upperChannelData || [];
     const lower = sslGroup.lowerChannelData || [];
-    if (!upper.length || !lower.length) return;
     if (!canvasRef.current || !chart) return;
-
-    const fill = indicatorStyle?.SSL_HYBRID?.baselineFill;
-    const upperVisible = indicatorStyle?.SSL_HYBRID?.upperChannel?.visible ?? true;
-    const lowerVisible = indicatorStyle?.SSL_HYBRID?.lowerChannel?.visible ?? true;
-
-    if (!fill?.visible) return;
-    if (!upperVisible || !lowerVisible) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     const rect = containerRef.getBoundingClientRect();
-
     canvas.width = rect.width;
     canvas.height = rect.height;
+    // Always clear first
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const fill = indicatorStyle?.SSL_HYBRID?.baselineFill;
+    const upperVisible = indicatorStyle?.SSL_HYBRID?.upperChannel?.visible ?? true;
+    const lowerVisible = indicatorStyle?.SSL_HYBRID?.lowerChannel?.visible ?? true;
+    const candlesVisible = indicatorStyle?.SSL_HYBRID?.candles?.visible ?? true;
+
+    // Hide fill if: fill explicitly hidden, channels hidden, OR candles hidden
+    if (!(fill?.visible ?? true)) return;
+    if (!upperVisible || !lowerVisible) return;
+    if (!candlesVisible) return;
+    if (!upper.length || !lower.length) return;
+
     ctx.beginPath();
 
     for (let i = 0; i < upper.length; i++) {
@@ -398,10 +402,30 @@ export default function SSLPlot({
     drawBaselineCloud();
 
     // Re-apply bar colors when style changes (e.g., color_bars toggled)
+    // If any key channel line is hidden, also restore candle colors
+    const upperVisible = indicatorStyle?.SSL_HYBRID?.upperChannel?.visible ?? true;
+    const lowerVisible = indicatorStyle?.SSL_HYBRID?.lowerChannel?.visible ?? true;
+    const baselineVisible = indicatorStyle?.SSL_HYBRID?.baseline?.visible ?? true;
+    const candlesVisible = indicatorStyle?.SSL_HYBRID?.candles?.visible ?? true;
+    const anyHidden = !upperVisible || !lowerVisible || !baselineVisible || !candlesVisible;
+
     const nestedData = result?.data || {};
     const upperArr = nestedData.upperChannel || [];
     const lowerArr = nestedData.lowerChannel || [];
-    applyBarColors(closeMapRef.current, upperArr, lowerArr);
+
+    if (anyHidden) {
+      // Restore original candle colors when any key line is hidden
+      const mainSeries = mainSeriesRef?.current;
+      const candles = candlesRef?.current;
+      if (mainSeries && candles?.length) {
+        try {
+          const restored = candles.map(({ color, wickColor, borderColor, ...rest }) => rest);
+          mainSeries.setData(restored);
+        } catch {}
+      }
+    } else {
+      applyBarColors(closeMapRef.current, upperArr, lowerArr);
+    }
   }, [indicatorStyle, result]);
 
   /* ================= CLEANUP ================= */

@@ -403,7 +403,75 @@ plot_markers(markers)`,
         setIsDepthOpen(true);
       } else if (data.status === "done") {
         setIsPredicting(false);
-        // Optional: Add a toast notification here
+
+        // ✅ FALLBACK: If no trade signals arrived via socket, fetch from REST API
+        // Wait briefly to allow any in-flight socket events to arrive first
+        setTimeout(async () => {
+          setPredictResultData((currentResults) => {
+            if (currentResults && currentResults.length > 0) {
+              // Socket results already arrived — no fallback needed
+              return currentResults;
+            }
+
+            // No socket results — fetch from REST API as fallback
+            apiService.get("/api/predictResult")
+              .then((res) => {
+                const results = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+                if (results.length > 0) {
+                  console.log("[AI PREDICTION] Fallback REST results loaded:", results.length);
+                  setIsDepthOpen(true);
+
+                  const mapped = results.map((item) => ({
+                    symbol: item.symbol,
+                    response: {
+                      type: item.trade_type,
+                      entry_time: item.entry_time,
+                      entry_price: item.entry_price,
+                      signal: item.signal,
+                      trend: item.trend,
+                      status: item.status,
+                      rsi: item.rsi,
+                      candle_open: item.candle_open,
+                      candle_high: item.candle_high,
+                      candle_low: item.candle_low,
+                      candle_close: item.candle_close,
+                      candle_volume: item.candle_volume,
+                    },
+                    tick: {
+                      datetime: item.entry_time,
+                    },
+                    uuid: item.uuid,
+                    created_at: item.created_at,
+                  }));
+
+                  setPredictResultData(mapped);
+
+                  // Also plot on chart
+                  const signals = results.map((item) => {
+                    let timeStr = item.entry_time || item.created_at || new Date().toISOString();
+                    timeStr = timeStr.replace(" ", "T");
+                    return {
+                      symbol: item.symbol,
+                      signalType: item.trade_type,
+                      timestamp: timeStr,
+                      segment: "SCRIPT",
+                    };
+                  });
+
+                  setDashboardSignals((prev) => [...prev, ...signals]);
+                  setIsDeployed(true);
+                  setDeployedStrategyCode("API_PREDICTION");
+                } else {
+                  console.log("[AI PREDICTION] REST fallback returned no results.");
+                }
+              })
+              .catch((err) => {
+                console.warn("[AI PREDICTION] REST fallback failed:", err);
+              });
+
+            return currentResults; // Keep current state unchanged during async fetch
+          });
+        }, 1500); // 1.5s grace window for socket events
       }
     };
 
@@ -442,9 +510,6 @@ plot_markers(markers)`,
       
       setIsDeployed(true);
       setDeployedStrategyCode("API_PREDICTION");
-      
-      // Optional: play notification sound
-      // playNotificationSound();
     };
 
     strategySocket.onAny((eventName, ...args) => {
@@ -1142,7 +1207,11 @@ json.dumps(result)
       return paneIndexRef.current[indicator];
     }
 
-    const nextPane = Object.keys(paneIndexRef.current)?.length + 1;
+    // Find the maximum pane index currently in use to avoid reusing indices
+    const currentIndices = Object.values(paneIndexRef.current);
+    const maxIndex = currentIndices.length > 0 ? Math.max(...currentIndices) : 0;
+    
+    const nextPane = maxIndex + 1;
     paneIndexRef.current[indicator] = nextPane;
 
     return nextPane;
@@ -1249,6 +1318,43 @@ json.dumps(result)
       }
     }
 
+    // ✅ GLOBAL DATA SANITIZATION
+    // Protect Lightweight Charts from crashing when indicators pass null/NaN values
+    const originalSetData = series.setData.bind(series);
+    series.setData = (data) => {
+      if (!Array.isArray(data)) return originalSetData(data);
+
+      const cleanedData = data.map((d) => {
+        if (!d || typeof d !== "object") return null;
+        
+        // Handle Line/Histogram/Area/Baseline series
+        if ("value" in d) {
+          if (d.value === null || Number.isNaN(Number(d.value))) {
+            return { time: d.time }; // Convert to whitespace gap
+          }
+          return { ...d, value: Number(d.value) }; // Force primitive number
+        }
+        
+        // Handle Candlestick/Bar series
+        else if ("close" in d) {
+          if (d.close === null || Number.isNaN(Number(d.close))) {
+            return { time: d.time }; // Convert to whitespace gap
+          }
+          return {
+            ...d,
+            open: d.open != null ? Number(d.open) : undefined,
+            high: d.high != null ? Number(d.high) : undefined,
+            low: d.low != null ? Number(d.low) : undefined,
+            close: Number(d.close)
+          };
+        }
+
+        return d;
+      }).filter(Boolean); // Remove any null mappings
+
+      return originalSetData(cleanedData);
+    };
+
     return series;
   };
 
@@ -1276,21 +1382,7 @@ json.dumps(result)
     });
   }
 
-  function cleanupPane(paneKey) {
-    const pane = panesRef.current[paneKey];
-    if (!pane) return;
 
-    // Each instance id is its own pane key — just check if still in use
-    const stillUsed = Object.keys(indicatorSeriesRef.current).some(
-      (key) => key === paneKey,
-    );
-    if (stillUsed) return;
-
-    // In Lightweight Charts v5, removing all series from a pane automatically removes the pane
-    // and its splitter. Manual DOM manipulation here causes the library to lose track of
-    // elements and leaves orphan splitters/blank spaces behind.
-    delete panesRef.current[paneKey];
-  }
 
   //  ✅ INDICATOR REMOVAL — accepts instance id
   const removeIndicator = useCallback((instanceId) => {
@@ -1304,20 +1396,49 @@ json.dumps(result)
     const chart = pane?.chart ?? chartRef.current;
     if (!chart) return;
 
-    /* MULTI SERIES */
-    if (entry && typeof entry === "object" && !entry.priceScale) {
-      Object.values(entry).forEach((series) => {
-        if (!series) return;
-        if (typeof series.setData !== "function") return;
+    const panesCountBefore = typeof chart.panes === "function" ? chart.panes().length : 0;
+
+    const removeSeriesDeep = (item) => {
+      if (!item) return;
+      
+      if (Array.isArray(item)) {
+        item.forEach(removeSeriesDeep);
+      } else if (typeof item.setData === "function") {
         try {
-          chart.removeSeries(series);
+          chart.removeSeries(item);
         } catch {}
+      } else if (typeof item === "object") {
+        Object.values(item).forEach(removeSeriesDeep);
+      }
+    };
+
+    removeSeriesDeep(entry);
+    
+    const panesCountAfter = typeof chart.panes === "function" ? chart.panes().length : 0;
+    const paneIndex = paneIndexRef.current[instanceId];
+
+    if (paneIndex !== undefined && paneIndex !== 0) {
+      if (panesCountAfter === panesCountBefore) {
+        // Lightweight charts didn't auto-remove it, so we manually remove it
+        try {
+          if (typeof chart.removePane === "function") {
+            chart.removePane(paneIndex);
+          }
+        } catch (err) {
+          console.warn("Failed to remove pane explicitly", err);
+        }
+      }
+    }
+
+    // ALWAYS shift paneIndexRef for all indicators whose index is above the removed pane.
+    // This must happen regardless of auto-remove vs manual-remove, because in both
+    // cases, LightweightCharts renumbers all subsequent panes by -1.
+    if (paneIndex !== undefined && paneIndex !== 0) {
+      Object.keys(paneIndexRef.current).forEach((key) => {
+        if (key !== instanceId && paneIndexRef.current[key] > paneIndex) {
+          paneIndexRef.current[key] -= 1;
+        }
       });
-    } else {
-      /* SINGLE SERIES */
-      try {
-        chart.removeSeries(entry);
-      } catch {}
     }
 
     delete indicatorSeriesRef.current[instanceId];
@@ -1325,7 +1446,8 @@ json.dumps(result)
     fetchedIndicatorsRef.current.delete(instanceId);
     delete paneIndexRef.current[instanceId];
 
-    cleanupPane(paneKey);
+    // the DOM pane cleanup
+    delete panesRef.current[paneKey];
   }, []);
   // ----------Main chart------------
   useEffect(() => {
@@ -1410,8 +1532,30 @@ json.dumps(result)
     }
 
     if (keysToShow) {
+      const hiddenKeys = [
+        "upper",
+        "middle",
+        "lower",
+        "bbUpper",
+        "bbLower",
+        "zeroLine",
+        "bandBackground",
+        "overboughtFill",
+        "oversoldFill",
+      ];
+
       return keysToShow
         .filter((key) => {
+          if (hiddenKeys.includes(key)) return false;
+
+          // Special case for SMA when maType is "none"
+          if (type === "SMA") {
+            const config = indicatorConfigs[id] || indicatorConfigDefault[type];
+            if (config?.maType === "none" && key !== "sma") {
+              return false;
+            }
+          }
+
           const style = indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
           if (style?.visible === false) return false;
           // Return true even if value is null, so the span is rendered for crosshair DOM updates
@@ -2366,6 +2510,14 @@ json.dumps(result)
           display: "flex",
           flexDirection: "column",
           overflowY: "auto",
+          ...(isFullscreen ? {
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+          } : {}),
         }}
       >
         <div
@@ -2522,6 +2674,8 @@ json.dumps(result)
                 onCodeClick={() => setIsCodeEditorOpen((prev) => !prev)}
                 onStrategyClick={handleStrategyClick}
                 onGoToDate={handleGoToDate}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
               />
 
               <div
@@ -3478,6 +3632,7 @@ json.dumps(result)
             </div>
 
             {/* Right Sidebar */}
+            {!isFullscreen && (
             <div
               className="right-sidebar-mobile"
               style={{
@@ -3532,6 +3687,7 @@ json.dumps(result)
                 }}
               />
             </div>
+            )}
           </div>
         </div>
         {/* <SourceCodePanel

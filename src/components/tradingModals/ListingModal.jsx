@@ -581,7 +581,7 @@ export const ListingModal = ({
                             type: item.slug,
                           };
                           setSelectedIndicator((prev) => [...prev, newInst]);
-                          onClose();
+                          // Modal stays open so user can add more indicators
                         }}
                         style={{
                           cursor: "pointer",
