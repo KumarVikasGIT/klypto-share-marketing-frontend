@@ -106,7 +106,7 @@ export default function SMAPlot({
 
     const fill = indicatorStyle?.SMA?.bbFill;
 
-    if (!fill?.visible) return;
+    if (!(fill?.visible ?? true)) return;
 
     ctx.beginPath();
 

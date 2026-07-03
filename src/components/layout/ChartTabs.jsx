@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaCode  } from "react-icons/fa6";
+import { FaCode } from "react-icons/fa6";
 import { SiVitest } from "react-icons/si";
 import GoToDateDialog from "./GoToDateDialog";
 import { TbCalendarShare } from "react-icons/tb";
+import { CgMaximizeAlt } from "react-icons/cg";
 
 const ChartTabs = ({
   activeTab,
@@ -227,9 +228,12 @@ const ChartTabs = ({
       </div>
 
       <div className="chart-actions-group">
+        <button>
+          <CgMaximizeAlt />
+        </button>
+
         <button title="Go to" onClick={() => setShowGoToDate(true)}>
           <TbCalendarShare size={14} />
-          
         </button>
         <button
           title="Run Strategy"

@@ -187,7 +187,7 @@ export default function useDrawingTools({ chartRef, seriesRef, containerRef, sym
       anchorsContainer.style.width = '100%';
       anchorsContainer.style.height = '100%';
       anchorsContainer.style.pointerEvents = 'none';
-      anchorsContainer.style.zIndex = '999';
+      anchorsContainer.style.zIndex = '40'; // Lower z-index so it doesn't overlap modals
       container.appendChild(anchorsContainer);
     }
 

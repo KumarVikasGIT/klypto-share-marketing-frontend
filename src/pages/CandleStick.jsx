@@ -98,6 +98,17 @@ export default function Candlestick() {
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const [predictionStatus, setPredictionStatus] = useState(null);
   const [isPredicting, setIsPredicting] = useState(false);
   const [isDepthOpen, setIsDepthOpen] = useState(false);
@@ -1219,11 +1230,14 @@ json.dumps(result)
               "at index",
               paneIndex,
             );
+            const indType = selectedIndicatorRef.current?.find(ind => ind.id === indicator)?.type;
             panesRef.current[indicator] = {
               chart: chartRef.current,
               pane: paneObj,
               div: div,
+              type: indType,
             };
+            setIndicatorUpdateTrigger((v) => v + 1);
             return true;
           }
         }
@@ -1280,6 +1294,8 @@ json.dumps(result)
 
   //  ✅ INDICATOR REMOVAL — accepts instance id
   const removeIndicator = useCallback((instanceId) => {
+    setSelectedIndicator((prev) => prev.filter((i) => i.id !== instanceId));
+    
     const entry = indicatorSeriesRef.current[instanceId];
     if (!entry) return;
 
@@ -1310,8 +1326,6 @@ json.dumps(result)
     delete paneIndexRef.current[instanceId];
 
     cleanupPane(paneKey);
-
-    setSelectedIndicator((prev) => prev.filter((i) => i.id !== instanceId));
   }, []);
   // ----------Main chart------------
   useEffect(() => {
@@ -1348,128 +1362,77 @@ json.dumps(result)
 
   const renderValue = (id, type, value) => {
     const emptySymbol = "Ø";
-    if (value == null) return emptySymbol;
+    const showPercent = type === "AROON";
 
-    const showPercent = type === "AROON"; // Only show % for Aroon
+    let keysToShow = null;
+    let isSingleValue = false;
 
-    /* ================= NUMBER VALUES ================= */
-    if (typeof value === "number") {
-      const style =
-        indicatorStyle?.[id]?.sma ||
-        indicatorStyle?.[id]?.ma ||
-        indicatorStyle?.[id]?.[type?.toLowerCase()] ||
-        indicatorStyle?.[type]?.sma ||
-        indicatorStyle?.[type]?.ma ||
-        indicatorStyle?.[type]?.[type?.toLowerCase()];
+    const group = indicatorSeriesRef.current?.[id];
+    if (group && typeof group === "object" && !group.priceScale) {
+      // It's a grouped multi-series indicator. Extract keys that map to actual Lightweight Charts series
+      const seriesKeys = Object.keys(group).filter(
+        (k) => group[k] && typeof group[k].setData === "function"
+      );
+      if (seriesKeys.length > 0) {
+        keysToShow = seriesKeys;
+      } else {
+        isSingleValue = true;
+      }
+    } else if (value && typeof value === "object") {
+      keysToShow = Object.keys(value);
+    } else {
+      isSingleValue = true;
+    }
 
+    if (isSingleValue) {
+      const style = indicatorStyle?.[id]?.sma || indicatorStyle?.[id]?.ma || indicatorStyle?.[id]?.[type?.toLowerCase()] || indicatorStyle?.[type]?.sma || indicatorStyle?.[type]?.ma || indicatorStyle?.[type]?.[type?.toLowerCase()];
       if (style?.visible === false) return null;
-
-      const color = style?.color || "#333";
-
+      let color = style?.color;
+      
+      const group = indicatorSeriesRef.current?.[id];
+      if (group) {
+         // for single value, the series is usually the only key in the group, or it's the main type
+         const seriesKey = Object.keys(group).find(k => typeof group[k]?.options === 'function');
+         if (seriesKey) {
+            const opts = group[seriesKey].options();
+            color = opts.color || opts.lineColor || opts.topColor || color;
+         }
+      }
+      color = color || "#333";
+      
+      const val = value != null ? (typeof value === 'object' ? Object.values(value)[0] : value) : null;
       return (
-        <span style={{ color }} title={type}>
-          {Number(value).toFixed(2)}
-          {showPercent ? "%" : ""}
+        <span id={`indicator-val-${id}-main`} style={{ color }} title={type} data-type={type}>
+          {val != null && Number.isFinite(Number(val)) ? Number(val).toFixed(2) : emptySymbol}
+          {val != null && showPercent ? "%" : ""}
         </span>
       );
     }
 
-    /* ================= OBJECT VALUES ================= */
-    if (typeof value === "object") {
-      let keysToShow;
-
-      switch (type) {
-        case "RSI":
-          keysToShow = ["rsi", "smoothingMA", "bbUpper", "bbLower"];
-          break;
-        case "MACD":
-          keysToShow = ["macd", "signal", "histogram"];
-          break;
-        case "CCI":
-          keysToShow = ["cciLine", "cciMa"];
-          break;
-        case "TRIX":
-          keysToShow = ["trixLine"];
-          break;
-        case "CMF":
-          keysToShow = ["cmfLine"];
-          break;
-        case "MFI":
-          keysToShow = ["mfiLine"];
-          break;
-        case "KVO":
-          keysToShow = ["kvoLine", "signalLine"];
-          break;
-        case "STOCHRSI":
-          keysToShow = ["kLine", "dLine"];
-          break;
-        case "EOM":
-          keysToShow = ["eom"];
-          break;
-        case "WPR":
-          keysToShow = ["r"];
-          break;
-        case "ROC":
-          keysToShow = ["roc"];
-          break;
-        case "CHOP":
-          keysToShow = ["chopLine"];
-          break;
-        case "MOM":
-          keysToShow = ["mom"];
-          break;
-        case "UO":
-          keysToShow = ["uo"];
-          break;
-        case "AO":
-          keysToShow = ["oscillator"];
-          break;
-        case "ICHIMOKU":
-          keysToShow = [
-            "conversionLine",
-            "baseLine",
-            "leadLine1",
-            "leadLine2",
-            "laggingSpan",
-            "kumoCloudUpper",
-            "kumoCloudLower",
-          ];
-          break;
-        case "AROON":
-          keysToShow = ["aroonUp", "aroonDown"];
-          break;
-        case "FT":
-          keysToShow = ["fisherLine", "triggerLine"];
-          break;
-        case "STOCH":
-          keysToShow = ["k", "d"];
-          break;
-
-        case "SUPERTREND":
-          keysToShow = ["upTrend", "downTrend", "bodyMiddle"];
-          break;
-
-        default:
-          keysToShow = Object.keys(value);
-      }
-
+    if (keysToShow) {
       return keysToShow
         .filter((key) => {
-          const style =
-            indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
+          const style = indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
           if (style?.visible === false) return false;
-          return value[key] != null;
+          // Return true even if value is null, so the span is rendered for crosshair DOM updates
+          return true; 
         })
         .map((key) => {
-          const val = value[key];
-          const color =
-            indicatorStyle?.[id]?.[key]?.color ||
-            indicatorStyle?.[type]?.[key]?.color ||
-            "#333";
+          const val = value ? value[key] : null;
+          let color = indicatorStyle?.[id]?.[key]?.color || indicatorStyle?.[type]?.[key]?.color;
+          
+          // Dynamically read exact color from the plotted series to guarantee accuracy
+          const group = indicatorSeriesRef.current?.[id];
+          if (group && group[key] && typeof group[key].options === 'function') {
+            const opts = group[key].options();
+            color = opts.color || opts.lineColor || opts.topColor || color;
+          }
+          
+          color = color || "#333";
 
           return (
-            <span key={key} style={{ marginRight: 8, color }} title={key}>
-              {Number.isFinite(val)
+            <span id={`indicator-val-${id}-${key}`} key={key} style={{ marginRight: 8, color }} title={key} data-type={type}>
+              {val != null && Number.isFinite(Number(val))
                 ? `${Number(val).toFixed(2)}${showPercent ? "%" : ""}`
                 : emptySymbol}
             </span>
@@ -1499,6 +1462,7 @@ json.dumps(result)
           set(target, prop, value) {
             if (prop === type) {
               target[id] = value;
+              setTimeout(() => setIndicatorUpdateTrigger((v) => v + 1), 0);
             } else {
               target[prop] = value;
             }
@@ -1578,35 +1542,37 @@ json.dumps(result)
     const now = Date.now();
     if (now - lastIndicatorUpdateRef.current < 50) return;
 
-    const updates = {};
-
     Object.entries(indicatorSeriesRef.current).forEach(([indicator, group]) => {
       if (!group) return;
 
       const indicatorValues = {};
-
       Object.entries(group).forEach(([lineName, series]) => {
         if (!series || typeof series.setData !== "function") return;
 
         const price = param.seriesData?.get(series);
         if (price !== undefined) {
-          indicatorValues[lineName] =
-            typeof price === "object" ? price.value : price;
+          indicatorValues[lineName] = typeof price === "object" ? price.value : price;
         }
       });
 
-      if (Object.keys(indicatorValues)?.length === 1) {
-        updates[indicator] = Object.values(indicatorValues)[0];
-      } else if (Object.keys(indicatorValues)?.length > 0) {
-        updates[indicator] = indicatorValues;
-      }
+      const keys = Object.keys(indicatorValues);
+      Object.entries(indicatorValues).forEach(([key, val]) => {
+        let el = document.getElementById(`indicator-val-${indicator}-${key}`);
+        
+        // Fallback for single-value indicators which render under the '-main' ID
+        if (!el && keys.length === 1) {
+          el = document.getElementById(`indicator-val-${indicator}-main`);
+        }
+        
+        if (el) {
+          const isAroon = el.getAttribute('data-type') === 'AROON';
+          el.textContent = Number.isFinite(val) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+        }
+      });
     });
 
-    if (Object.keys(updates)?.length > 0) {
-      lastIndicatorUpdateRef.current = now;
-      latestIndicatorValuesRef.current = updates;
-      setLiveIndicatorData(updates); // <- triggers renderValue
-    }
+    lastIndicatorUpdateRef.current = now;
+    // We no longer trigger a full React re-render of CandleStick by calling setLiveIndicatorData(updates)
   };
   // ATTACH CROSSHAIR
 
@@ -1621,7 +1587,43 @@ json.dumps(result)
       // clear crosshair if invalid
       if (!param?.point || param.time === undefined) {
         charts.forEach((c) => c.clearCrosshairPosition?.());
-        setLiveIndicatorData(latestIndicatorValuesRef.current);
+        // Since we bypassed React state for live indicators, we need to show the last available data if crosshair leaves
+        Object.keys(indicatorSeriesRef.current).forEach((indicator) => {
+          const mainEl = document.getElementById(`indicator-val-${indicator}-main`);
+          const group = indicatorSeriesRef.current[indicator];
+          
+          if (mainEl) {
+            let val = null;
+            if (group) {
+              const seriesKey = Object.keys(group).find(k => group[k] && typeof group[k].data === 'function');
+              if (seriesKey) {
+                 const dataArr = group[seriesKey].data();
+                 if (dataArr && dataArr.length > 0) {
+                    const lastData = dataArr[dataArr.length - 1];
+                    val = lastData.value !== undefined ? lastData.value : lastData.close;
+                 }
+              }
+            }
+            const isAroon = mainEl.getAttribute('data-type') === 'AROON';
+            mainEl.textContent = val != null && Number.isFinite(Number(val)) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+          } else if (group) {
+            Object.keys(group).forEach((key) => {
+              const el = document.getElementById(`indicator-val-${indicator}-${key}`);
+              const series = group[key];
+              if (el && series && typeof series.data === 'function') {
+                const dataArr = series.data();
+                if (dataArr && dataArr.length > 0) {
+                   const lastData = dataArr[dataArr.length - 1];
+                   let val = lastData.value !== undefined ? lastData.value : lastData.close;
+                   const isAroon = el.getAttribute('data-type') === 'AROON';
+                   el.textContent = val != null && Number.isFinite(Number(val)) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+                } else {
+                   el.textContent = "Ø";
+                }
+              }
+            });
+          }
+        });
         return;
       }
 
@@ -2132,18 +2134,23 @@ json.dumps(result)
 
         const activeIndicators = selectedIndicatorRef.current;
         if (activeIndicators?.length > 0) {
-          const sentTypes = new Set();
-          activeIndicators.forEach((ind) => {
-            const indType = typeof ind === "object" ? ind.type : ind;
-            if (sentTypes.has(indType)) return;
-            sentTypes.add(indType);
-            emit(EVENTS.INDICATOR.LIVE, {
-              symbol: selectedCurrency?.name,
-              interval: timeframeValue,
-              type: indType,
-              exchange: selectedCurrency?.segment,
+          const now = Date.now();
+          // Throttle to max 1 emit per second to avoid flooding backend and freezing chart
+          if (now - (lastIndicatorRequestRef.current || 0) > 1000) {
+            lastIndicatorRequestRef.current = now;
+            const sentTypes = new Set();
+            activeIndicators.forEach((ind) => {
+              const indType = typeof ind === "object" ? ind.type : ind;
+              if (sentTypes.has(indType)) return;
+              sentTypes.add(indType);
+              emit(EVENTS.INDICATOR.LIVE, {
+                symbol: selectedCurrency?.name,
+                interval: timeframeValue,
+                type: indType,
+                exchange: selectedCurrency?.segment,
+              });
             });
-          });
+          }
         }
       });
     },
@@ -2345,15 +2352,17 @@ json.dumps(result)
 
   return (
     <>
-      <Navbar
-        setSelectedCurrency={setSelectedCurrency}
-        predictCount={predictResultData?.length}
-      />
+      {!isFullscreen && (
+        <Navbar
+          setSelectedCurrency={setSelectedCurrency}
+          predictCount={predictResultData?.length}
+        />
+      )}
       <section
         className="trading-view-wrapper overflow-x-hidden"
         style={{
           background: "var(--bg-primary)",
-          height: "calc(100vh - 60px)",
+          height: isFullscreen ? "100vh" : "calc(100vh - 60px)",
           display: "flex",
           flexDirection: "column",
           overflowY: "auto",
@@ -2404,14 +2413,14 @@ json.dumps(result)
             `}</style>
             {/* Left Panel (Watchlist or Details) */}
             <div
-              className={`left-panel-mobile ${isWatchlistOpen || isDetailsOpen || isDepthOpen ? "is-open" : ""}`}
+              className={`left-panel-mobile ${(!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen)) ? "is-open" : ""}`}
               style={{
                 width:
-                  isWatchlistOpen || isDetailsOpen || isDepthOpen
+                  (!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen))
                     ? "300px"
                     : "0px",
                 opacity:
-                  isWatchlistOpen || isDetailsOpen || isDepthOpen ? 1 : 0,
+                  (!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen)) ? 1 : 0,
                 overflow: "hidden",
                 height: "100%",
                 transition:
