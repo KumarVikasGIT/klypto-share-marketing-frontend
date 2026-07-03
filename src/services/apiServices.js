@@ -34,9 +34,7 @@ api.interceptors.request.use((config) => {
 
   // Route strategy endpoints to the dedicated strategy backend
   if (config.url && config.url.includes("/api/strategy")) {
-    config.baseURL =
-      import.meta.env.VITE_STRATEGY_API_URL ||
-      import.meta.env.VITE_API_BASE_URL;
+    config.baseURL = import.meta.env.VITE_API_BASE_URL;
   }
 
   return config;

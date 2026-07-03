@@ -9,16 +9,13 @@ export const METADATA_API_URL =
 // Setup initial connection, extracting userId if available
 const getUserId = () => {
   const user = getUser();
-  return user?.id || '123';
+  return user?.id || "123";
 };
 
 // 🔹 Backend Connection
 const socket = io(import.meta.env.VITE_API_BASE_URL, {
+  transports: ["websocket", "polling"],
   reconnection: true,
-  autoConnect: false,
-  transports: ["websocket"],
-  reconnectionAttempts: Infinity,
-  reconnectionDelay: 1000,
 });
 
 socket.on("connect", () => {
@@ -46,7 +43,7 @@ let strategySocketInstance = null;
 
 export const getStrategySocket = () => {
   if (!strategySocketInstance) {
-    const strategyUrl = import.meta.env.VITE_STRATEGY_API_URL || import.meta.env.VITE_API_BASE_URL || API_BASE_URL;
+    const strategyUrl = import.meta.env.VITE_API_BASE_URL || API_BASE_URL;
     strategySocketInstance = io(strategyUrl, {
       query: { userId: getUserId() },
       transports: ["websocket", "polling"],
@@ -54,6 +51,12 @@ export const getStrategySocket = () => {
     });
   }
   return strategySocketInstance;
+};
+
+export const reconnectSocket = () => {
+  if (socket) {
+    socket.disconnect().connect();
+  }
 };
 
 console.log("SOCKET FILE LOADED");
