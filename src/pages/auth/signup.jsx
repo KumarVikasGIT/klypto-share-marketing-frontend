@@ -79,7 +79,14 @@ export default function Signup() {
     setErrors({});
     setLoading(true);
     try {
-      const response = await apiService.post("/auth/register", { ...form });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out after 40 seconds. Please try again.")), 40000)
+      );
+
+      const response = await Promise.race([
+        apiService.post("/auth/register", { ...form }),
+        timeoutPromise
+      ]);
       const token = response?.data?.token;
       const userData = response?.data?.user;
 

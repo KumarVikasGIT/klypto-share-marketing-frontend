@@ -18,23 +18,23 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getToken();
 
+  if (config.url && config.url.includes("run-scanner")) {
+    console.log(`🚀 [API] Request to ${config.url}`);
+    console.log(`🔑 [API] Token from storage:`, token ? "EXISTS" : "NULL");
+  }
+
+  if (!config.headers) {
+    config.headers = {};
+  }
+
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers["Authorization"] = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`; // Just to be double sure
   }
 
   // Route strategy endpoints to the dedicated strategy backend
   if (config.url && config.url.includes("/api/strategy")) {
-    config.baseURL =
-      import.meta.env.VITE_STRATEGY_API_URL ||
-      import.meta.env.VITE_API_BASE_URL;
-  }
-
-  if (config.url.includes("scanner-dashboard")) {
-    console.log(`🚀 [API] Request to ${config.url}`);
-    console.log(
-      `🔑 [API] Attached Token:`,
-      token ? "VALID_TOKEN_PRESENT" : "NULL/MISSING_TOKEN",
-    );
+    config.baseURL = import.meta.env.VITE_API_BASE_URL;
   }
 
   return config;

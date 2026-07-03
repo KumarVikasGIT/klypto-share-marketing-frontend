@@ -18,17 +18,8 @@ export const ChartProprties = {
     fontSize: 12,
     fontFamily: "Inter, sans-serif",
   },
-  localization: {
-    priceFormatter: (price) => {
-      if (!price || price === 0) return "0.00";
-      const abs = Math.abs(price);
-      if (abs < 0.0001) {
-        return Number(price)
-          .toFixed(12)
-          .replace(/\.?0+$/, "");
-      }
-      return Number(price).toFixed(2);
-    },
+  rightPriceScale: {
+    minimumWidth: 85,
   },
   timeScale: {
     timeVisible: true,
@@ -93,7 +84,7 @@ export const ChartProprties = {
     horzLine: {
       visible: true,
       labelVisible: true,
-      color: "var(--border-color)",
+      color: "rgba(120, 123, 134, 0.4)",
       width: 1,
       style: 2,
     },
@@ -118,7 +109,7 @@ export function getIndicatorChartProperties() {
     rightPriceScale: {
       ...ChartProprties.rightPriceScale,
       visible: true,
-      scaleMargins: { top: 0.1, bottom: 0.1 },
+      // scaleMargins: { top: 0.1, bottom: 0.1 },
     },
 
     grid: { ...ChartProprties.grid },
@@ -174,9 +165,8 @@ export const MiniChartProprties = {
     exitMode: 0,
   },
 
-  localization: {
-    priceFormatter: (price) =>
-      price.toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+  rightPriceScale: {
+    minimumWidth: 85,
   },
 };
 
@@ -284,6 +274,26 @@ export const getSeriesColor = (series) => {
   return series.options().color || "#999";
 };
 
+export const smartPriceFormatter = (price) => {
+  if (price === undefined || price === null) return "";
+  const absPrice = Math.abs(price);
+  if (absPrice >= 1e9) return price.toExponential(2);
+  if (absPrice >= 1e6) return (price / 1e6).toFixed(2) + "M";
+
+  if (absPrice > 0 && absPrice < 0.0001) {
+    return Number(price)
+      .toFixed(12)
+      .replace(/\.?0+$/, "");
+  }
+  return Number(price).toFixed(2);
+};
+
+export const defaultPriceFormat = {
+  type: "custom",
+  minMove: 0.00000001,
+  formatter: smartPriceFormatter,
+};
+
 export const chartSeriesStyles = {
   candlestick: {
     upColor: "#22c55e",
@@ -292,6 +302,7 @@ export const chartSeriesStyles = {
     borderDownColor: "#ef4444",
     wickUpColor: "#22c55e",
     wickDownColor: "#ef4444",
+    priceFormat: defaultPriceFormat,
   },
 
   hollowcandles: {
@@ -316,6 +327,7 @@ export const chartSeriesStyles = {
     topColor: "rgba(56, 189, 248, 0.4)",
     bottomColor: "rgba(56, 189, 248, 0.0)",
     lineColor: "#38bdf8",
+    priceFormat: defaultPriceFormat,
   },
 
   baseline: {
@@ -326,6 +338,7 @@ export const chartSeriesStyles = {
     bottomLineColor: "rgba(239,68,68,1)",
     bottomFillColor1: "rgba(239,68,68,0.4)",
     bottomFillColor2: "rgba(239,68,68,0.05)",
+    priceFormat: defaultPriceFormat,
   },
 
   histogram: {
@@ -995,6 +1008,20 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           label: "StochRSI Background Fill",
           type: "fill",
         },
+      ];
+    case "VOLATILITY_MOMENTUM_PRO":
+      return [
+        { key: "openingRangeHigh", label: "Opening Range High", type: "line" },
+        { key: "openingRangeLow", label: "Opening Range Low", type: "line" },
+        { key: "upperChannel", label: "Upper Channel", type: "line" },
+        { key: "lowerChannel", label: "Lower Channel", type: "line" },
+        { key: "channelFill", label: "Channel Fill", type: "fill" },
+        { key: "sharpUpSignals", label: "Sharp Up", type: "line" },
+        { key: "sharpDownSignals", label: "Sharp Down", type: "line" },
+        { key: "extremeUpSignals", label: "Extreme Up", type: "line" },
+        { key: "extremeDownSignals", label: "Extreme Down", type: "line" },
+        { key: "highMoveBackground", label: "High Move Background", type: "fill" },
+        { key: "is915Markers", label: "9:15 Volatility Scan", type: "line" },
       ];
 
     case "MACD":
@@ -1877,47 +1904,239 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           label: "-ATR",
           type: "line",
         },
-        {
-          key: "exitArrows",
-          label: "Exit Arrows",
-          type: "marker",
-        },
-        {
-          key: "signalDiamonds",
-          label: "Signal Diamonds",
-          type: "marker",
-        },
-        {
-          key: "baselineFill",
-          label: "Baseline Background",
-          type: "fill",
-        },
+        // {
+        //   key: "exitArrows",
+        //   label: "Exit Arrows",
+        //   type: "marker",
+        // },
+        // {
+        //   key: "signalDiamonds",
+        //   label: "Signal Diamonds",
+        //   type: "marker",
+        // },
+        // {
+        //   key: "baselineFill",
+        //   label: "Baseline Background",
+        //   type: "fill",
+        // },
       ];
     }
     case "MA_RIBBON":
-  return [
-    {
-      key: "ma1",
-      label: "MA #1",
-      type: "line",
-    },
-    {
-      key: "ma2",
-      label: "MA #2",
-      type: "line",
-    },
-    {
-      key: "ma3",
-      label: "MA #3",
-      type: "line",
-    },
-    {
-      key: "ma4",
-      label: "MA #4",
-      type: "line",
-    },
-  ];
+      return [
+        {
+          key: "ma1",
+          label: "MA #1",
+          type: "line",
+        },
+        {
+          key: "ma2",
+          label: "MA #2",
+          type: "line",
+        },
+        {
+          key: "ma3",
+          label: "MA #3",
+          type: "line",
+        },
+        {
+          key: "ma4",
+          label: "MA #4",
+          type: "line",
+        },
+      ];
 
+    case "SUPERSMOOTHER":
+      return [
+        {
+          key: "oscillator",
+          label: "Oscillator",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "signalLine",
+          label: "Signal Line",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "histogram",
+          label: "Histogram",
+          type: "histogram",
+          children: [
+            {
+              key: "pr",
+              parent: "histogram",
+              label: "Rising",
+              type: "fill",
+            },
+            {
+              key: "pf",
+              parent: "histogram",
+              label: "Falling",
+              type: "fill",
+            },
+          ],
+        },
+        {
+          key: "buySignals",
+          label: "Buy Signals",
+          type: "marker",
+        },
+        {
+          key: "sellSignals",
+          label: "Sell Signals",
+          type: "marker",
+        },
+        {
+          key: "strongBuySignals",
+          label: "Strong Buy Signals",
+          type: "marker",
+        },
+        {
+          key: "strongSellSignals",
+          label: "Strong Sell Signals",
+          type: "marker",
+        },
+        {
+          key: "zeroLine",
+          label: "Zero Line",
+          type: "line",
+        },
+      ];
+
+    case "HEALTHY_BOX":
+      return [
+        { key: "bullSignals", label: "Healthy Bull Candle", type: "marker" },
+        { key: "bearSignals", label: "Healthy Bear Candle", type: "marker" },
+        { key: "zeroLine", label: "Zero Line", type: "line", showValue: true },
+        {
+          key: "strongHealthyLine",
+          label: "Strong Healthy Candle",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "healthyLine",
+          label: "Healthy Candle",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "healthyBearLine",
+          label: "Healthy Bear Candle",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "strongBearLine",
+          label: "Strong Bear Candle",
+          type: "line",
+          showValue: true,
+        },
+      ];
+
+    case "BODY915DNA":
+      return [
+        {
+          key: "directionalBodyBoxes",
+          label: "9:15 Body Boxes",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "avgBoxes",
+          label: "Average Body Boxes",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "maxBoxes",
+          label: "Past Maximum Body Boxes",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "minBoxes",
+          label: "Past Minimum Body Boxes",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "bodyPercentile",
+          label: "9:15 Body Percentile",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "expansionScore",
+          label: "Body Expansion Score",
+          type: "line",
+          showValue: true,
+        },
+        { key: "bullSignals", label: "Healthy Bull 9:15 Body", type: "marker" },
+        { key: "bearSignals", label: "Healthy Bear 9:15 Body", type: "marker" },
+        { key: "monsterSignals", label: "Monster 9:15 Body", type: "marker" },
+        { key: "zeroLine", label: "Zero Line", type: "line", showValue: true },
+        {
+          key: "avgZone",
+          label: "Average 9:15 Body Zone",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "avgZoneBearish",
+          label: "Average 9:15 Body Zone Bearish",
+          type: "line",
+          showValue: true,
+        },
+      ];
+
+    case "HMA60_BOX_DISTANCE":
+      return [
+        {
+          key: "highToHmaBoxes",
+          label: "High → HMA60 Distance",
+          type: "line",
+          showValue: true,
+        },
+
+        {
+          key: "lowToHmaBoxes",
+          label: "Low → HMA60 Distance",
+          type: "line",
+          showValue: true,
+        },
+
+        {
+          key: "closeToHmaBoxes",
+          label: "Close → HMA60 Distance",
+          type: "line",
+          showValue: true,
+        },
+        {
+          key: "upperZone",
+          label: "Upper Extreme Zone",
+          type: "line",
+          showValue: true,
+          value: 5,
+        },
+
+        {
+          key: "lowerZone",
+          label: "Lower Extreme Zone",
+          type: "line",
+          showValue: true,
+          value: -5,
+        },
+        {
+          key: "zeroLine",
+          label: "Zero Line",
+          type: "line",
+          showValue: true,
+          value: 0,
+        },
+      ];
     default:
       return [];
   }
@@ -2160,7 +2379,6 @@ export const s = {
     boxSizing: "border-box",
   },
 };
-
 
 export const formatIST = (timestamp) => {
   if (!timestamp) return "—";

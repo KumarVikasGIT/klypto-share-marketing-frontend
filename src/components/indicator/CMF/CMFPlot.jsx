@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { LineSeries } from "lightweight-charts";
 
 export default function CMFPlot({
+  id,
   result,
   indicatorStyle,
   indicatorSeriesRef,
@@ -16,13 +17,13 @@ export default function CMFPlot({
     if (!result?.data?.cmf) return;
 
     // 🔥 REMOVE OLD SERIES
-    if (indicatorSeriesRef.current?.CMF) {
-      Object.values(indicatorSeriesRef.current.CMF).forEach((s) => {
+    if (indicatorSeriesRef.current?.[id]) {
+      Object.values(indicatorSeriesRef.current[id]).forEach((s) => {
         if (s?.setData) {
           try { s.setData([]); } catch {}
         }
       });
-      indicatorSeriesRef.current.CMF = null;
+      indicatorSeriesRef.current[id] = null;
     }
 
     const mapSeries = (arr) =>
@@ -35,7 +36,7 @@ export default function CMFPlot({
 
     /* ================= CMF LINE ================= */
 
-    const cmfSeries = addSeries("CMF", LineSeries, {
+    const cmfSeries = addSeries(id, LineSeries, {
       color: indicatorStyle?.CMF?.cmfLine?.color ?? "rgba(255,193,7,1)",
       lineWidth: Number(indicatorStyle?.CMF?.cmfLine?.width ?? 2),
       lineStyle: indicatorStyle?.CMF?.cmfLine?.lineStyle ?? 0,
@@ -48,7 +49,7 @@ export default function CMFPlot({
 
     const zeroValue = Number(indicatorStyle?.CMF?.zeroLine?.value ?? 0);
 
-    const zeroSeries = addSeries("CMF", LineSeries, {
+    const zeroSeries = addSeries(id, LineSeries, {
       color: indicatorStyle?.CMF?.zeroLine?.color ?? "rgba(158,158,158,1)",
       lineWidth: Number(indicatorStyle?.CMF?.zeroLine?.width ?? 1),
       lineStyle: indicatorStyle?.CMF?.zeroLine?.lineStyle ?? 2,
@@ -65,38 +66,23 @@ export default function CMFPlot({
     cmfSeries.setData(cmfData);
     zeroSeries.setData(zeroData);
 
-    indicatorSeriesRef.current.CMF = {
+    indicatorSeriesRef.current[id] = {
       cmfLine: cmfSeries,
       zeroLine: zeroSeries,
       cmfData,
     };
-
   }, [result, indicatorConfigs]);
 
 
   /* ================= STYLE UPDATE (FIXED) ================= */
 
   useEffect(() => {
+    const group = indicatorSeriesRef.current?.[id];
+    const style = indicatorStyle?.CMF || indicatorStyle?.[id];
 
-    const group = indicatorSeriesRef.current?.CMF;
-    if (!group) return;
+    if (!group || !style) return;
 
-    const style = indicatorStyle?.CMF;
-    if (!style) return;
-
-    /* 🔥 UPDATE ZERO LINE DATA */
-    const zeroValue = Number(style.zeroLine?.value ?? 0);
-
-    if (group.cmfData) {
-      const zeroData = group.cmfData.map((p) => ({
-        time: p.time,
-        value: zeroValue,
-      }));
-
-      group.zeroLine?.setData(zeroData);
-    }
-
-    /* 🔥 APPLY CMF STYLE */
+    /* 🔥 APPLY CMF LINE STYLE */
     if (group.cmfLine) {
       group.cmfLine.applyOptions({
         color: style.cmfLine?.color ?? "rgba(255,193,7,1)",

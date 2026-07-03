@@ -52,7 +52,14 @@ export default function Login() {
     setLoading(true);
     try {
       const payload = { email: form.email, password: form.password };
-      const response = await apiService.post("/auth/login", payload);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out after 40 seconds. Please try again.")), 40000)
+      );
+
+      const response = await Promise.race([
+        apiService.post("/auth/login", payload),
+        timeoutPromise
+      ]);
       console.log("LOGIN RESPONSE 👉", response);
 
       const token = response?.token || response?.data?.token;

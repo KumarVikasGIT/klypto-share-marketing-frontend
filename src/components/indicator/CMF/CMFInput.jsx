@@ -33,6 +33,6 @@ export default function CMFInput(
   if (zeroSeries) zeroSeries.setData(zeroData);
 
   latestIndicatorValuesRef.current[instanceId || "CMF"] = {
-    cmfLine: cmfData[cmfData.length - 1]?.value ?? null,
+    cmfLine: cmfData[cmfData?.length - 1]?.value ?? null,
   };
 }

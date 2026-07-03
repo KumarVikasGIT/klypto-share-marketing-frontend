@@ -25,8 +25,8 @@ export default function AroonInput(
   /* ---------- UPDATE LATEST VALUE ---------- */
 
   latestIndicatorValuesRef.current[instanceId || "AROON"] = {
-    aroonUp: upSeries[upSeries.length - 1]?.value,
-    aroonDown: downSeries[downSeries.length - 1]?.value,
+    aroonUp: upSeries[upSeries?.length - 1]?.value,
+    aroonDown: downSeries[downSeries?.length - 1]?.value,
   };
 
   /* ---------- STORE RESULT ---------- */

@@ -12,6 +12,7 @@ export default function RSIPlot({
   chart,
   panesRef,
   containerRef,
+  indicatorVisibility,
 }) {
   const canvasRef = useRef(null);
   console.log("📍 RSIPlot Render", { id, hasResult: !!result, hasPanes: !!panesRef?.current });
@@ -361,11 +362,13 @@ export default function RSIPlot({
     const obFill = style?.obFill;
     const osFill = style?.osFill;
 
+    const isMasterVisible = indicatorVisibility?.[id] !== false;
+
     if (rsiGroup.rsi) {
       rsiGroup.rsi.applyOptions({
         color: rsiStyle?.color,
         lineWidth: rsiStyle?.width,
-        visible: rsiStyle?.visible,
+        visible: isMasterVisible && (rsiStyle?.visible !== false),
       });
     }
 
@@ -373,27 +376,27 @@ export default function RSIPlot({
       rsiGroup.smoothingMA.applyOptions({
         color: smoothingStyle?.color,
         lineWidth: smoothingStyle?.width,
-        visible: smoothingStyle?.visible,
+        visible: isMasterVisible && (smoothingStyle?.visible !== false),
       });
     }
 
     rsiGroup.bbUpper?.applyOptions({
       color: style?.bbUpper?.color,
       lineWidth: style?.bbUpper?.width,
-      visible: style?.bbUpper?.visible,
+      visible: isMasterVisible && (style?.bbUpper?.visible !== false),
     });
 
     rsiGroup.bbLower?.applyOptions({
       color: style?.bbLower?.color,
       lineWidth: style?.bbLower?.width,
-      visible: style?.bbLower?.visible,
+      visible: isMasterVisible && (style?.bbLower?.visible !== false),
     });
 
     if (rsiGroup.bandBackground) {
       rsiGroup.bandBackground.applyOptions({
         topFillColor1: bandFill?.topFillColor1,
         topFillColor2: bandFill?.topFillColor2,
-        visible: bandFill?.visible ?? true,
+        visible: isMasterVisible && (bandFill?.visible !== false),
       });
     }
 
@@ -401,7 +404,7 @@ export default function RSIPlot({
       rsiGroup.overboughtFill.applyOptions({
         topFillColor1: obFill?.topFillColor1,
         topFillColor2: obFill?.topFillColor2,
-        visible: obFill?.visible ?? true,
+        visible: isMasterVisible && (obFill?.visible !== false),
       });
     }
 
@@ -409,12 +412,15 @@ export default function RSIPlot({
       rsiGroup.oversoldFill.applyOptions({
         bottomFillColor1: osFill?.bottomFillColor1,
         bottomFillColor2: osFill?.bottomFillColor2,
-        visible: osFill?.visible ?? true,
+        visible: isMasterVisible && (osFill?.visible !== false),
       });
     }
 
-    if (canvasRef.current) drawBBCloud();
-  }, [indicatorStyle, result, id]);
+    if (canvasRef.current) {
+      canvasRef.current.style.display = isMasterVisible ? "block" : "none";
+      drawBBCloud();
+    }
+  }, [indicatorStyle, result, id, indicatorVisibility]);
 
   useEffect(() => {
     const pane = panesRef.current?.[id];

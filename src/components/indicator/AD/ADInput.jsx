@@ -6,7 +6,7 @@ export default function ADInput(
   /* :fire: SAFE DATA */
   const rows = Array.isArray(response?.data) ? response.data : [];
 
-  if (!rows.length) {
+  if (!rows?.length) {
     console.log(":x: AD rows empty");
     return;
   }
@@ -26,7 +26,7 @@ export default function ADInput(
       value: Number(d.ad),
     }));
 
-  if (!adData.length) {
+  if (!adData?.length) {
     console.log(":x: AD mapped empty");
     return;
   }
@@ -36,8 +36,8 @@ export default function ADInput(
 
   /* :fire: UPDATE LAST VALUE */
   latestIndicatorValuesRef.current[instanceId || "AD"] = {
-    value: adData[adData.length - 1]?.value ?? null,
+    value: adData[adData?.length - 1]?.value ?? null,
   };
 
-  console.log(":white_check_mark: AD updated", adData.length);
+  console.log(":white_check_mark: AD updated", adData?.length);
 }

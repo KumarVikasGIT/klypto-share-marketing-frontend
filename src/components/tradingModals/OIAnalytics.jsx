@@ -149,7 +149,7 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
         });
         const expiries = response?.allExpiries ?? response?.expiries ?? [];
 
-        if (expiries && expiries.length > 0) {
+        if (expiries && expiries?.length > 0) {
           const firstExpiry = expiries[0];
           console.log(
             `Subscribing to option chain for ${currentSymbol} at expiry ${firstExpiry}`,
@@ -175,16 +175,16 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
     const handleOptionChainData = (response) => {
       console.log("[SOCKET EVENT] option-chain-data received:", response);
       setLoading(false);
-      if (response && response.data && response.data.length > 0) {
-        let chainData = response.data;
-        if (response.symbol === "ALL") {
-          chainData = chainData.filter((item) => {
+      if (response && response?.data && response?.data?.length > 0) {
+        let chainData = response?.data;
+        if (response?.symbol === "ALL") {
+          chainData = chainData?.filter((item) => {
             const symMatch =
               item.symbol === currentSymbol || item.name === currentSymbol;
             return symMatch;
           });
         }
-        if (chainData.length === 0) return;
+        if (chainData?.length === 0) return;
 
         let formattedData = [];
 
@@ -195,7 +195,7 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
           let totalCallOI = 0;
           let totalPutOI = 0;
 
-          chainData.forEach((item) => {
+          chainData?.forEach((item) => {
             const strike = Number(item.strike_price || item.strike);
             if (!grouped[strike])
               grouped[strike] = {
@@ -264,7 +264,7 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
             return newMetrics;
           });
         } else {
-          formattedData = chainData.map((item) => ({
+          formattedData = chainData?.map((item) => ({
             strikePrice:
               item.strikePrice || item.strike || item.STRIKE_PRC || 0,
             callOI: item.callOI || item.CE_OI || item.ce_oi || 0,
@@ -404,7 +404,7 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
 
   // Custom Tooltip for Recharts
   const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
+    if (active && payload && payload?.length) {
       return (
         <div
           style={{
@@ -423,7 +423,7 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
           >
             Strike: {label}
           </p>
-          {payload.map((entry, index) => (
+          {payload?.map((entry, index) => (
             <p
               key={index}
               style={{
@@ -572,12 +572,12 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
             <div style={{ width: "100%", height: "400px" }}>
               <Bar
                 data={{
-                  labels: data.map((d) => d.strikePrice),
+                  labels: data?.map((d) => d.strikePrice),
                   datasets: [
                     {
                       type: "bar",
                       label: "Call OI",
-                      data: data.map((d) => d.callOI),
+                      data: data?.map((d) => d.callOI),
                       backgroundColor: "#ef4444",
                       borderRadius: 2,
                       maxBarThickness: 20,
@@ -586,7 +586,7 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
                     {
                       type: "bar",
                       label: "Put OI",
-                      data: data.map((d) => d.putOI),
+                      data: data?.map((d) => d.putOI),
                       backgroundColor: "#22ab94",
                       borderRadius: 2,
                       maxBarThickness: 20,
@@ -595,7 +595,7 @@ const OIAnalytics = ({ selectedCurrency, onBack }) => {
                     {
                       type: "line",
                       label: "PCR (OI)",
-                      data: data.map((d) => d.pcr),
+                      data: data?.map((d) => d.pcr),
                       borderColor: "#7e57c2",
                       backgroundColor: "#7e57c2",
                       borderDash: [4, 4],

@@ -17,7 +17,7 @@ export default function BBWPlot({
     const lowest = result?.data?.lowest;
 
     // ✅ HARD CHECK
-    if (!Array.isArray(bbw) || bbw.length === 0) {
+    if (!Array.isArray(bbw) || bbw?.length === 0) {
       console.log("❌ BBW not plotting", result);
       return;
     }
@@ -45,7 +45,7 @@ export default function BBWPlot({
     /* 🔴 HIGHEST LINE */
     let highestSeries = null;
 
-    if (Array.isArray(highest) && highest.length) {
+    if (Array.isArray(highest) && highest?.length) {
       highestSeries = addSeries("BBW", LineSeries, {
         color: indicatorStyle?.BBW?.highest?.color ?? "rgba(244,67,54,1)",
         lineWidth: indicatorStyle?.BBW?.highest?.width ?? 1,
@@ -60,7 +60,7 @@ export default function BBWPlot({
     /* 🟢 LOWEST LINE */
     let lowestSeries = null;
 
-    if (Array.isArray(lowest) && lowest.length) {
+    if (Array.isArray(lowest) && lowest?.length) {
       lowestSeries = addSeries("BBW", LineSeries, {
         color: indicatorStyle?.BBW?.lowest?.color ?? "rgba(0,200,83,1)",
         lineWidth: indicatorStyle?.BBW?.lowest?.width ?? 1,
@@ -69,7 +69,7 @@ export default function BBWPlot({
         priceLineVisible: false,
       });
 
-      lowestSeries.setData(lowest);
+      lowestSeries?.setData(lowest);
     }
 
     indicatorSeriesRef.current.BBW = {
@@ -87,7 +87,7 @@ export default function BBWPlot({
 
   useEffect(() => {
 
-    const group = indicatorSeriesRef.current?.BBW;
+    const group = indicatorSeriesRef?.current?.BBW;
     if (!group) return;
 
     group.bbwLine?.applyOptions({

@@ -40,7 +40,9 @@ const EVENTS = {
     PROGRESS: "scannerProgress",
     NEW_SIGNAL: "newScannerSignal",
     COMPLETE: "scannerComplete",
-    ERROR:"scannerError"
+    ERROR:"scannerError",
+    AI_PREDICTION_STATUS: "aiPredictionStatus",
+    AI_TRADE_SIGNAL: "aiTradeSignal"
   }
 
   // --- INPUT EVENTS (Client to Server) ---

@@ -1,15 +1,22 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaCode, FaLaptopCode } from "react-icons/fa6";
-import { FiMaximize, FiZap } from "react-icons/fi";
+import { FaCode } from "react-icons/fa6";
 import { SiVitest } from "react-icons/si";
+import GoToDateDialog from "./GoToDateDialog";
+import { TbCalendarShare } from "react-icons/tb";
+import { CgMaximizeAlt } from "react-icons/cg";
+import { MdOutlineFullscreenExit } from "react-icons/md";
 
 const ChartTabs = ({
   activeTab,
   setActiveTab,
   onCodeClick,
   onStrategyClick,
+  onGoToDate,
+  isFullscreen,
+  onToggleFullscreen,
 }) => {
+  const [showGoToDate, setShowGoToDate] = useState(false);
   const navigate = useNavigate();
   const styles = {
     container: {
@@ -99,6 +106,8 @@ const ChartTabs = ({
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           overflow-x: auto;
           white-space: nowrap;
+          position: relative;
+          z-index: 50;
         }
         .chart-tabs-container::-webkit-scrollbar {
           display: none;
@@ -175,6 +184,61 @@ const ChartTabs = ({
         .chart-strategy-btn:hover {
           background-color: rgba(124, 58, 237, 0.1);
         }
+        .chart-exit-fullscreen-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          background-color: rgba(239, 68, 68, 0.1);
+          border: 1px solid #ef4444;
+          border-radius: 4px;
+          color: #ef4444;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .chart-exit-fullscreen-btn:hover {
+          background-color: rgba(239, 68, 68, 0.25);
+        }
+        .chart-maximize-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          background-color: transparent;
+          color: var(--text-secondary);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .chart-maximize-btn:hover {
+          border-color: var(--accent-color);
+          color: var(--accent-color);
+          background-color: rgba(var(--accent-rgb, 124,58,237), 0.1);
+        }
+        .chart-goto-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          background-color: transparent;
+          color: var(--text-secondary);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .chart-goto-btn:hover {
+          border-color: var(--accent-color);
+          color: var(--accent-color);
+          background-color: rgba(var(--accent-rgb, 124,58,237), 0.1);
+        }
 
         @media (max-width: 768px) {
           .chart-tabs-container {
@@ -214,26 +278,61 @@ const ChartTabs = ({
             onClick={() => setActiveTab(tab)}
           >
             {tab}
-            {activeTab === tab && <div className="chart-tab-active-indicator" />}
+            {activeTab === tab && (
+              <div className="chart-tab-active-indicator" />
+            )}
           </div>
         ))}
       </div>
 
       <div className="chart-actions-group">
+        {!isFullscreen && (
+          <button
+            className="chart-maximize-btn"
+            title="Maximize Chart"
+            onClick={onToggleFullscreen}
+          >
+            <CgMaximizeAlt size={15} />
+            MAXIMIZE
+          </button>
+        )}
+
+        {isFullscreen && (
+          <button
+            className="chart-exit-fullscreen-btn"
+            title="Exit Fullscreen (Esc)"
+            onClick={onToggleFullscreen}
+          >
+            <MdOutlineFullscreenExit size={15} />
+            EXIT FULLSCREEN
+          </button>
+        )}
+
+        <button className="chart-goto-btn" title="Go to" onClick={() => setShowGoToDate(true)}>
+          <TbCalendarShare size={14} />
+          GO TO
+        </button>
         <button
+          title="Run Strategy"
           onClick={onStrategyClick}
           className="chart-strategy-btn"
         >
           <SiVitest size={14} /> STRATEGY
         </button>
-        <button
-          className="chart-scalper-btn"
-          onClick={onCodeClick}
-        >
+        <button className="chart-scalper-btn" onClick={onCodeClick}>
           <FaCode />
           CODE EDITOR
         </button>
       </div>
+
+      {showGoToDate && (
+        <GoToDateDialog
+          onClose={() => setShowGoToDate(false)}
+          onGoTo={(date) => {
+            if (onGoToDate) onGoToDate(date);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -103,13 +103,13 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
     // Listen for live-options-list to update symbol dropdown
     s.on("live-options-list", (response) => {
       // console.log("[OptionChain] live-options-list received:", response);
-      if (Array.isArray(response?.data) && response.data.length > 0) {
+      if (Array.isArray(response?.data) && response?.data?.length > 0) {
         setLiveContractsList((prev) => {
-          if (prev.length === 0) return response.data;
+          if (prev?.length === 0) return response?.data;
 
           // Merge new ticks into the existing list so the dropdown never empties
           const mergedMap = new Map(
-            prev.map((c) => [
+            prev?.map((c) => [
               `${c.symbol}-${c.expiry ?? c.expiry_date}-${c.strike ?? c.strike_price}-${c.option_type}`,
               c,
             ]),
@@ -180,7 +180,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
       // If backend sends 'ALL' broadcast, filter locally
       if (response?.symbol === "ALL") {
         const normalize = (s) => (s || "").replace(/\s+/g, "").toLowerCase();
-        chainData = chainData.filter((item) => {
+        chainData = chainData?.filter((item) => {
           const itemSym = item.symbol || item.name;
           const itemExp = item.expiry_date || item.expiry;
           return (
@@ -193,7 +193,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
       let currentSpot = null;
       let currentAtm = null;
 
-      if (response?.spotPrice != null && response.spotPrice !== "") {
+      if (response?.spotPrice != null && response?.spotPrice !== "") {
         const newSpot = Number(response.spotPrice);
         if (!isNaN(newSpot)) {
           if (prevSpotRef.current != null) {
@@ -209,7 +209,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
         currentAtm = response.atmStrike;
       }
 
-      if (chainData.length > 0) {
+      if (chainData?.length > 0) {
         let finalStrikes = chainData;
 
         // Group flat array (strike_price + option_type format)
@@ -219,7 +219,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
         ) {
           const chainMap = {};
           let newAtmSpot = null;
-          chainData.forEach((item) => {
+          chainData?.forEach((item) => {
             const strike = Number(item.strike_price);
             if (!chainMap[strike])
               chainMap[strike] = { strike, ce: null, pe: null };
@@ -585,12 +585,12 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
                       fontSize: 12,
                     }}
                   >
-                    {liveContractsList.length === 0
+                    {liveContractsList?.length === 0
                       ? "Waiting for live options list..."
                       : "No contracts found"}
                   </div>
                 ) : (
-                  filteredContracts.map((contract, idx) => {
+                  filteredContracts?.map((contract, idx) => {
                     const change =
                       contract.change_absolute ??
                       contract.change ??
@@ -763,7 +763,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
             marginLeft: "auto",
           }}
         >
-          {expiriesList.map((exp) => (
+          {expiriesList?.map((exp) => (
             <button
               key={exp}
               onClick={() => setActiveExpiry(exp)}
@@ -882,7 +882,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
             </tr>
           </thead>
           <tbody>
-            {strikes.length === 0 ? (
+            {strikes?.length === 0 ? (
               <tr>
                 <td
                   colSpan={19}
@@ -898,7 +898,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
                 </td>
               </tr>
             ) : (
-              strikes.map((row, i) => {
+              strikes?.map((row, i) => {
                 const strike = Number(row.strike);
                 const prevStrike =
                   i > 0 ? Number(strikes[i - 1].strike) : -Infinity;
@@ -1010,7 +1010,7 @@ const OptionChain = ({ onSymbolChange, onBack }) => {
                 const showSpotLine =
                   spot != null && spot > prevStrike && spot <= strike;
                 const showSpotLineAtEnd =
-                  i === strikes.length - 1 && spot != null && spot > strike;
+                  i === strikes?.length - 1 && spot != null && spot > strike;
                 const spotLineColor =
                   spotChange >= 0
                     ? "var(--success-color)"

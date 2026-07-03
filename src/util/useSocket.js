@@ -122,7 +122,7 @@ const useSocket = (props = {}) => {
       const wrappedHandler = (...args) => {
         try {
           if (eventsToLog.includes(eventName)) {
-            console.log(`[SOCKET EVENT] ${eventName} received:`, ...args);
+            // console.log(`[SOCKET EVENT] ${eventName} received:`, ...args);
           }
           handlers[eventName](...args);
         } catch (error) {
@@ -155,6 +155,7 @@ const useSocket = (props = {}) => {
   const methods = React.useMemo(() => ({
     emit: socketManager.emit.bind(socketManager),
     once: socketManager.once.bind(socketManager),
+    off: socketManager.socket.off.bind(socketManager.socket),
     connect: socketManager.socket.connect.bind(socketManager.socket),
     disconnect: socketManager.socket.disconnect.bind(socketManager.socket),
   }), []);

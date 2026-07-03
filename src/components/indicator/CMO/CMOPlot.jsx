@@ -12,7 +12,7 @@ export default function CMOPlot({
   useEffect(() => {
     const cmoDataRaw = result?.data?.cmo;
 
-    if (!Array.isArray(cmoDataRaw) || !cmoDataRaw.length) {
+    if (!Array.isArray(cmoDataRaw) || !cmoDataRaw?.length) {
       console.log(":x: CMO data missing", result);
       return;
     } // :fire: REMOVE OLD

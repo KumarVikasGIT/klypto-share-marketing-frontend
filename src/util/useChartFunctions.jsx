@@ -1,5 +1,6 @@
 import apiService from "../services/apiServices";
 import { getRowsByIndicator } from "./common";
+import socket from "../services/websocket/socket";
 
 const IST_OFFSET = 19800;
 
@@ -388,6 +389,40 @@ export default function useChartFunctions({
         };
         break;
       }
+      case "VOLATILITY_MOMENTUM_PRO": {
+        const openingRangeHigh = result?.data?.openingRangeHigh ?? [];
+        const openingRangeLow = result?.data?.openingRangeLow ?? [];
+        const volatilityUpperChannel =
+          result?.data?.volatilityUpperChannel ?? [];
+        const volatilityLowerChannel =
+          result?.data?.volatilityLowerChannel ?? [];
+
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          openingRangeHigh:
+            openingRangeHigh.length > 0
+              ? openingRangeHigh[openingRangeHigh.length - 1]?.value
+              : null,
+
+          openingRangeLow:
+            openingRangeLow.length > 0
+              ? openingRangeLow[openingRangeLow.length - 1]?.value
+              : null,
+
+          volatilityUpperChannel:
+            volatilityUpperChannel.length > 0
+              ? volatilityUpperChannel[volatilityUpperChannel.length - 1]?.value
+              : null,
+
+          volatilityLowerChannel:
+            volatilityLowerChannel.length > 0
+              ? volatilityLowerChannel[volatilityLowerChannel.length - 1]?.value
+              : null,
+        };
+
+        break;
+      }
       case "ATR": {
         indicatorDataRef.current[id] = { result, rows };
         const atr = result?.data?.atr ?? [];
@@ -634,6 +669,116 @@ export default function useChartFunctions({
 
         break;
       }
+
+      case "SUPERSMOOTHER": {
+        const oscillator = result?.data?.oscillator ?? [];
+        const signalLine = result?.data?.signalLine ?? [];
+        const histogram = result?.data?.histogram ?? [];
+        const buySignals = result?.data?.buySignals ?? [];
+        const sellSignals = result?.data?.sellSignals ?? [];
+        const strongBuySignals = result?.data?.strongBuySignals ?? [];
+        const strongSellSignals = result?.data?.strongSellSignals ?? [];
+
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          oscillator: oscillator[oscillator.length - 1]?.value ?? null,
+          signalLine: signalLine[signalLine.length - 1]?.value ?? null,
+          histogram: histogram[histogram.length - 1]?.value ?? null,
+          bullishSignal: buySignals.length > 0,
+          bearishSignal: sellSignals.length > 0,
+          strongBullishSignal: strongBuySignals.length > 0,
+          strongBearishSignal: strongSellSignals.length > 0,
+        };
+
+        break;
+      }
+
+      case "HEALTHY_BOX": {
+        const directionalScore = result?.data?.directionalScore ?? [];
+        const bodyBoxes = result?.data?.bodyBoxes ?? [];
+        const totalWickBoxes = result?.data?.totalWickBoxes ?? [];
+
+        const bullSignals = result?.data?.bullSignals ?? [];
+        const bearSignals = result?.data?.bearSignals ?? [];
+
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          directionalScore:
+            directionalScore[directionalScore.length - 1]?.value ?? null,
+
+          bodyBoxes: bodyBoxes[bodyBoxes.length - 1]?.value ?? null,
+
+          totalWickBoxes:
+            totalWickBoxes[totalWickBoxes.length - 1]?.value ?? null,
+
+          bull: bullSignals.length > 0,
+
+          bear: bearSignals.length > 0,
+        };
+
+        break;
+      }
+      case "BODY915DNA": {
+        const directionalBodyBoxes = result?.data?.directionalBodyBoxes ?? [];
+        const avgBoxes = result?.data?.avgBoxes ?? [];
+        const maxBoxes = result?.data?.maxBoxes ?? [];
+        const minBoxes = result?.data?.minBoxes ?? [];
+        const bodyPercentile = result?.data?.bodyPercentile ?? [];
+        const expansionScore = result?.data?.expansionScore ?? [];
+        const zScore = result?.data?.zScore ?? [];
+        const bullSignals = result?.data?.bullSignals ?? [];
+        const bearSignals = result?.data?.bearSignals ?? [];
+        const monsterSignals = result?.data?.monsterSignals ?? [];
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          directionalBodyBoxes:
+            directionalBodyBoxes[directionalBodyBoxes.length - 1]?.value ??
+            null,
+          avgBoxes: avgBoxes[avgBoxes.length - 1]?.value ?? null,
+          maxBoxes: maxBoxes[maxBoxes.length - 1]?.value ?? null,
+          minBoxes: minBoxes[minBoxes.length - 1]?.value ?? null,
+          bodyPercentile:
+            bodyPercentile[bodyPercentile.length - 1]?.value ?? null,
+          expansionScore:
+            expansionScore[expansionScore.length - 1]?.value ?? null,
+          zScore: zScore[zScore.length - 1]?.value ?? null,
+          bullSignal: bullSignals.length > 0,
+          bearSignal: bearSignals.length > 0,
+          monsterSignal: monsterSignals.length > 0,
+        };
+
+        break;
+      }
+
+      case "HMA60_BOX_DISTANCE": {
+        const hma60 = result?.data?.hma60 ?? [];
+        const closeToHmaBoxes = result?.data?.closeToHmaBoxes ?? [];
+        const highToHmaBoxes = result?.data?.highToHmaBoxes ?? [];
+        const lowToHmaBoxes = result?.data?.lowToHmaBoxes ?? [];
+        const upperZone = result?.data?.upperZone ?? [];
+        const lowerZone = result?.data?.lowerZone ?? [];
+        const upperSignals = result?.data?.upperSignals ?? [];
+        const lowerSignals = result?.data?.lowerSignals ?? [];
+        indicatorDataRef.current[id] = { result, rows };
+
+        latestIndicatorValuesRef.current[id] = {
+          hma60: hma60[hma60.length - 1]?.value ?? null,
+          closeToHmaBoxes:
+            closeToHmaBoxes[closeToHmaBoxes.length - 1]?.value ?? null,
+          highToHmaBoxes:
+            highToHmaBoxes[highToHmaBoxes.length - 1]?.value ?? null,
+          lowToHmaBoxes: lowToHmaBoxes[lowToHmaBoxes.length - 1]?.value ?? null,
+          upperZone: upperZone[upperZone.length - 1]?.value ?? null,
+          lowerZone: lowerZone[lowerZone.length - 1]?.value ?? null,
+          upperExtreme: upperSignals.length > 0,
+          lowerExtreme: lowerSignals.length > 0,
+        };
+
+        break;
+      }
       default:
         indicatorDataRef.current[id] = { result, rows };
         break;
@@ -646,6 +791,9 @@ export default function useChartFunctions({
     processIndicatorResponse,
   };
 }
+// Global queue to ensure sequential processing of getIndicatorDetails requests
+let indicatorFetchQueue = Promise.resolve();
+
 async function fetchDataForIndicators(
   candles,
   selectedCurrency,
@@ -662,21 +810,56 @@ async function fetchDataForIndicators(
   };
   try {
     const response = await new Promise((resolve, reject) => {
-      if (!socketRef.current) return reject(new Error("No socket"));
+      indicatorFetchQueue = indicatorFetchQueue.then(() => {
+        return new Promise((innerResolve) => {
+          if (!socketRef.current || !socket.connected) {
+            innerResolve();
+            return reject(new Error("Socket disconnected"));
+          }
 
-      socketRef.current?.emit("getIndicatorDetails", {
-        symbol: selectedCurrency?.name,
-        interval: timeframeValue,
-        fromDate: fromDate,
-        toDate: toDate,
-        type,
-        candles,
+          socketRef.current?.emit("getIndicatorDetails", {
+            symbol: selectedCurrency?.name,
+            interval: timeframeValue,
+            fromDate: fromDate,
+            toDate: toDate,
+            type,
+            candles,
+          });
+
+          const timeoutId = setTimeout(() => {
+            socketRef.current?.off("indicatorDetailsError", onError);
+            socketRef.current?.off("indicatorDetailsResponse", onResponse);
+            innerResolve();
+            reject(new Error("Timeout fetching indicator data"));
+          }, 15000);
+
+          const onResponse = (data) => {
+            clearTimeout(timeoutId);
+            socketRef.current?.off("indicatorDetailsError", onError);
+            innerResolve();
+            resolve(data);
+          };
+
+          const onError = (err) => {
+            clearTimeout(timeoutId);
+            console.error("fetchDataForIndicators error:", err);
+            socketRef.current?.off("indicatorDetailsResponse", onResponse);
+            innerResolve();
+            reject(err);
+          };
+
+          socketRef.current?.once("indicatorDetailsResponse", onResponse);
+          socketRef.current?.once("indicatorDetailsError", onError);
+
+          // Fail-safe timeout to prevent hanging the queue
+          setTimeout(() => {
+            socketRef.current?.off("indicatorDetailsResponse", onResponse);
+            socketRef.current?.off("indicatorDetailsError", onError);
+            innerResolve();
+            resolve(null);
+          }, 10000);
+        });
       });
-      socketRef.current?.once("indicatorDetailsResponse", (data) => {
-        console.log(data, "===========================");
-        resolve(data);
-      });
-      socketRef.current?.once("indicatorDetailsError", (err) => reject(err));
     });
 
     console.log("Raw indicator data for", type, ":", response);
@@ -1435,27 +1618,6 @@ async function fetchDataForIndicators(
           },
         };
 
-      case "VP":
-        return {
-          type: "multi",
-          data: {
-            volume:
-              response?.data?.map((d) => ({
-                time: Number(d.time) + IST_OFFSET,
-                value: Number(d.volume),
-                color:
-                  d.close >= d.open
-                    ? "rgba(38,166,154,1)"
-                    : "rgba(239,83,80,1)",
-              })) ?? [],
-
-            volumeMA:
-              response?.data?.map((d) => ({
-                time: Number(d.time) + IST_OFFSET,
-                value: Number(d.volumeMA),
-              })) ?? [],
-          },
-        };
       case "MFI":
         return {
           type: "single",
@@ -1547,10 +1709,10 @@ async function fetchDataForIndicators(
           data: {
             percentB:
               response?.data
-                ?.filter((d) => d.percentB != null && d.time != null)
+                ?.filter((d) => (d.bbperb ?? d.percentB) != null && d.time != null)
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
-                  value: Number(d.percentB),
+                  value: Number(d.bbperb ?? d.percentB),
                 })) ?? [],
           },
         };
@@ -1792,6 +1954,107 @@ async function fetchDataForIndicators(
           },
         };
 
+      case "VOLATILITY_MOMENTUM_PRO":
+        return {
+          type: "multi",
+          data: {
+            openingRangeHigh:
+              response?.data
+                ?.filter((d) => d.orHigh != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.orHigh),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            openingRangeLow:
+              response?.data
+                ?.filter((d) => d.orLow != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.orLow),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            upperChannel:
+              response?.data
+                ?.filter((d) => d.upperChannel != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.upperChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            lowerChannel:
+              response?.data
+                ?.filter((d) => d.lowerChannel != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.lowerChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            sharpUpSignals:
+              response?.data
+                ?.filter((d) => d.sharpUp && d.time != null && d.lowerChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.lowerChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            sharpDownSignals:
+              response?.data
+                ?.filter((d) => d.sharpDown && d.time != null && d.upperChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.upperChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            extremeUpSignals:
+              response?.data
+                ?.filter((d) => d.extremeUp && d.time != null && d.lowerChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.lowerChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            extremeDownSignals:
+              response?.data
+                ?.filter((d) => d.extremeDown && d.time != null && d.upperChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.upperChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            highMoveBackground:
+              response?.data
+                ?.filter((d) => d.highMoveProbability && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: 1, // Just a boolean indicator for background fill
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            is915Markers:
+              response?.data
+                ?.filter((d) => d.is915 && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.upperChannel != null ? parseFloat(d.upperChannel) : (d.lowerChannel != null ? parseFloat(d.lowerChannel) : 0),
+                  angle: d.angle,
+                  atrPower: d.atrPower,
+                  volPower: d.volPower,
+                  volMomentumScore: d.volMomentumScore,
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+          },
+        };
+
       case "MACD":
         return {
           type: "multi",
@@ -1988,6 +2251,279 @@ async function fetchDataForIndicators(
                 })) ?? [],
           },
         };
+
+      case "SUPERSMOOTHER": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            oscillator: rows
+              .filter((d) => d?.oscillator != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+                color: d.oscillatorColor || undefined,
+              })),
+
+            signalLine: rows
+              .filter((d) => d?.signalLine != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.signalLine),
+                color: d.signalColor || undefined,
+              })),
+
+            histogram: rows
+              .filter((d) => d?.histogram != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.histogram),
+                color: d.histogramColor,
+              })),
+
+            buySignals: rows
+              .filter((d) => d?.bullishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+
+            sellSignals: rows
+              .filter((d) => d?.bearishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+
+            strongBuySignals: rows
+              .filter((d) => d?.strongBullishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+
+            strongSellSignals: rows
+              .filter((d) => d?.strongBearishSignal)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.oscillator),
+              })),
+          },
+        };
+      }
+
+      case "HEALTHY_BOX": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            directionalScore: rows
+              .filter((d) => d?.directionalScore != null)
+              .map((d) => {
+                let color = "rgba(128,128,128,1)"; // gray
+                if (d.healthySignal || d.healthy) {
+                  color =
+                    d.bullSignal || d.bull
+                      ? "rgba(0,255,0,1)"
+                      : "rgba(255,0,0,1)";
+                }
+                return {
+                  time: Number(d.time) + IST_OFFSET,
+                  value: Number(d.directionalScore),
+                  color,
+                };
+              }),
+
+            bodyBoxes: rows
+              .filter((d) => d?.bodyBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.bodyBoxes),
+              })),
+
+            totalWickBoxes: rows
+              .filter((d) => d?.totalWickBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.totalWickBoxes),
+              })),
+
+            bullSignals: rows
+              .filter((d) => d?.bullSignal || d?.bull)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalScore || 0),
+              })),
+
+            bearSignals: rows
+              .filter((d) => d?.bearSignal || d?.bear)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalScore || 0),
+              })),
+          },
+        };
+      }
+
+      case "BODY915DNA": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            directionalBodyBoxes: rows
+              .filter((d) => d?.directionalBodyBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+
+            avgBoxes: rows
+              .filter((d) => d?.avgBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.avgBoxes),
+              })),
+
+            maxBoxes: rows
+              .filter((d) => d?.maxBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.maxBoxes),
+              })),
+
+            minBoxes: rows
+              .filter((d) => d?.minBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.minBoxes),
+              })),
+
+            bodyPercentile: rows
+              .filter((d) => d?.bodyPercentile != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.bodyPercentile),
+              })),
+
+            expansionScore: rows
+              .filter((d) => d?.expansionScore != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.expansionScore),
+              })),
+
+            zScore: rows
+              .filter((d) => d?.zScore != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.zScore),
+              })),
+
+            bullSignals: rows
+              .filter((d) => d?.healthy915 && d?.bull915)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+
+            bearSignals: rows
+              .filter((d) => d?.healthy915 && d?.bear915)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+
+            monsterSignals: rows
+              .filter((d) => d?.monsterBody)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.directionalBodyBoxes),
+              })),
+          },
+        };
+      }
+
+      case "HMA60_BOX_DISTANCE": {
+        const rows = Array.isArray(response?.data) ? response.data : [];
+
+        return {
+          type: "multi",
+          data: {
+            hma60: rows
+              .filter((d) => d?.hma60 != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.hma60),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            closeToHmaBoxes: rows
+              .filter((d) => d?.closeToHmaBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.closeToHmaBoxes),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            highToHmaBoxes: rows
+              .filter((d) => d?.highToHmaBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.highToHmaBoxes),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            lowToHmaBoxes: rows
+              .filter((d) => d?.lowToHmaBoxes != null)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.lowToHmaBoxes),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            upperZone: rows
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.upperZone),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            lowerZone: rows
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.lowerZone),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            upperSignals: rows
+              .filter((d) => d?.upperExtreme)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.closeToHmaBoxes),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            lowerSignals: rows
+              .filter((d) => d?.lowerExtreme)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.closeToHmaBoxes),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
+
+            bgColors: rows
+              .filter((d) => d?.bgColor)
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                color: d.bgColor,
+                value: 1,
+              })),
+          },
+        };
+      }
 
       default:
         return {

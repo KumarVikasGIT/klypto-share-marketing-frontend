@@ -9,15 +9,17 @@ export default function AWOInput(response, indicatorSeriesRef, latestIndicatorVa
     }));
 
   // Store processed data in indicatorSeriesRef for plotting
-  indicatorSeriesRef.current[instanceId || "AWO"] = {
-    ...(indicatorSeriesRef.current[instanceId || "AWO"] || {}),
-    result: response,
-    awoData,
-  };
+  if (indicatorSeriesRef?.current) {
+    indicatorSeriesRef.current[instanceId || "AWO"] = {
+      ...(indicatorSeriesRef.current[instanceId || "AWO"] || {}),
+      result: response,
+      awoData,
+    };
+  }
 
   // Store latest value
   latestIndicatorValuesRef.current[instanceId || "AWO"] = {
-    awo: awoData.length ? awoData[awoData.length - 1].value : null,
+    awo: awoData?.length ? awoData[awoData?.length - 1].value : null,
   };
 
   return awoData;

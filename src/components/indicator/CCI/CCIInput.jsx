@@ -51,10 +51,10 @@ export default function CCIInput(
 
   // Update hover/latest values
   latestIndicatorValuesRef.current[instanceId || "CCI"] = {
-    cciLine: cciData[cciData.length - 1]?.value,
-    cciMa: cciMa[cciMa.length - 1]?.value,
-    bbUpper: bbUpper[bbUpper.length - 1]?.value,
-    bbLower: bbLower[bbLower.length - 1]?.value,
+    cciLine: cciData[cciData?.length - 1]?.value,
+    cciMa: cciMa[cciMa?.length - 1]?.value,
+    bbUpper: bbUpper[bbUpper?.length - 1]?.value,
+    bbLower: bbLower[bbLower?.length - 1]?.value,
   };
 
   // Store result data

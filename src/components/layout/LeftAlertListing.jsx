@@ -7,6 +7,7 @@ const LeftAlertListing = ({
   alertResult,
   setAlertResult,
   setSelectedCurrency,
+  setActiveTab,
 }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -221,11 +222,7 @@ const LeftAlertListing = ({
                 position: "relative",
               }}
             >
-              <Link
-                to="/dashboard"
-                state={{
-                  stock: item,
-                }}
+              <div
                 style={{
                   textDecoration: "none",
                   color: "inherit",
@@ -258,7 +255,7 @@ const LeftAlertListing = ({
                     {/* <span>{item.segment || "NSE"}</span> */}
                   </div>
                 </div>
-              </Link>
+              </div>
 
             </div>
           ))

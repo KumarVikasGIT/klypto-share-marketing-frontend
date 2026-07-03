@@ -14,7 +14,7 @@ export default function BBPERBPlot({
 
     console.log(percentB, "----------------------->>>>>>>>>>>");
 
-    if (!Array.isArray(percentB) || percentB.length === 0) {
+    if (!Array.isArray(percentB) || percentB?.length === 0) {
       console.log(":x: BBPERB not plotting", result);
       return;
     } // :fire: REMOVE OLD
@@ -196,7 +196,7 @@ export default function BBPERBPlot({
 
     const percentB = result?.data?.percentB;
 
-    if (Array.isArray(percentB) && percentB.length) {
+    if (Array.isArray(percentB) && percentB?.length) {
       const overboughtVal = indicatorStyle?.BBPERB?.overbought?.value ?? 1;
       const oversoldVal = indicatorStyle?.BBPERB?.oversold?.value ?? 0;
 

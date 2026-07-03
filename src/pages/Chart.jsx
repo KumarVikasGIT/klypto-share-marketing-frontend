@@ -164,6 +164,7 @@ const GoldChart = () => {
 
     chartRef.current.priceScale("rsi").applyOptions({
       position: "right",
+      visible: true,
       scaleMargins: { top: 0.75, bottom: 0.05 },
       borderVisible: false,
     });

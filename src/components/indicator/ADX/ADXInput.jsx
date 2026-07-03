@@ -20,7 +20,7 @@ export default function ADXInput(
   series.adx?.setData(adxData);
 
   latestIndicatorValuesRef.current[instanceId || "ADX"] = {
-    adx: adxData[adxData.length - 1]?.value,
+    adx: adxData[adxData?.length - 1]?.value,
   };
 
   indicatorSeriesRef.current[instanceId || "ADX"].result = {

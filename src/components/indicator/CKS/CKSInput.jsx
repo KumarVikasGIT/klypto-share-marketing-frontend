@@ -29,7 +29,7 @@ export default function CKSInput(
   shortSeries.setData(shortData);
 
   latestIndicatorValuesRef.current[instanceId || "CKS"] = {
-    long: longData[longData.length - 1]?.value ?? null,
-    short: shortData[shortData.length - 1]?.value ?? null,
+    long: longData[longData?.length - 1]?.value ?? null,
+    short: shortData[shortData?.length - 1]?.value ?? null,
   };
 }

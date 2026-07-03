@@ -90,7 +90,7 @@ export default function BBPlot({
     const upper = bbGroup.upperData || [];
     const lower = bbGroup.lowerData || [];
 
-    if (!upper.length || !lower.length) return;
+    if (!upper?.length || !lower?.length) return;
     if (!canvasRef.current || !chart) return;
 
     const canvas = canvasRef.current;
@@ -109,7 +109,7 @@ export default function BBPlot({
 
     ctx.beginPath();
 
-    for (let i = 0; i < upper.length; i++) {
+    for (let i = 0; i < upper?.length; i++) {
       const p = upper[i];
 
       const x = chart.timeScale().timeToCoordinate(p.time);
@@ -121,7 +121,7 @@ export default function BBPlot({
       else ctx.lineTo(x, y);
     }
 
-    for (let i = lower.length - 1; i >= 0; i--) {
+    for (let i = lower?.length - 1; i >= 0; i--) {
       const p = lower[i];
 
       const x = chart.timeScale().timeToCoordinate(p.time);

@@ -5,6 +5,8 @@ export default function VPPlot({
   chart,
   containerRef,
   indicatorConfigs,
+  id,
+  indicatorVisibility,
 }) {
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
@@ -167,6 +169,12 @@ export default function VPPlot({
       }
     };
   }, [result, chart]);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.style.display = (indicatorVisibility?.[id] === false) ? "none" : "block";
+    }
+  }, [indicatorVisibility, id]);
 
   return null;
 }

@@ -453,11 +453,11 @@ const Overview = ({ selectedCurrency, onBack }) => {
   // Depth Parsing
   const buyDepth = overview.best_five_buy ?? tick.best_five_buy ?? [];
   const sellDepth = overview.best_five_sell ?? tick.best_five_sell ?? [];
-  const maxBuyQty = Math.max(...buyDepth.map((b) => Number(b.quantity)), 0);
-  const maxSellQty = Math.max(...sellDepth.map((s) => Number(s.quantity)), 0);
+  const maxBuyQty = Math.max(...buyDepth?.map((b) => Number(b.quantity)), 0);
+  const maxSellQty = Math.max(...sellDepth?.map((s) => Number(s.quantity)), 0);
 
-  const bestBuy = buyDepth.length > 0 ? buyDepth[0]?.price : null;
-  const bestSell = sellDepth.length > 0 ? sellDepth[0]?.price : null;
+  const bestBuy = buyDepth?.length > 0 ? buyDepth[0]?.price : null;
+  const bestSell = sellDepth?.length > 0 ? sellDepth[0]?.price : null;
   const spread =
     bestSell != null && bestBuy != null ? bestSell - bestBuy : null;
 
@@ -735,7 +735,7 @@ const Overview = ({ selectedCurrency, onBack }) => {
                 <span style={{ flex: 1, textAlign: "right" }}>Orders</span>
               </div>
               <div>
-                {buyDepth.map((b, i) => (
+                {buyDepth?.map((b, i) => (
                   <DepthRow
                     key={i}
                     price={b?.price}
@@ -781,7 +781,7 @@ const Overview = ({ selectedCurrency, onBack }) => {
                 <span style={{ flex: 1, textAlign: "right" }}>Orders</span>
               </div>
               <div>
-                {sellDepth.map((s, i) => (
+                {sellDepth?.map((s, i) => (
                   <DepthRow
                     key={i}
                     price={s?.price}

@@ -10,11 +10,10 @@ import {
   createSeriesMarkers,
 } from "lightweight-charts";
 import React from "react";
-// import IndicatorRuleBuilder from "../components/scanner/IndicatorRuleBuilder";
+import { createPortal } from "react-dom";
 import { LuCirclePlus, LuCircleMinus } from "react-icons/lu";
 import { RiResetRightLine } from "react-icons/ri";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { FaCode } from "react-icons/fa6";
 import ChartHeader from "../components/tradingModals/ChartHeader";
 import Navbar from "../components/layout/Navbar";
 import LeftWatchlist from "../components/layout/LeftWatchlist";
@@ -23,8 +22,6 @@ import ChartTabs from "../components/layout/ChartTabs";
 import LeftDepth from "../components/layout/LeftDepth";
 import useSocket from "../util/useSocket";
 import EVENTS from "../services/websocket/socketEvent";
-import { METADATA_API_URL } from "../services/websocket/socket";
-
 // import SEO from "../components/SEO";
 import {
   ChartProprties,
@@ -35,14 +32,6 @@ import {
   getIndicatorChartProperties,
 } from "../util/common";
 import SourceCodePanel from "../components/indicator/SourceCodePanel";
-
-import {
-  IoCloseSharp,
-  IoEyeOffOutline,
-  IoEyeOutline,
-  IoLink,
-  IoSettingsOutline,
-} from "react-icons/io5";
 import IndicatorAlert from "../components/indicator/IndicatorAlert";
 import IndicatorPropertyDialog from "../components/indicator/IndicatorPropertyDialog";
 import useChartFunctions from "../util/useChartFunctions";
@@ -59,16 +48,16 @@ import {
   indicatorStyleDefault,
   PANE_INDICATORS,
 } from "../util/indicatorFunctions";
-import { io } from "socket.io-client";
 import { getStrategySocket } from "../services/websocket/socket";
 import { toast } from "react-toastify";
 import useAlerts from "../util/useAlerts";
-import { Link } from "react-router-dom";
 import CodeEditorPanel from "../components/layout/CodeEditorPanel";
 import OIAnalytics from "../components/tradingModals/OIAnalytics";
-import { FaPlay } from "react-icons/fa";
 import Swal from "sweetalert2";
 import apiService from "../services/apiServices";
+import useDrawingTools from "../util/useDrawingTools";
+import DrawingToolbar from "../components/tradingModals/DrawingToolbar";
+import DrawingToolbox from "../components/tradingModals/DrawingToolbox";
 
 export default function Candlestick() {
   const chartRef = useRef();
@@ -108,8 +97,21 @@ export default function Candlestick() {
 
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isDepthOpen, setIsDepthOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+  const [predictionStatus, setPredictionStatus] = useState(null);
   const [isPredicting, setIsPredicting] = useState(false);
+  const [isDepthOpen, setIsDepthOpen] = useState(false);
   const [predictResultData, setPredictResultData] = useState([]);
   const [detailsList, setDetailsList] = useState([]);
   const [activeTab, setActiveTab] = useState("Chart");
@@ -122,16 +124,36 @@ export default function Candlestick() {
       console.warn("Failed to read selectedCurrency from localStorage", e);
     }
     return {
-      symbol: "ADANIPORTS-EQ",
-      name: "ADANIPORTS",
-      token: 15083,
+      name: "TCS",
+      token: "11536",
       segment: "NSE",
-      expiry: "",
+      exchange: "NSE",
     };
   });
+
+  const { 
+    activeTool, 
+    setActiveTool, 
+    clearAllDrawings, 
+    selectedLine, 
+    toolboxPos, 
+    updateLine,
+    deleteLine, 
+    closeToolbox,
+    onDragLine,
+    getAnchorY
+  } = useDrawingTools({
+    chartRef,
+    seriesRef,
+    containerRef,
+    symbol: selectedCurrency?.symbol || selectedCurrency?.name,
+    interval: timeframeValue,
+  });
+
+  const [activePropertyDialog, setActivePropertyDialog] = useState(null);
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 90); // At least 3 months default for 5m
+    d.setMonth(d.getMonth() - 7);
     return d.toISOString().split("T")[0];
   });
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
@@ -143,6 +165,9 @@ export default function Candlestick() {
   const [liveIndicatorData, setLiveIndicatorData] = useState({});
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
   const [mainChartLoading, setMainChartLoading] = useState(false);
+  const [symbolTransitioning, setSymbolTransitioning] = useState(false);
+  const symbolTransitioningRef = useRef(false);
+  const [noDataAvailable, setNoDataAvailable] = useState(false);
   const [editorCode, setEditorCode] = useState(
     `markers = []
 # user strategy here
@@ -151,61 +176,19 @@ plot_markers(markers)`,
   const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
   const [customSignals, setCustomSignals] = useState([]);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [scannerProgressData, setScannerProgressData] = useState(null);
   const [dashboardSignals, setDashboardSignals] = useState([]);
   const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
 
-  const handleStrategyClick = async () => {
-    try {
-      setIsPredicting(true);
-      // Immediately open Results tab to show the spinner
-      setIsDepthOpen(true);
-      setIsWatchlistOpen(false);
-      setIsDetailsOpen(false);
-      if (activeTab === "Alerts") setActiveTab("Chart");
-
-      const apiUrl =
-        import.meta.env.VITE_STRATEGY_API_URL || "http://192.168.1.6:3000";
-      const resp = await apiService.get(`${apiUrl}/api/predictResult`);
-      console.log("predictResult API Raw Response:", resp);
-
-      const data = Array.isArray(resp) ? resp : resp?.data || [];
-      const filtered = data.filter((item) => item.symbol && item.response);
-      console.log("Filtered predictResult Data:", filtered);
-
-      setPredictResultData(filtered);
-
-      // Plot markers by adding them to dashboardSignals
-      const mappedSignals = filtered.map((f) => {
-        let timeStr =
-          f.tick?.datetime ||
-          f.response?.entry_time ||
-          new Date().toISOString();
-        timeStr = timeStr.replace(" ", "T"); // Fix parsing for 'YYYY-MM-DD HH:mm:ss'
-
-        return {
-          symbol: f.symbol,
-          signalType:
-            f.response?.type === "CALL"
-              ? "BUY"
-              : f.response?.type === "PUT"
-                ? "SELL"
-                : "BUY",
-          timestamp: timeStr,
-          segment: "SCRIPT",
-        };
-      });
-      console.log("Mapped Signals for Dashboard:", mappedSignals);
-
-      setDashboardSignals((prev) => [...prev, ...mappedSignals]);
-
-      // We must set isDeployed to true so the markers useEffect triggers and plots them
-      setIsDeployed(true);
-      setDeployedStrategyCode("API_PREDICTION");
-    } catch (err) {
-      console.error("Failed to fetch predict result:", err);
-    } finally {
-      setIsPredicting(false);
-    }
+  const handleStrategyClick = () => {
+    setIsPredicting(true);
+    setIsDepthOpen(true);
+    setIsWatchlistOpen(false);
+    setIsDetailsOpen(false);
+    if (activeTab === "Alerts") setActiveTab("Chart");
+    
+    setPredictResultData([]);
+    setPredictionStatus(null);
   };
 
   //code editor
@@ -316,11 +299,12 @@ plot_markers(markers)`,
 
   // Dedicated Strategy Socket Handlers
   const signalBufferRef = useRef([]);
+  const deploymentSignalsRef = useRef([]);
 
   // Flush buffer to state every 500ms to avoid freezing the UI on mass updates
   useEffect(() => {
     const flushInterval = setInterval(() => {
-      if (signalBufferRef.current.length > 0) {
+      if (signalBufferRef.current?.length > 0) {
         const newSignals = [...signalBufferRef.current];
         signalBufferRef.current = []; // Clear immediately
 
@@ -340,6 +324,7 @@ plot_markers(markers)`,
           `[STRATEGY SOCKET] ${EVENTS.STRATEGY.PROGRESS} Payload:`,
           data,
         );
+        setScannerProgressData(data);
         let percentage =
           data.total > 0 ? ((data.processed / data.total) * 100).toFixed(1) : 0;
         toast.update("compiling", {
@@ -364,6 +349,10 @@ plot_markers(markers)`,
             "Scanner triggered successfully! Waiting for results...",
         );
         setIsDeploying(false);
+        console.log(
+          "Scanner Execution Complete. All Signals:",
+          deploymentSignalsRef.current,
+        );
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] COMPLETE handler failed:`, err);
       }
@@ -376,6 +365,7 @@ plot_markers(markers)`,
           signalData,
         );
         signalBufferRef.current.push(signalData);
+        deploymentSignalsRef.current.push(signalData);
       } catch (err) {
         console.error(
           `[STRATEGY SOCKET ERROR] NEW_SIGNAL handler failed:`,
@@ -397,21 +387,150 @@ plot_markers(markers)`,
             position: "top-right",
           },
         );
+        setIsDeploying(false);
+        toast.dismiss("compiling");
       } catch (err) {
         console.error(`[STRATEGY SOCKET ERROR] ERROR handler failed:`, err);
       }
     };
 
+    const handleAiPredictionStatus = (data) => {
+      console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_PREDICTION_STATUS}:`, data);
+      
+      setPredictionStatus(data);
+      if (data.status === "running") {
+        setIsPredicting(true);
+        setIsDepthOpen(true);
+      } else if (data.status === "done") {
+        setIsPredicting(false);
+
+        // ✅ FALLBACK: If no trade signals arrived via socket, fetch from REST API
+        // Wait briefly to allow any in-flight socket events to arrive first
+        setTimeout(async () => {
+          setPredictResultData((currentResults) => {
+            if (currentResults && currentResults.length > 0) {
+              // Socket results already arrived — no fallback needed
+              return currentResults;
+            }
+
+            // No socket results — fetch from REST API as fallback
+            apiService.get("/api/predictResult")
+              .then((res) => {
+                const results = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+                if (results.length > 0) {
+                  console.log("[AI PREDICTION] Fallback REST results loaded:", results.length);
+                  setIsDepthOpen(true);
+
+                  const mapped = results.map((item) => ({
+                    symbol: item.symbol,
+                    response: {
+                      type: item.trade_type,
+                      entry_time: item.entry_time,
+                      entry_price: item.entry_price,
+                      signal: item.signal,
+                      trend: item.trend,
+                      status: item.status,
+                      rsi: item.rsi,
+                      candle_open: item.candle_open,
+                      candle_high: item.candle_high,
+                      candle_low: item.candle_low,
+                      candle_close: item.candle_close,
+                      candle_volume: item.candle_volume,
+                    },
+                    tick: {
+                      datetime: item.entry_time,
+                    },
+                    uuid: item.uuid,
+                    created_at: item.created_at,
+                  }));
+
+                  setPredictResultData(mapped);
+
+                  // Also plot on chart
+                  const signals = results.map((item) => {
+                    let timeStr = item.entry_time || item.created_at || new Date().toISOString();
+                    timeStr = timeStr.replace(" ", "T");
+                    return {
+                      symbol: item.symbol,
+                      signalType: item.trade_type,
+                      timestamp: timeStr,
+                      segment: "SCRIPT",
+                    };
+                  });
+
+                  setDashboardSignals((prev) => [...prev, ...signals]);
+                  setIsDeployed(true);
+                  setDeployedStrategyCode("API_PREDICTION");
+                } else {
+                  console.log("[AI PREDICTION] REST fallback returned no results.");
+                }
+              })
+              .catch((err) => {
+                console.warn("[AI PREDICTION] REST fallback failed:", err);
+              });
+
+            return currentResults; // Keep current state unchanged during async fetch
+          });
+        }, 1500); // 1.5s grace window for socket events
+      }
+    };
+
+    const handleAiTradeSignal = (tradeData) => {
+      console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_TRADE_SIGNAL}:`, tradeData);
+      // Ensure Results pane is open
+      setIsDepthOpen(true);
+
+      const mappedSignal = {
+        symbol: tradeData.symbol,
+        response: {
+          type: tradeData.trade_type,
+          entry_time: tradeData.entry_time,
+          entry_price: tradeData.entry_price,
+          signal: tradeData.signal,
+        },
+        tick: {
+          datetime: tradeData.entry_time,
+        }
+      };
+
+      setPredictResultData((prev) => [mappedSignal, ...prev]);
+
+      // Add to dashboardSignals so it plots on the chart
+      let timeStr = tradeData.entry_time || tradeData.timestamp || new Date().toISOString();
+      timeStr = timeStr.replace(" ", "T");
+      setDashboardSignals((prev) => [
+        ...prev,
+        {
+          symbol: tradeData.symbol,
+          signalType: tradeData.trade_type,
+          timestamp: timeStr,
+          segment: "SCRIPT",
+        }
+      ]);
+      
+      setIsDeployed(true);
+      setDeployedStrategyCode("API_PREDICTION");
+    };
+
+    strategySocket.onAny((eventName, ...args) => {
+      // console.log(`[STRATEGY SOCKET] ${eventName}:`, args);
+    });
+    
     strategySocket.on(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
     strategySocket.on(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
     strategySocket.on(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
     strategySocket.on(EVENTS.STRATEGY.ERROR, handleScannerError);
+    strategySocket.on(EVENTS.STRATEGY.AI_PREDICTION_STATUS, handleAiPredictionStatus);
+    strategySocket.on(EVENTS.STRATEGY.AI_TRADE_SIGNAL, handleAiTradeSignal);
 
     return () => {
+      strategySocket.offAny();
       strategySocket.off(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
       strategySocket.off(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
       strategySocket.off(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
       strategySocket.off(EVENTS.STRATEGY.ERROR, handleScannerError);
+      strategySocket.off(EVENTS.STRATEGY.AI_PREDICTION_STATUS, handleAiPredictionStatus);
+      strategySocket.off(EVENTS.STRATEGY.AI_TRADE_SIGNAL, handleAiTradeSignal);
     };
   }, []);
 
@@ -427,11 +546,23 @@ plot_markers(markers)`,
       console.log("Currently selected stock:", selectedCurrency);
 
       dashboardSignals.forEach((item) => {
-        const type = item.signalType;
-        const utcStr = item.timestamp || item.createdAt || item.updatedAt;
+        let type = item.signalType || item.response?.type;
+        if (!type) {
+          type = "BUY";
+        }
+        let utcStr =
+          item.timestamp ||
+          item.createdAt ||
+          item.updatedAt ||
+          item.tick?.datetime ||
+          item.response?.entry_time;
+        if (utcStr && typeof utcStr === "string") {
+          utcStr = utcStr.replace(" ", "T");
+        }
 
         if (utcStr && type) {
-          const isBuy = type.toUpperCase() === "BUY";
+          const isBuy =
+            type.toUpperCase() === "BUY" || type.toUpperCase() === "CALL";
 
           // Use unix_timestamp if available, else convert ISO
           let utcTime;
@@ -453,12 +584,12 @@ plot_markers(markers)`,
               position: isBuy ? "belowBar" : "aboveBar",
               color: isBuy ? "#22c55e" : "#ef4444",
               shape: isBuy ? "arrowUp" : "arrowDown",
-              text: isBuy ? "BUY" : "SELL",
+              text: type.toUpperCase(),
               size: 1,
             });
           } else {
             console.log(
-              `Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`,
+              // `Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`,
             );
           }
 
@@ -466,7 +597,7 @@ plot_markers(markers)`,
             symbol: item.symbol || selectedCurrency?.name || "STOCK",
             name: item.symbol || selectedCurrency?.name || "STOCK",
             token: item.symbol,
-            signalType: isBuy ? "BUY" : "SELL",
+            signalType: type.toUpperCase(),
             timestamp: new Date(utcStr).toLocaleString(),
             segment: "SCRIPT",
           });
@@ -476,7 +607,7 @@ plot_markers(markers)`,
       console.log("Final markersToSet to plot on chart:", markersToSet);
 
       // Auto-open Alerts panel if we have signals
-      if (newSignals.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
+      if (newSignals?.length > 0 && deployedStrategyCode !== "API_PREDICTION") {
         if (typeof setActiveTab === "function") {
           setActiveTab("Alerts");
         }
@@ -485,7 +616,7 @@ plot_markers(markers)`,
 
     lastDeployedMarkersRef.current = markersToSet;
 
-    if (markersToSet.length > 0 && seriesRef.current) {
+    if (markersToSet?.length > 0 && seriesRef.current) {
       if (!customScriptMarkersRef.current) {
         customScriptMarkersRef.current = createSeriesMarkers(
           seriesRef.current,
@@ -508,6 +639,7 @@ plot_markers(markers)`,
 
       // 1. Clear previous
       handleClearCode();
+      deploymentSignalsRef.current = [];
 
       if (!code || code.trim() === "") {
         Swal.fire({
@@ -520,7 +652,47 @@ plot_markers(markers)`,
         return;
       }
 
+      // Detect if user has only left the default boilerplate template with no real logic
+      const BOILERPLATE_LINES = new Set([
+        "markers = []",
+        "# user strategy here",
+        "plot_markers(markers)",
+      ]);
+      const meaningfulLines = code
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && !BOILERPLATE_LINES.has(l));
+
+      if (meaningfulLines.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "No Strategy Found",
+          text: "Please write your strategy logic before deploying. The editor only contains the default template.",
+          background: "var(--bg-secondary)",
+          color: "var(--text-primary)",
+        });
+        return;
+      }
+
+      // Require that the strategy actually references financial data variables.
+      // A strategy with only print() / comments isn't a valid signal generator.
+      const STRATEGY_VARIABLES = /\b(close|open|high|low|volume|df)\b/;
+      const hasStrategyLogic = meaningfulLines.some((l) =>
+        STRATEGY_VARIABLES.test(l),
+      );
+      if (!hasStrategyLogic) {
+        Swal.fire({
+          icon: "warning",
+          title: "No Strategy Logic Detected",
+          text: "Your code must use at least one market data variable (close, open, high, low, volume, or df) to generate signals.",
+          background: "var(--bg-secondary)",
+          color: "var(--text-primary)",
+        });
+        return;
+      }
+
       setIsDeploying(true);
+      setScannerProgressData(null);
 
       // 1.2 Basic Frontend Security Check (Warning: This is NOT a substitute for backend sandboxing)
       const dangerousPatterns = [
@@ -566,131 +738,23 @@ plot_markers(markers)`,
         const sanitizedCode = code.replace(/\u00A0/g, " ");
         pyodideRef.current.globals.set("__code_to_validate", sanitizedCode);
         const resultJson = await pyodideRef.current.runPythonAsync(`
-import pandas as pd
-import numpy as np
-import sys
-import io
-import time
 import ast
 import json
+import sys
 import traceback
 
 result = { "success": True, "error_type": None, "error_message": None, "output": "", "markers": [] }
 
-class StrategyValidator(ast.NodeVisitor):
-    def __init__(self):
-        self.used_vars = set()
-        self.overridden_vars = set()
-        self.forbidden_imports = set()
-        self.reserved = {'df', 'open', 'high', 'low', 'close', 'volume', 'datetime', 'plot_markers'}
-        
-    def visit_Name(self, node):
-        if isinstance(node.ctx, ast.Load) and node.id in self.reserved:
-            self.used_vars.add(node.id)
-        elif isinstance(node.ctx, ast.Store) and node.id in self.reserved:
-            self.overridden_vars.add(node.id)
-        self.generic_visit(node)
-        
-    def visit_Import(self, node):
-        for alias in node.names:
-            if alias.name in ['os', 'sys', 'subprocess']:
-                self.forbidden_imports.add(alias.name)
-        self.generic_visit(node)
-        
-    def visit_ImportFrom(self, node):
-        if node.module in ['os', 'sys', 'subprocess']:
-            self.forbidden_imports.add(node.module)
-        self.generic_visit(node)
-
-# Step 1: AST Validation
 try:
-    tree = ast.parse(__code_to_validate)
-    validator = StrategyValidator()
-    validator.visit(tree)
-    
-    if len(validator.used_vars) == 0:
-        raise ValueError("Invalid Strategy: You must use at least one engine variable (df, open, high, low, close, volume, datetime, plot_markers).")
-    
-    if len(validator.overridden_vars) > 0:
-        raise ValueError(f"Security Error: You are not allowed to override engine variables or functions: {', '.join(validator.overridden_vars)}")
-        
-    if len(validator.forbidden_imports) > 0:
-        raise ValueError(f"Security Error: Forbidden imports detected: {', '.join(validator.forbidden_imports)}")
-except Exception as e:
+    ast.parse(__code_to_validate)
+except SyntaxError as e:
     result["success"] = False
-    result["error_type"] = type(e).__name__
-    if isinstance(e, SyntaxError):
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        result["error_message"] = "".join(tb_lines).strip()
-    else:
-        result["error_message"] = str(e)
+    result["error_type"] = "SyntaxError"
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    result["error_message"] = "".join(tb_lines).strip()
 
-if result["success"]:
-    # Step 2: Setup Globals
-    np.random.seed(42)
-    closes = np.random.normal(0, 1, 300).cumsum() + 100
-    df = pd.DataFrame({
-        'open': closes + np.random.normal(0, 0.5, 300),
-        'high': closes + np.random.uniform(0.1, 1.5, 300),
-        'low': closes - np.random.uniform(0.1, 1.5, 300),
-        'close': closes,
-        'volume': np.random.randint(100, 1000, 300),
-        'datetime': pd.date_range(start='1/1/2026', periods=300, freq='D')
-    })
-    open = df['open']
-    high = df['high']
-    low = df['low']
-    close = df['close']
-    volume = df['volume']
-    datetime = df['datetime']
-    def plot_markers(m): pass
-
-    # Step 3: Execution and Sandboxing
-    old_stdout = sys.stdout
-    new_stdout = io.StringIO()
-    sys.stdout = new_stdout
-
-    sys.setrecursionlimit(100)
-    start_time = time.time()
-
-    def trace_calls(frame, event, arg):
-        if time.time() - start_time > 300.0:
-            raise TimeoutError("Execution timed out (infinite loop or heavy computation detected). Limit is 5 minutes.")
-        return trace_calls
-
-    try:
-        sys.settrace(trace_calls)
-        exec(__code_to_validate)
-        sys.settrace(None)
-        
-        # Extract markers
-        if 'markers' in globals() and isinstance(markers, list):
-            # Only keep dict markers to avoid json.dumps crashing
-            clean_markers = [m for m in markers if isinstance(m, dict)]
-            result["markers"] = clean_markers
-        else:
-            result["markers"] = []
-
-    except Exception as e:
-        sys.settrace(None)
-        result["success"] = False
-        result["error_type"] = type(e).__name__
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        result["error_message"] = "".join(tb_lines[-2:]).strip()
-    finally:
-        sys.stdout = old_stdout
-        result["output"] = new_stdout.getvalue()
-
-def json_default(obj):
-    if hasattr(obj, 'isoformat'): return obj.isoformat()
-    if isinstance(obj, np.integer): return int(obj)
-    if isinstance(obj, np.floating): return float(obj)
-    if isinstance(obj, np.ndarray): return obj.tolist()
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-json.dumps(result, default=json_default)
+json.dumps(result)
         `);
 
         const result = JSON.parse(resultJson);
@@ -732,11 +796,11 @@ json.dumps(result, default=json_default)
             "position" in m,
         );
 
-        if (markersList.length === 0 || !isStructurallyValid) {
+        if (markersList?.length > 0 && !isStructurallyValid) {
           Swal.fire({
             icon: "warning",
             title: "Invalid Markers",
-            text: "Your strategy ran successfully, but it did not generate any valid markers. Ensure you append valid dictionaries containing 'time', 'text', and 'position'.",
+            text: "Your strategy ran successfully, but the markers generated were invalid. Ensure you append valid dictionaries containing 'time', 'text', and 'position'.",
             background: "var(--bg-secondary)",
             color: "var(--text-primary)",
           });
@@ -763,7 +827,7 @@ json.dumps(result, default=json_default)
 
       try {
         const closes = candlesRef?.current?.map((c) => c.close) || [];
-        if (closes.length < 4) {
+        if (closes?.length < 4) {
           Swal.fire({
             icon: "warning",
             title: "Insufficient Data",
@@ -795,15 +859,20 @@ json.dumps(result, default=json_default)
         console.log("📦 [API] Payload:", payload);
         console.log("👤 Active User ID (from auth):", userId);
 
+        // Guard: do not call the API if code is effectively empty
+        if (!code || !code.trim()) {
+          setIsDeploying(false);
+          return;
+        }
+
         const response = await apiService.post(
           `/api/strategy/run-scanner`,
-          JSON.stringify(payload),
+          payload,
         );
 
         // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
         setDeployedStrategyCode(code);
         setIsDeployed(true);
-        // Note: toast success and setIsDeploying(false) are now handled in handleScannerComplete socket event
       } catch (err) {
         console.error("Python Execution Error:", err);
         Swal.fire({
@@ -960,8 +1029,13 @@ json.dumps(result, default=json_default)
   }, [indicatorStyle]);
   const isUp = liveOhlcv?.close >= liveOhlcv?.open;
   const valueColor = isUp ? "text-green-500" : "text-red-500";
-  const hasPaneIndicators = selectedIndicator.some((ind) =>
-    PANE_INDICATORS.has(typeof ind === "object" ? ind.type : ind),
+  // eslint-disable-next-line no-unused-expressions
+  void indicatorUpdateTrigger; // keep this — forces re-eval when data arrives (ref reads don't re-render)
+  const hasPaneIndicators = selectedIndicator.some(
+    (ind) =>
+      PANE_INDICATORS.has(typeof ind === "object" ? ind.type : ind) &&
+      indicatorDataRef.current?.[typeof ind === "object" ? ind.id : ind] !==
+        undefined,
   );
 
   const fetchStrategyMarkers = async () => {
@@ -1005,7 +1079,7 @@ json.dumps(result, default=json_default)
         }
       }
 
-      const markers = response.markers
+      const markers = response?.markers
         .map((marker) => ({
           // marker.datetimeUTC is in seconds (UTC) — align with candle times (which use IST_OFFSET)
           time: Number(marker.datetimeUTC) + IST_OFFSET,
@@ -1017,7 +1091,7 @@ json.dumps(result, default=json_default)
         }))
         .filter((m) => Number.isFinite(m.time));
 
-      console.log("Strategy markers:", markers.length);
+      console.log("Strategy markers:", markers?.length);
 
       if (!strategyMarkersRef.current) {
         strategyMarkersRef.current = createSeriesMarkers(
@@ -1026,7 +1100,7 @@ json.dumps(result, default=json_default)
         );
         seriesRef.current.attachPrimitive(strategyMarkersRef.current);
       } else {
-        strategyMarkersRef.current.setMarkers(markers);
+        strategyMarkersRef?.current.setMarkers(markers);
       }
     } catch (error) {
       console.error("Failed to fetch strategy markers:", error);
@@ -1042,11 +1116,11 @@ json.dumps(result, default=json_default)
   }, [selectedCurrency?.name]);
 
   useEffect(() => {
-    if (!selectedIndicator.length) return;
+    if (!selectedIndicator?.length) return;
 
     const isContextChange =
       prevTimeframeRef.current !== timeframeValue ||
-      prevCurrencyRef.current !== selectedCurrency ||
+      prevCurrencyRef.current !== selectedCurrency?.name ||
       prevChartTypeRef.current !== chartType;
 
     let indicatorsToFetch = selectedIndicator;
@@ -1057,37 +1131,13 @@ json.dumps(result, default=json_default)
         (ind) => !fetchedIndicatorsRef.current.has(ind.id),
       );
 
-      if (indicatorsToFetch.length === 0) return;
+      if (indicatorsToFetch?.length === 0) return;
     } else {
       // 🔥 Reset on timeframe / currency / chartType change
       fetchedIndicatorsRef.current.clear();
-
-      // Clear existing indicator chart series
-      selectedIndicator.forEach((ind) => {
-        const { id } = ind;
-        const entry = indicatorSeriesRef.current[id];
-        if (!entry) return;
-
-        const paneKey = id; // each instance has its own pane key
-        const pane = panesRef.current[paneKey];
-        const chartToUse = pane?.chart ?? chartRef.current;
-        if (!chartToUse) return;
-
-        if (typeof entry === "object" && !entry.priceScale) {
-          Object.values(entry).forEach((series) => {
-            if (!series || typeof series.setData !== "function") return;
-            try {
-              chartToUse.removeSeries(series);
-            } catch {}
-          });
-        } else {
-          try {
-            chartToUse.removeSeries(entry);
-          } catch {}
-        }
-        delete indicatorSeriesRef.current[id];
-        delete indicatorDataRef.current[id];
-      });
+      // We purposefully DO NOT clear indicatorSeriesRef or indicatorDataRef here.
+      // They will be overwritten with new data once the fetch completes,
+      // avoiding a visual glitch where indicators disappear during loading or disconnects.
     }
 
     setIndicatorLoading(true);
@@ -1105,23 +1155,20 @@ json.dumps(result, default=json_default)
 
     // update previous values
     prevTimeframeRef.current = timeframeValue;
-    prevCurrencyRef.current = selectedCurrency;
+    prevCurrencyRef.current = selectedCurrency?.name;
     prevChartTypeRef.current = chartType;
-  }, [
-    selectedIndicator,
-    selectedCurrency,
-    timeframeValue,
-    chartType,
-    fromDate,
-    toDate,
-  ]);
+    // NOTE: fromDate and toDate are intentionally excluded — they affect candle data,
+    // not indicator fetching. Including them caused an infinite loop when GoToDate
+    // updated fromDate, which re-triggered this effect and set state repeatedly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIndicator, selectedCurrency?.name, timeframeValue, chartType]);
 
   const toggleIndicatorVisibility = (indicator) => {
     const currentVisible = indicatorVisibility[indicator] ?? true;
     const newVisibility = !currentVisible;
     const seriesGroup = indicatorSeriesRef.current?.[indicator];
     if (seriesGroup) {
-      if (typeof seriesGroup.applyOptions === 'function') {
+      if (typeof seriesGroup.applyOptions === "function") {
         seriesGroup.applyOptions({ visible: newVisibility });
       } else {
         Object.values(seriesGroup).forEach((series) => {
@@ -1132,7 +1179,7 @@ json.dumps(result, default=json_default)
         if (seriesGroup._priceLines) {
           Object.values(seriesGroup._priceLines).forEach((line) => {
             if (line?.applyOptions) {
-               line.applyOptions({ visible: newVisibility });
+              line.applyOptions({ visible: newVisibility });
             }
           });
         }
@@ -1147,7 +1194,7 @@ json.dumps(result, default=json_default)
   //  GET PANE INDEX
   // Instance ids look like "RSI_1747xxx_abc12" — extract base type for pane check
   const getBaseTypeFromId = (instanceId) => {
-    const match = instanceId.match(/^([A-Z_]+?)_\d/);
+    const match = instanceId.match(/^([A-Z0-9_]+?)_\d/);
     return match ? match[1] : instanceId;
   };
 
@@ -1160,7 +1207,11 @@ json.dumps(result, default=json_default)
       return paneIndexRef.current[indicator];
     }
 
-    const nextPane = Object.keys(paneIndexRef.current).length + 1;
+    // Find the maximum pane index currently in use to avoid reusing indices
+    const currentIndices = Object.values(paneIndexRef.current);
+    const maxIndex = currentIndices.length > 0 ? Math.max(...currentIndices) : 0;
+    
+    const nextPane = maxIndex + 1;
     paneIndexRef.current[indicator] = nextPane;
 
     return nextPane;
@@ -1171,19 +1222,67 @@ json.dumps(result, default=json_default)
   };
 
   //  ADD SERIES
-  const addSeries = (indicator, SeriesType, options = {}) => {
+  const addSeries = (
+    indicator,
+    SeriesType,
+    options = {},
+    explicitPaneKey = null,
+  ) => {
     if (!chartRef.current) return null;
 
-    const paneIndex = getPaneIndex(indicator);
+    const paneKey = explicitPaneKey || indicator;
+    const paneIndex = getPaneIndex(paneKey);
+
+    // Force visibility to match the master toggle state if it's explicitly set to false
+    const isVisible =
+      indicatorVisibility[paneKey] !== false && options.visible !== false;
+
+    const finalOptions = { ...options, visible: isVisible };
+    if (paneIndex !== 0 && !finalOptions.priceFormat) {
+      finalOptions.priceFormat = {
+        type: "custom",
+        minMove: 0.0001,
+        formatter: (price) => {
+          if (price === undefined || price === null) return "";
+          const absPrice = Math.abs(price);
+          if (absPrice >= 1e9) {
+            return price.toExponential(2);
+          }
+          if (absPrice >= 1e6) {
+            return (price / 1e6).toFixed(2) + "M";
+          }
+          return Number(price.toFixed(4)).toString();
+        },
+      };
+    }
 
     const series = chartRef.current.addSeries(
       SeriesType,
-      {
-        ...options,
-        ...(paneIndex !== 0 && { priceScaleId: `pane_${paneIndex}` }),
-      },
+      finalOptions,
       paneIndex,
     );
+
+    if (paneIndex !== 0) {
+      try {
+        series.priceScale().applyOptions({
+          autoScale: true,
+          mode: 0, // Explicitly set Normal mode to override global Logarithmic mode
+          visible: true,
+          position: "right",
+          minimumWidth: 85,
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+        });
+      } catch (err) {
+        console.warn(
+          "Could not configure price scale for pane",
+          paneIndex,
+          err,
+        );
+      }
+    }
 
     // ✅ Populate panesRef for sub-pane indicators using instanceId as key
     if (paneIndex !== 0) {
@@ -1200,11 +1299,14 @@ json.dumps(result, default=json_default)
               "at index",
               paneIndex,
             );
+            const indType = selectedIndicatorRef.current?.find(ind => ind.id === indicator)?.type;
             panesRef.current[indicator] = {
               chart: chartRef.current,
               pane: paneObj,
               div: div,
+              type: indType,
             };
+            setIndicatorUpdateTrigger((v) => v + 1);
             return true;
           }
         }
@@ -1216,6 +1318,43 @@ json.dumps(result, default=json_default)
       }
     }
 
+    // ✅ GLOBAL DATA SANITIZATION
+    // Protect Lightweight Charts from crashing when indicators pass null/NaN values
+    const originalSetData = series.setData.bind(series);
+    series.setData = (data) => {
+      if (!Array.isArray(data)) return originalSetData(data);
+
+      const cleanedData = data.map((d) => {
+        if (!d || typeof d !== "object") return null;
+        
+        // Handle Line/Histogram/Area/Baseline series
+        if ("value" in d) {
+          if (d.value === null || Number.isNaN(Number(d.value))) {
+            return { time: d.time }; // Convert to whitespace gap
+          }
+          return { ...d, value: Number(d.value) }; // Force primitive number
+        }
+        
+        // Handle Candlestick/Bar series
+        else if ("close" in d) {
+          if (d.close === null || Number.isNaN(Number(d.close))) {
+            return { time: d.time }; // Convert to whitespace gap
+          }
+          return {
+            ...d,
+            open: d.open != null ? Number(d.open) : undefined,
+            high: d.high != null ? Number(d.high) : undefined,
+            low: d.low != null ? Number(d.low) : undefined,
+            close: Number(d.close)
+          };
+        }
+
+        return d;
+      }).filter(Boolean); // Remove any null mappings
+
+      return originalSetData(cleanedData);
+    };
+
     return series;
   };
 
@@ -1225,7 +1364,7 @@ json.dumps(result, default=json_default)
     syncingRef.current = true;
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ];
 
     charts.forEach((chart) => {
@@ -1243,24 +1382,12 @@ json.dumps(result, default=json_default)
     });
   }
 
-  function cleanupPane(paneKey) {
-    const pane = panesRef.current[paneKey];
-    if (!pane) return;
 
-    // Each instance id is its own pane key — just check if still in use
-    const stillUsed = Object.keys(indicatorSeriesRef.current).some(
-      (key) => key === paneKey,
-    );
-    if (stillUsed) return;
-    
-    // In Lightweight Charts v5, removing all series from a pane automatically removes the pane
-    // and its splitter. Manual DOM manipulation here causes the library to lose track of
-    // elements and leaves orphan splitters/blank spaces behind.
-    delete panesRef.current[paneKey];
-  }
 
   //  ✅ INDICATOR REMOVAL — accepts instance id
   const removeIndicator = useCallback((instanceId) => {
+    setSelectedIndicator((prev) => prev.filter((i) => i.id !== instanceId));
+    
     const entry = indicatorSeriesRef.current[instanceId];
     if (!entry) return;
 
@@ -1269,20 +1396,49 @@ json.dumps(result, default=json_default)
     const chart = pane?.chart ?? chartRef.current;
     if (!chart) return;
 
-    /* MULTI SERIES */
-    if (entry && typeof entry === "object" && !entry.priceScale) {
-      Object.values(entry).forEach((series) => {
-        if (!series) return;
-        if (typeof series.setData !== "function") return;
+    const panesCountBefore = typeof chart.panes === "function" ? chart.panes().length : 0;
+
+    const removeSeriesDeep = (item) => {
+      if (!item) return;
+      
+      if (Array.isArray(item)) {
+        item.forEach(removeSeriesDeep);
+      } else if (typeof item.setData === "function") {
         try {
-          chart.removeSeries(series);
+          chart.removeSeries(item);
         } catch {}
+      } else if (typeof item === "object") {
+        Object.values(item).forEach(removeSeriesDeep);
+      }
+    };
+
+    removeSeriesDeep(entry);
+    
+    const panesCountAfter = typeof chart.panes === "function" ? chart.panes().length : 0;
+    const paneIndex = paneIndexRef.current[instanceId];
+
+    if (paneIndex !== undefined && paneIndex !== 0) {
+      if (panesCountAfter === panesCountBefore) {
+        // Lightweight charts didn't auto-remove it, so we manually remove it
+        try {
+          if (typeof chart.removePane === "function") {
+            chart.removePane(paneIndex);
+          }
+        } catch (err) {
+          console.warn("Failed to remove pane explicitly", err);
+        }
+      }
+    }
+
+    // ALWAYS shift paneIndexRef for all indicators whose index is above the removed pane.
+    // This must happen regardless of auto-remove vs manual-remove, because in both
+    // cases, LightweightCharts renumbers all subsequent panes by -1.
+    if (paneIndex !== undefined && paneIndex !== 0) {
+      Object.keys(paneIndexRef.current).forEach((key) => {
+        if (key !== instanceId && paneIndexRef.current[key] > paneIndex) {
+          paneIndexRef.current[key] -= 1;
+        }
       });
-    } else {
-      /* SINGLE SERIES */
-      try {
-        chart.removeSeries(entry);
-      } catch {}
     }
 
     delete indicatorSeriesRef.current[instanceId];
@@ -1290,9 +1446,8 @@ json.dumps(result, default=json_default)
     fetchedIndicatorsRef.current.delete(instanceId);
     delete paneIndexRef.current[instanceId];
 
-    cleanupPane(paneKey);
-
-    setSelectedIndicator((prev) => prev.filter((i) => i.id !== instanceId));
+    // the DOM pane cleanup
+    delete panesRef.current[paneKey];
   }, []);
   // ----------Main chart------------
   useEffect(() => {
@@ -1328,140 +1483,112 @@ json.dumps(result, default=json_default)
   // RENDER INDICATOR VALUE
 
   const renderValue = (id, type, value) => {
-    if (value == null) return "--";
+    const emptySymbol = "Ø";
+    const showPercent = type === "AROON";
 
-    const showPercent = type === "AROON"; // Only show % for Aroon
+    let keysToShow = null;
+    let isSingleValue = false;
 
-    /* ================= NUMBER VALUES ================= */
-    if (typeof value === "number") {
-      const style =
-        indicatorStyle?.[id]?.sma ||
-        indicatorStyle?.[id]?.ma ||
-        indicatorStyle?.[id]?.[type?.toLowerCase()] ||
-        indicatorStyle?.[type]?.sma ||
-        indicatorStyle?.[type]?.ma ||
-        indicatorStyle?.[type]?.[type?.toLowerCase()];
+    const group = indicatorSeriesRef.current?.[id];
+    if (group && typeof group === "object" && !group.priceScale) {
+      // It's a grouped multi-series indicator. Extract keys that map to actual Lightweight Charts series
+      const seriesKeys = Object.keys(group).filter(
+        (k) => group[k] && typeof group[k].setData === "function"
+      );
+      if (seriesKeys.length > 0) {
+        keysToShow = seriesKeys;
+      } else {
+        isSingleValue = true;
+      }
+    } else if (value && typeof value === "object") {
+      keysToShow = Object.keys(value);
+    } else {
+      isSingleValue = true;
+    }
 
+    if (isSingleValue) {
+      const style = indicatorStyle?.[id]?.sma || indicatorStyle?.[id]?.ma || indicatorStyle?.[id]?.[type?.toLowerCase()] || indicatorStyle?.[type]?.sma || indicatorStyle?.[type]?.ma || indicatorStyle?.[type]?.[type?.toLowerCase()];
       if (style?.visible === false) return null;
-
-      const color = style?.color || "#333";
-
+      let color = style?.color;
+      
+      const group = indicatorSeriesRef.current?.[id];
+      if (group) {
+         // for single value, the series is usually the only key in the group, or it's the main type
+         const seriesKey = Object.keys(group).find(k => typeof group[k]?.options === 'function');
+         if (seriesKey) {
+            const opts = group[seriesKey].options();
+            color = opts.color || opts.lineColor || opts.topColor || color;
+         }
+      }
+      color = color || "#333";
+      
+      const val = value != null ? (typeof value === 'object' ? Object.values(value)[0] : value) : null;
       return (
-        <span style={{ color }}>
-          {Number(value).toFixed(2)}
-          {showPercent ? "%" : ""}
+        <span id={`indicator-val-${id}-main`} style={{ color }} title={type} data-type={type}>
+          {val != null && Number.isFinite(Number(val)) ? Number(val).toFixed(2) : emptySymbol}
+          {val != null && showPercent ? "%" : ""}
         </span>
       );
     }
 
-    /* ================= OBJECT VALUES ================= */
-    if (typeof value === "object") {
-      let keysToShow;
-
-      switch (type) {
-        case "RSI":
-          keysToShow = ["rsi", "smoothingMA", "bbUpper", "bbLower"];
-          break;
-        case "MACD":
-          keysToShow = ["macd", "signal", "histogram"];
-          break;
-        case "CCI":
-          keysToShow = ["cciLine", "cciMa"];
-          break;
-        case "TRIX":
-          keysToShow = ["trixLine"];
-          break;
-        case "CMF":
-          keysToShow = ["cmfLine"];
-          break;
-        case "MFI":
-          keysToShow = ["mfiLine"];
-          break;
-        case "KVO":
-          keysToShow = ["kvoLine", "signalLine"];
-          break;
-        case "STOCHRSI":
-          keysToShow = ["kLine", "dLine"];
-          break;
-        case "EOM":
-          keysToShow = ["eom"];
-          break;
-        case "WPR":
-          keysToShow = ["r"];
-          break;
-        case "ROC":
-          keysToShow = ["roc"];
-          break;
-        case "CHOP":
-          keysToShow = ["chopLine"];
-          break;
-        case "MOM":
-          keysToShow = ["mom"];
-          break;
-        case "UO":
-          keysToShow = ["uo"];
-          break;
-        case "AO":
-          keysToShow = ["oscillator"];
-          break;
-        case "ICHIMOKU":
-          keysToShow = [
-            "conversionLine",
-            "baseLine",
-            "leadLine1",
-            "leadLine2",
-            "laggingSpan",
-            "kumoCloudUpper",
-            "kumoCloudLower",
-          ];
-          break;
-        case "AROON":
-          keysToShow = ["aroonUp", "aroonDown"];
-          break;
-        case "FT":
-          keysToShow = ["fisherLine", "triggerLine"];
-          break;
-        case "STOCH":
-          keysToShow = ["k", "d"];
-          break;
-
-        case "SUPERTREND":
-          keysToShow = ["upTrend", "downTrend", "bodyMiddle"];
-          break;
-
-        default:
-          keysToShow = Object.keys(value);
-      }
+    if (keysToShow) {
+      const hiddenKeys = [
+        "upper",
+        "middle",
+        "lower",
+        "bbUpper",
+        "bbLower",
+        "zeroLine",
+        "bandBackground",
+        "overboughtFill",
+        "oversoldFill",
+      ];
 
       return keysToShow
         .filter((key) => {
-          const style =
-            indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
+          if (hiddenKeys.includes(key)) return false;
+
+          // Special case for SMA when maType is "none"
+          if (type === "SMA") {
+            const config = indicatorConfigs[id] || indicatorConfigDefault[type];
+            if (config?.maType === "none" && key !== "sma") {
+              return false;
+            }
+          }
+
+          const style = indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
           if (style?.visible === false) return false;
-          return value[key] != null;
+          // Return true even if value is null, so the span is rendered for crosshair DOM updates
+          return true; 
         })
         .map((key) => {
-          const val = value[key];
-          const color =
-            indicatorStyle?.[id]?.[key]?.color ||
-            indicatorStyle?.[type]?.[key]?.color ||
-            "#333";
+          const val = value ? value[key] : null;
+          let color = indicatorStyle?.[id]?.[key]?.color || indicatorStyle?.[type]?.[key]?.color;
+          
+          // Dynamically read exact color from the plotted series to guarantee accuracy
+          const group = indicatorSeriesRef.current?.[id];
+          if (group && group[key] && typeof group[key].options === 'function') {
+            const opts = group[key].options();
+            color = opts.color || opts.lineColor || opts.topColor || color;
+          }
+          
+          color = color || "#333";
 
           return (
-            <span key={key} style={{ marginRight: 8, color }}>
-              {Number.isFinite(val)
+            <span id={`indicator-val-${id}-${key}`} key={key} style={{ marginRight: 8, color }} title={key} data-type={type}>
+              {val != null && Number.isFinite(Number(val))
                 ? `${Number(val).toFixed(2)}${showPercent ? "%" : ""}`
-                : "--"}
+                : emptySymbol}
             </span>
           );
         });
     }
 
-    return "--";
+    return emptySymbol;
   };
 
   const renderIndicators = () => {
-    return selectedIndicator.map((ind) => {
+    return selectedIndicator?.map((ind) => {
       const { id, type } = ind;
       const Component = indicatorComponents[type];
       if (!Component) return null;
@@ -1479,6 +1606,7 @@ json.dumps(result, default=json_default)
           set(target, prop, value) {
             if (prop === type) {
               target[id] = value;
+              setTimeout(() => setIndicatorUpdateTrigger((v) => v + 1), 0);
             } else {
               target[prop] = value;
             }
@@ -1491,9 +1619,31 @@ json.dumps(result, default=json_default)
       // but we remap to the instance's id-keyed style so each instance is visually independent
       const scopedIndicatorStyle = new Proxy(indicatorStyle, {
         get(target, prop) {
-          if (prop === type) {
+          if (prop === type || prop === id) {
             // instance-specific style takes priority; fall back to type default
-            return target[id] ?? target[type];
+            const baseStyle = target[id] ?? target[type];
+
+            // Force visible: false deeply if the master toggle is off
+            if (indicatorVisibility[id] === false && baseStyle) {
+              const overrideStyle = JSON.parse(JSON.stringify(baseStyle));
+              const forceVisibleFalse = (obj) => {
+                for (let k in obj) {
+                  if (typeof obj[k] === "object" && obj[k] !== null) {
+                    forceVisibleFalse(obj[k]);
+                  } else if (k === "visible") {
+                    obj[k] = false;
+                  }
+                }
+                // also force root level properties if any sub-components use them directly
+                if (!obj.hasOwnProperty("visible")) {
+                  obj.visible = false;
+                }
+              };
+              forceVisibleFalse(overrideStyle);
+              return overrideStyle;
+            }
+
+            return baseStyle;
           }
           return target[prop];
         },
@@ -1513,12 +1663,15 @@ json.dumps(result, default=json_default)
           indicatorStyle={scopedIndicatorStyle}
           indicatorSeriesRef={scopedSeriesRef}
           addSeries={scopedAddSeries}
+          indicatorVisibility={indicatorVisibility}
           containerRef={containerRef.current}
           chart={chartRef.current}
           container={containerRef}
           panesRef={panesRef}
           indicatorConfigs={indicatorConfigs}
           pane={seriesRef.current}
+          mainSeriesRef={seriesRef}
+          candlesRef={candlesRef}
           timeframeValue={timeframeValue}
           selectedCurrency={selectedCurrency}
         />
@@ -1527,35 +1680,43 @@ json.dumps(result, default=json_default)
   };
 
   // SYNC CROSSHAIR
+  const lastIndicatorUpdateRef = useRef(0);
+
   const updateIndicatorValues = (param) => {
-    const updates = {};
+    const now = Date.now();
+    if (now - lastIndicatorUpdateRef.current < 50) return;
 
     Object.entries(indicatorSeriesRef.current).forEach(([indicator, group]) => {
       if (!group) return;
 
       const indicatorValues = {};
-
       Object.entries(group).forEach(([lineName, series]) => {
         if (!series || typeof series.setData !== "function") return;
 
         const price = param.seriesData?.get(series);
         if (price !== undefined) {
-          indicatorValues[lineName] =
-            typeof price === "object" ? price.value : price;
+          indicatorValues[lineName] = typeof price === "object" ? price.value : price;
         }
       });
 
-      if (Object.keys(indicatorValues).length === 1) {
-        updates[indicator] = Object.values(indicatorValues)[0];
-      } else if (Object.keys(indicatorValues).length > 0) {
-        updates[indicator] = indicatorValues;
-      }
+      const keys = Object.keys(indicatorValues);
+      Object.entries(indicatorValues).forEach(([key, val]) => {
+        let el = document.getElementById(`indicator-val-${indicator}-${key}`);
+        
+        // Fallback for single-value indicators which render under the '-main' ID
+        if (!el && keys.length === 1) {
+          el = document.getElementById(`indicator-val-${indicator}-main`);
+        }
+        
+        if (el) {
+          const isAroon = el.getAttribute('data-type') === 'AROON';
+          el.textContent = Number.isFinite(val) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+        }
+      });
     });
 
-    if (Object.keys(updates).length > 0) {
-      latestIndicatorValuesRef.current = updates;
-      setLiveIndicatorData(updates); // <- triggers renderValue
-    }
+    lastIndicatorUpdateRef.current = now;
+    // We no longer trigger a full React re-render of CandleStick by calling setLiveIndicatorData(updates)
   };
   // ATTACH CROSSHAIR
 
@@ -1564,13 +1725,49 @@ json.dumps(result, default=json_default)
     const handler = (param) => {
       const charts = [
         chartRef.current,
-        ...Object.values(panesRef.current).map((p) => p.chart),
+        ...Object.values(panesRef.current)?.map((p) => p.chart),
       ].filter(Boolean);
 
       // clear crosshair if invalid
       if (!param?.point || param.time === undefined) {
         charts.forEach((c) => c.clearCrosshairPosition?.());
-        setLiveIndicatorData(latestIndicatorValuesRef.current);
+        // Since we bypassed React state for live indicators, we need to show the last available data if crosshair leaves
+        Object.keys(indicatorSeriesRef.current).forEach((indicator) => {
+          const mainEl = document.getElementById(`indicator-val-${indicator}-main`);
+          const group = indicatorSeriesRef.current[indicator];
+          
+          if (mainEl) {
+            let val = null;
+            if (group) {
+              const seriesKey = Object.keys(group).find(k => group[k] && typeof group[k].data === 'function');
+              if (seriesKey) {
+                 const dataArr = group[seriesKey].data();
+                 if (dataArr && dataArr.length > 0) {
+                    const lastData = dataArr[dataArr.length - 1];
+                    val = lastData.value !== undefined ? lastData.value : lastData.close;
+                 }
+              }
+            }
+            const isAroon = mainEl.getAttribute('data-type') === 'AROON';
+            mainEl.textContent = val != null && Number.isFinite(Number(val)) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+          } else if (group) {
+            Object.keys(group).forEach((key) => {
+              const el = document.getElementById(`indicator-val-${indicator}-${key}`);
+              const series = group[key];
+              if (el && series && typeof series.data === 'function') {
+                const dataArr = series.data();
+                if (dataArr && dataArr.length > 0) {
+                   const lastData = dataArr[dataArr.length - 1];
+                   let val = lastData.value !== undefined ? lastData.value : lastData.close;
+                   const isAroon = el.getAttribute('data-type') === 'AROON';
+                   el.textContent = val != null && Number.isFinite(Number(val)) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+                } else {
+                   el.textContent = "Ø";
+                }
+              }
+            });
+          }
+        });
         return;
       }
 
@@ -1628,7 +1825,7 @@ json.dumps(result, default=json_default)
       chartRef.current,
       ...Object.values(panesRef.current).map((p) => p.chart),
     ].filter(Boolean);
-    const detachHandlers = charts.map((c) => attachCrosshair(c));
+    const detachHandlers = charts?.map((c) => attachCrosshair(c));
 
     return () => detachHandlers.forEach((d) => d());
   }, [indicatorSeriesRef.current, timeframeValue]);
@@ -1640,6 +1837,7 @@ json.dumps(result, default=json_default)
 
   const requestHistoricalData = useCallback(() => {
     if (!selectedCurrency || !timeframeValue) return;
+    setNoDataAvailable(false);
     const historicalPayload = {
       symbol: selectedCurrency?.name,
       interval: timeframeValue,
@@ -1653,20 +1851,46 @@ json.dumps(result, default=json_default)
   }, [selectedCurrency, timeframeValue, fromDate, toDate]);
 
   // ── Central Socket Hook ──
-  const { emit, once, connect, connected, id } = useSocket({
+  const { emit, once, connect, connected, id, off } = useSocket({
     handleConnect: () => {
       console.log("✅ SOCKET CONNECTED", connected);
       requestHistoricalData();
+
+      if (
+        selectedIndicatorRef.current &&
+        selectedIndicatorRef.current.length > 0
+      ) {
+        fetchIndicatorData(
+          selectedIndicatorRef.current,
+          selectedCurrency,
+          timeframeValue,
+        );
+      }
     },
     handleHistoricalData: (response) => {
       console.log("HISTORICAL DATA RESPONSE", response?.data);
       if (!chartRef.current) return;
 
       const raw = response?.data || [];
+
+      if (raw.length === 0) {
+        setNoDataAvailable(true);
+        setMainChartLoading(false);
+        if (seriesRef.current) {
+          try {
+            chartRef.current.removeSeries(seriesRef.current);
+          } catch {}
+          seriesRef.current = null;
+        }
+        return;
+      }
+
+      setNoDataAvailable(false);
+
       const symbolFromResponse =
         response?.symbol || raw[0]?.symbol || selectedCurrency?.name;
 
-      const parsedData = new Array(raw.length);
+      const parsedData = new Array(raw?.length);
       for (let i = 0; i < raw.length; i++) {
         const d = raw[i];
         parsedData[i] = {
@@ -1731,7 +1955,10 @@ json.dumps(result, default=json_default)
         return;
       }
 
-      if (seriesRef.current) {
+      if (
+        seriesRef.current &&
+        seriesRef.current.customChartType !== chartType
+      ) {
         try {
           chartRef.current.removeSeries(seriesRef.current);
         } catch {}
@@ -1740,50 +1967,76 @@ json.dumps(result, default=json_default)
         strategyMarkersRef.current = null;
       }
 
+      // Reset price scale so Y-axis re-adapts to the new symbol's price range.
+      // Without this, switching from e.g. a ₹50 stock to a ₹5000 stock keeps
+      // the old Y range and the new candles appear off-screen.
+      try {
+        chartRef.current.priceScale("right").applyOptions({ autoScale: true });
+      } catch {}
+
       switch (chartType) {
         case "line":
-          seriesRef.current = chartRef.current.addSeries(
-            LineSeries,
-            chartSeriesStyles.line,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              LineSeries,
+              chartSeriesStyles.line,
+            );
+            seriesRef.current.customChartType = "line";
+          }
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           fetchStrategyMarkers();
           break;
         case "bar":
-          seriesRef.current = chartRef.current.addSeries(
-            BarSeries,
-            chartSeriesStyles.bar,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              BarSeries,
+              chartSeriesStyles.bar,
+            );
+            seriesRef.current.customChartType = "bar";
+          }
           seriesRef.current.setData(data);
           fetchStrategyMarkers();
           break;
         case "area":
-          seriesRef.current = chartRef.current.addSeries(
-            AreaSeries,
-            chartSeriesStyles.area,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              AreaSeries,
+              chartSeriesStyles.area,
+            );
+            seriesRef.current.customChartType = "area";
+          }
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "baseline":
-          seriesRef.current = chartRef.current.addSeries(BaselineSeries, {
-            ...chartSeriesStyles.baseline,
-            baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
-          });
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(BaselineSeries, {
+              ...chartSeriesStyles.baseline,
+              baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
+            });
+            seriesRef.current.customChartType = "baseline";
+          } else {
+            seriesRef.current.applyOptions({
+              baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
+            });
+          }
           seriesRef.current.setData(
-            data.map((d) => ({ time: d.time, value: Number(d.close) })),
+            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
           );
           break;
         case "histogram":
-          seriesRef.current = chartRef.current.addSeries(
-            HistogramSeries,
-            chartSeriesStyles.histogram,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              HistogramSeries,
+              chartSeriesStyles.histogram,
+            );
+            seriesRef.current.customChartType = "histogram";
+          }
           seriesRef.current.setData(
-            data.map((d, index, arr) => {
+            data?.map((d, index, arr) => {
               const prev = arr[index - 1];
               const isUp = prev ? d.close >= prev.close : true;
               return {
@@ -1795,32 +2048,69 @@ json.dumps(result, default=json_default)
           );
           break;
         case "heikinashi":
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.candlestick,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.candlestick,
+            );
+            seriesRef.current.customChartType = "heikinashi";
+          }
           seriesRef.current.setData(convertToHeikinAshi(data));
           break;
         case "hollowcandles":
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.hollowcandles,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.hollowcandles,
+            );
+            seriesRef.current.customChartType = "hollowcandles";
+          }
           seriesRef.current.setData(data);
           break;
         default:
-          seriesRef.current = chartRef.current.addSeries(
-            CandlestickSeries,
-            chartSeriesStyles.candlestick,
-          );
+          if (!seriesRef.current) {
+            seriesRef.current = chartRef.current.addSeries(
+              CandlestickSeries,
+              chartSeriesStyles.candlestick,
+            );
+            seriesRef.current.customChartType = chartType;
+          }
           seriesRef.current.setData(data);
       }
 
       seriesReadyRef.current = true;
 
       if (
+        selectedIndicatorRef.current &&
+        selectedIndicatorRef.current.length > 0
+      ) {
+        fetchIndicatorData(
+          selectedIndicatorRef.current,
+          selectedCurrencyRef.current,
+          timeframeValue,
+        )
+          .then(() => {
+            setIndicatorUpdateTrigger((v) => v + 1);
+            // Defer overlay removal: give React one full render cycle + a
+            // small buffer so indicator Plot useEffects (SSL, RSI, etc.)
+            // complete their series.setData() calls before the overlay lifts.
+            setTimeout(() => {
+              setMainChartLoading(false);
+              symbolTransitioningRef.current = false;
+              setSymbolTransitioning(false);
+            }, 300);
+          })
+          .catch(() => {
+            // Even on error, lift the overlay
+            setMainChartLoading(false);
+            symbolTransitioningRef.current = false;
+            setSymbolTransitioning(false);
+          });
+      }
+
+      if (
         lastDeployedMarkersRef.current &&
-        lastDeployedMarkersRef.current.length > 0 &&
+        lastDeployedMarkersRef.current?.length > 0 &&
         seriesRef.current
       ) {
         if (!customScriptMarkersRef.current) {
@@ -1836,10 +2126,10 @@ json.dumps(result, default=json_default)
         }
       }
 
-      currentCandleRef.current = data[data.length - 1];
+      currentCandleRef.current = data[data?.length - 1];
 
       setTimeout(() => {
-        const last = data[data.length - 1];
+        const last = data[data?.length - 1];
         if (last && ohlcvDisplayRef.current) {
           const el = ohlcvDisplayRef.current;
           const isUp = last.close >= last.open;
@@ -1868,8 +2158,15 @@ json.dumps(result, default=json_default)
 
         chartRef.current?.timeScale().fitContent();
 
-        // Remove loader ONLY after chart is fully rendered and fit to content
-        setMainChartLoading(false);
+        // If there are indicators, keep overlay until they load too
+        if (selectedIndicatorRef.current?.length > 0) {
+          // overlay lifted by indicator fetch .finally() below
+        } else {
+          // No indicators — lift overlay now
+          setMainChartLoading(false);
+          symbolTransitioningRef.current = false;
+          setSymbolTransitioning(false);
+        }
       }, 150);
     },
     handleHistoricalError: (err) => {
@@ -1898,7 +2195,9 @@ json.dumps(result, default=json_default)
 
         // Block ticks after 3:30 PM IST (930 minutes)
         const dateObj = new Date(tickTime * 1000);
-        const istTime = new Date(dateObj.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+        const istTime = new Date(
+          dateObj.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+        );
         const currentMinutes = istTime.getHours() * 60 + istTime.getMinutes();
         if (currentMinutes > 930) return;
 
@@ -1979,18 +2278,23 @@ json.dumps(result, default=json_default)
 
         const activeIndicators = selectedIndicatorRef.current;
         if (activeIndicators?.length > 0) {
-          const sentTypes = new Set();
-          activeIndicators.forEach((ind) => {
-            const indType = typeof ind === "object" ? ind.type : ind;
-            if (sentTypes.has(indType)) return;
-            sentTypes.add(indType);
-            emit(EVENTS.INDICATOR.LIVE, {
-              symbol: selectedCurrency?.name,
-              interval: timeframeValue,
-              type: indType,
-              exchange: selectedCurrency?.segment,
+          const now = Date.now();
+          // Throttle to max 1 emit per second to avoid flooding backend and freezing chart
+          if (now - (lastIndicatorRequestRef.current || 0) > 1000) {
+            lastIndicatorRequestRef.current = now;
+            const sentTypes = new Set();
+            activeIndicators.forEach((ind) => {
+              const indType = typeof ind === "object" ? ind.type : ind;
+              if (sentTypes.has(indType)) return;
+              sentTypes.add(indType);
+              emit(EVENTS.INDICATOR.LIVE, {
+                symbol: selectedCurrency?.name,
+                interval: timeframeValue,
+                type: indType,
+                exchange: selectedCurrency?.segment,
+              });
             });
-          });
+          }
         }
       });
     },
@@ -2076,14 +2380,18 @@ json.dumps(result, default=json_default)
   // Keep emitRef and socketRef up to date
   useEffect(() => {
     emitRef.current = emit;
-    socketRef.current = { emit, once };
-  }, [emit, once]);
+    socketRef.current = { emit, once, off, connected };
+  }, [emit, once, off, connected]);
 
   // Main useEffect for chart type/data changes
   useEffect(() => {
     if (!selectedCurrency || !timeframeValue) return;
 
     seriesReadyRef.current = false; // Prevent live ticks from squishing the old chart data
+
+    // Show transition overlay whenever symbol/timeframe/chartType changes
+    symbolTransitioningRef.current = true;
+    setSymbolTransitioning(true);
 
     if (connected && selectedCurrency && timeframeValue) {
       emit(EVENTS.CHART.GET, {
@@ -2101,19 +2409,12 @@ json.dumps(result, default=json_default)
     }, 10000);
 
     return () => clearTimeout(timeout);
-  }, [
-    selectedCurrency,
-    timeframeValue,
-    chartType,
-    connected,
-    fromDate,
-    toDate,
-  ]);
+  }, [selectedCurrency, timeframeValue, chartType, fromDate, toDate]);
 
   const zoomCharts = (delta) => {
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ].filter(Boolean);
     charts.forEach((chart) => {
       const range = chart.timeScale().getVisibleLogicalRange();
@@ -2130,32 +2431,114 @@ json.dumps(result, default=json_default)
   const resetZoom = () => {
     const charts = [
       chartRef.current,
-      ...Object.values(panesRef.current).map((p) => p.chart),
+      ...Object.values(panesRef.current)?.map((p) => p.chart),
     ].filter(Boolean);
     charts.forEach((chart) => chart.timeScale().fitContent());
   };
 
+  const pendingGoToDateRef = useRef(null);
+
+  useEffect(() => {
+    if (!mainChartLoading && pendingGoToDateRef.current) {
+      const targetDate = pendingGoToDateRef.current;
+      pendingGoToDateRef.current = null;
+      // Slight delay to ensure chart has plotted the new series data
+      setTimeout(() => {
+        handleGoToDate(targetDate);
+      }, 100);
+    }
+  }, [mainChartLoading]);
+
+  const handleGoToDate = (targetDate) => {
+    if (!chartRef.current) return;
+
+    // Check if the target date is earlier than our currently fetched fromDate
+    const targetTimeMs = targetDate.getTime();
+    const currentFromTimeMs = new Date(fromDate).getTime();
+
+    if (targetTimeMs < currentFromTimeMs) {
+      // Need to fetch older data first
+      pendingGoToDateRef.current = targetDate;
+
+      // Update fromDate to 30 days before the target date just to be safe
+      const newFrom = new Date(targetDate);
+      newFrom.setDate(newFrom.getDate() - 30);
+      setFromDate(newFrom.toISOString().split("T")[0]);
+      return; // The useEffect above will call handleGoToDate again once loaded
+    }
+
+    if (!candlesRef.current?.length) return;
+
+    const targetTimeSec = Math.floor(targetTimeMs / 1000);
+
+    // Find the closest candle
+    let closestIndex = 0;
+    let minDiff = Infinity;
+
+    for (let i = 0; i < candlesRef.current.length; i++) {
+      const candle = candlesRef.current[i];
+      const diff = Math.abs(candle.time - targetTimeSec);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestIndex = i;
+      }
+    }
+
+    // Calculate logical range to put the candle in the center
+    const fromIndex = Math.max(0, closestIndex - 25);
+    const toIndex = Math.min(candlesRef.current.length - 1, closestIndex + 25);
+
+    chartRef.current.timeScale().setVisibleLogicalRange({
+      from: fromIndex,
+      to: toIndex,
+    });
+  };
+
   return (
     <>
-      <Navbar
-        setSelectedCurrency={setSelectedCurrency}
-        predictCount={predictResultData.length}
-      />
+      {!isFullscreen && (
+        <Navbar
+          setSelectedCurrency={setSelectedCurrency}
+          predictCount={predictResultData?.length}
+        />
+      )}
       <section
         className="trading-view-wrapper overflow-x-hidden"
         style={{
           background: "var(--bg-primary)",
-          height: "calc(100vh - 60px)",
+          height: isFullscreen ? "100vh" : "calc(100vh - 60px)",
           display: "flex",
           flexDirection: "column",
           overflowY: "auto",
+          ...(isFullscreen ? {
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+          } : {}),
         }}
       >
         <div
           className="container-fluid p-0 m-0"
-          style={{ display: "flex", flexDirection: "column", width: "100%", flex: 1, minHeight: "fit-content" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            flex: 1,
+            minHeight: "fit-content",
+          }}
         >
-          <div style={{ display: "flex", flexDirection: "row", width: "100%", flex: 1, minHeight: "fit-content" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              width: "100%",
+              flex: 1,
+              minHeight: "fit-content",
+            }}
+          >
             <style>{`
               @media (max-width: 768px) {
                 .left-panel-mobile.is-open {
@@ -2175,21 +2558,21 @@ json.dumps(result, default=json_default)
                   min-width: 600px !important;
                 }
                 .buy-sell-btn {
-                  padding: 6px 12px !important;
+                  padding: 4px 8px !important;
                   font-size: 0.85rem !important;
                 }
               }
             `}</style>
             {/* Left Panel (Watchlist or Details) */}
             <div
-              className={`left-panel-mobile ${isWatchlistOpen || isDetailsOpen || isDepthOpen ? "is-open" : ""}`}
+              className={`left-panel-mobile ${(!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen)) ? "is-open" : ""}`}
               style={{
                 width:
-                  isWatchlistOpen || isDetailsOpen || isDepthOpen
+                  (!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen))
                     ? "300px"
                     : "0px",
                 opacity:
-                  isWatchlistOpen || isDetailsOpen || isDepthOpen ? 1 : 0,
+                  (!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen)) ? 1 : 0,
                 overflow: "hidden",
                 height: "100%",
                 transition:
@@ -2263,6 +2646,7 @@ json.dumps(result, default=json_default)
                     predictResults={predictResultData}
                     setSelectedCurrency={setSelectedCurrency}
                     isPredicting={isPredicting}
+                    predictionStatus={predictionStatus}
                   />
                 </div>
               </div>
@@ -2289,6 +2673,9 @@ json.dumps(result, default=json_default)
                 setActiveTab={setActiveTab}
                 onCodeClick={() => setIsCodeEditorOpen((prev) => !prev)}
                 onStrategyClick={handleStrategyClick}
+                onGoToDate={handleGoToDate}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
               />
 
               <div
@@ -2334,7 +2721,19 @@ json.dumps(result, default=json_default)
                   />
                 </div>
 
-                <div style={{ display: "flex", flex: 1, overflowX: "auto", overflowY: "hidden" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flex: 1,
+                    overflowX: "auto",
+                    overflowY: "hidden",
+                  }}
+                >
+                  <DrawingToolbar 
+                    activeTool={activeTool} 
+                    setActiveTool={setActiveTool} 
+                    clearAllDrawings={clearAllDrawings} 
+                  />
                   <div
                     className="chart-and-panes-wrapper mobile-scrollable-chart"
                     style={{
@@ -2359,33 +2758,151 @@ json.dumps(result, default=json_default)
                         minHeight: 450,
                       }}
                     >
-                      {mainChartLoading || isDeploying ? (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: "50%",
-                            left: "50%",
-                            transform: "translate(-50%, -50%)",
-                            zIndex: 1000,
-                          }}
-                        >
-                          <Spinner />
-                        </div>
-                      ) : (
-                        indicatorLoading && (
+                      <DrawingToolbox
+                        selectedLine={selectedLine}
+                        position={toolboxPos}
+                        onUpdate={updateLine}
+                        onDelete={deleteLine}
+                        onClose={closeToolbox}
+                      />
+                      {/* Unified chart transition overlay — covers during symbol/timeframe change */}
+                      {(symbolTransitioning ||
+                        mainChartLoading ||
+                        indicatorLoading) &&
+                        !isDeploying && (
                           <div
                             style={{
                               position: "absolute",
-                              top: "50%",
-                              left: "50%",
-                              transform: "translate(-50%, -50%)",
-                              zIndex: 1000,
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              zIndex: 55,
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: "transparent",
+                              backdropFilter: "none",
+                              pointerEvents:
+                                symbolTransitioning || mainChartLoading
+                                  ? "auto"
+                                  : "none",
+                              transition: "opacity 0.25s ease",
                             }}
                           >
                             <Spinner />
                           </div>
-                        )
+                        )}
+                      {/* Strategy scanner overlay */}
+                      {isDeploying && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 60,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "rgba(0, 0, 0, 0.7)",
+                            backdropFilter: "blur(6px)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <Spinner />
+                          <div
+                            style={{
+                              marginTop: "1rem",
+                              fontWeight: "bold",
+                              fontSize: "1.1rem",
+                            }}
+                          >
+                            Running Strategy Scanner...
+                          </div>
+                          {scannerProgressData &&
+                            scannerProgressData.total > 0 && (
+                              <div
+                                style={{
+                                  marginTop: "0.5rem",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  fontSize: "0.9rem",
+                                  color: "var(--text-secondary)",
+                                }}
+                              >
+                                <div>
+                                  {Math.round(
+                                    (scannerProgressData.processed /
+                                      scannerProgressData.total) *
+                                      100,
+                                  )}
+                                  %
+                                </div>
+                                {scannerProgressData.current_stock && (
+                                  <div
+                                    style={{
+                                      marginTop: "0.25rem",
+                                      fontSize: "0.8rem",
+                                      opacity: 0.8,
+                                    }}
+                                  >
+                                    Processing:{" "}
+                                    {scannerProgressData.current_stock}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                        </div>
                       )}
+                      {/* No data overlay */}
+                      {noDataAvailable &&
+                        !symbolTransitioning &&
+                        !mainChartLoading && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              zIndex: 40,
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: "rgba(0, 0, 0, 0.6)",
+                              backdropFilter: "blur(4px)",
+                              color: "var(--text-primary)",
+                              textAlign: "center",
+                              padding: "20px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: "1.25rem",
+                                fontWeight: "bold",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              No Data Available
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "0.875rem",
+                                color: "var(--text-secondary)",
+                              }}
+                            >
+                              There is no chart data available for{" "}
+                              {selectedCurrency?.name || "this symbol"} in the
+                              selected timeframe.
+                            </div>
+                          </div>
+                        )}
                       {/* -------------------------------sub-header live Values----------------------- */}
                       <div
                         className="position-absolute top-0 start-0"
@@ -2597,7 +3114,7 @@ json.dumps(result, default=json_default)
                               );
                             }}
                             style={{
-                              padding: "10px 20px",
+                              padding: "4px 8px",
                               border: "1px solid green",
                               background: "rgba(16, 185, 129, 0.15)",
                               color: "green",
@@ -2629,7 +3146,7 @@ json.dumps(result, default=json_default)
                               );
                             }}
                             style={{
-                              padding: "10px 20px",
+                              padding: "4px 8px",
                               border: "1px solid red",
                               background: "rgba(239, 68, 68, 0.15)",
                               color: "red",
@@ -2645,6 +3162,121 @@ json.dumps(result, default=json_default)
 
                       {/* -----------------INDICATOR BAR------------------- */}
 
+                      {selectedIndicator?.length > 0 && (
+                        <>
+                          {/* Main Chart Indicators */}
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 90,
+                              left: 8,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 4,
+                              zIndex: 50,
+                            }}
+                          >
+                            {selectedIndicator
+                              .filter((ind) => getPaneIndex(ind.id) === 0)
+                              .map((ind) => {
+                                const { id, type } = ind;
+                                const value = liveIndicatorData[id];
+                                return (
+                                  <IndicatorBar
+                                    key={id}
+                                    indicator={id}
+                                    type={type}
+                                    timeframeValue={timeframeValue}
+                                    value={value}
+                                    renderValue={(indId, val) =>
+                                      renderValue(indId, type, val)
+                                    }
+                                    indicatorVisibility={indicatorVisibility}
+                                    toggleIndicatorVisibility={
+                                      toggleIndicatorVisibility
+                                    }
+                                    removeIndicator={removeIndicator}
+                                    setActiveBarIndicator={() =>
+                                      setActiveBarIndicator({ id, type })
+                                    }
+                                    setIndicatorProperty={setIndicatorProperty}
+                                    setActiveSourceIndicator={() =>
+                                      setActiveSourceIndicator(type)
+                                    }
+                                    setShowSourcePanel={setShowSourcePanel}
+                                    indicatorConfigDefault={
+                                      indicatorConfigDefault
+                                    }
+                                    indicatorConfigs={indicatorConfigs}
+                                  />
+                                );
+                              })}
+                          </div>
+
+                          {/* Pane Indicators (Portals) */}
+                          {selectedIndicator
+                            .filter((ind) => getPaneIndex(ind.id) !== 0)
+                            .map((ind) => {
+                              const { id, type } = ind;
+                              const value = liveIndicatorData[id];
+                              const paneDiv =
+                                panesRef.current[id]?.pane?.getHTMLElement();
+
+                              if (!paneDiv) return null;
+                              const portalTarget =
+                                paneDiv.tagName?.toLowerCase() === "tr"
+                                  ? paneDiv.querySelector("td") || paneDiv
+                                  : paneDiv;
+
+                              portalTarget.style.position = "relative"; // Ensure the pane is a positioning context
+
+                              return createPortal(
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    top: 5,
+                                    left: 8,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 4,
+                                    zIndex: 50,
+                                  }}
+                                >
+                                  <IndicatorBar
+                                    indicator={id}
+                                    type={type}
+                                    timeframeValue={timeframeValue}
+                                    value={value}
+                                    renderValue={(indId, val) =>
+                                      renderValue(indId, type, val)
+                                    }
+                                    indicatorVisibility={indicatorVisibility}
+                                    toggleIndicatorVisibility={
+                                      toggleIndicatorVisibility
+                                    }
+                                    removeIndicator={removeIndicator}
+                                    setActiveBarIndicator={() =>
+                                      setActiveBarIndicator({ id, type })
+                                    }
+                                    setIndicatorProperty={setIndicatorProperty}
+                                    setActiveSourceIndicator={() =>
+                                      setActiveSourceIndicator(type)
+                                    }
+                                    setShowSourcePanel={setShowSourcePanel}
+                                    indicatorConfigDefault={
+                                      indicatorConfigDefault
+                                    }
+                                    indicatorConfigs={indicatorConfigs}
+                                  />
+                                </div>,
+                                portalTarget,
+                              );
+                            })}
+                        </>
+                      )}
+
+                      {/* -----------------OLD INDICATOR BAR (COMMENTED)------------------- */}
+                      {/*
                       {selectedIndicator?.length > 0 && (
                         <div
                           style={{
@@ -2693,7 +3325,6 @@ json.dumps(result, default=json_default)
                                     whiteSpace: "nowrap",
                                   }}
                                 >
-                                  {/* Label + value */}
                                   <span
                                     style={{
                                       color: "var(--text-secondary)",
@@ -2717,7 +3348,7 @@ json.dumps(result, default=json_default)
                                         ...(indicatorConfigs?.[id] || {}),
                                       };
                                       const len =
-                                        cfg.length ?? cfg.baseLen ?? "";
+                                        cfg?.length ?? cfg.baseLen ?? "";
                                       const src = cfg.source ?? "";
                                       return `${len}${src ? " " + src : ""}`;
                                     })()}
@@ -2726,7 +3357,6 @@ json.dumps(result, default=json_default)
                                     </span>
                                   </span>
 
-                                  {/* Action buttons */}
                                   <div
                                     style={{
                                       display: "flex",
@@ -2754,24 +3384,24 @@ json.dumps(result, default=json_default)
 
                                     <button
                                       className="ind-btn"
-                                      title="Indicator Settings"
+                                      title="Settings"
                                       onClick={() => {
                                         setActiveBarIndicator({ id, type });
                                         setIndicatorProperty((prev) => !prev);
                                       }}
                                     >
-                                      <IoSettingsOutline size={15} />
+                                      <IoSettingsOutline size={14} />
                                     </button>
 
                                     <button
                                       className="ind-btn"
-                                      title="Source Code"
-                                      // onClick={() => {
-                                      //   setActiveSourceIndicator(type);
-                                      //   setShowSourcePanel(true);
-                                      // }}
+                                      title="Source code"
+                                      onClick={() => {
+                                        setActiveSourceIndicator(type);
+                                        setShowSourcePanel(true);
+                                      }}
                                     >
-                                      <FaCode size={15} />
+                                      <FaCode size={14} />
                                     </button>
 
                                     <button
@@ -2779,10 +3409,22 @@ json.dumps(result, default=json_default)
                                       title="Remove"
                                       onClick={() => removeIndicator(id)}
                                     >
-                                      <IoCloseSharp size={15} />
+                                      <IoCloseSharp size={16} />
+                                    </button>
+
+                                    <button
+                                      className="ind-btn"
+                                      title="More"
+                                      style={{ marginLeft: 4 }}
+                                    >
+                                      <FiMoreHorizontal size={16} />
                                     </button>
                                   </div>
-
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
                                   {showAlertForm && (
                                     <IndicatorAlert
                                       onClose={closeAlert}
@@ -2796,7 +3438,8 @@ json.dumps(result, default=json_default)
                             })}
                         </div>
                       )}
-                      {/* {selectedIndicator.map((indicator, index) => {
+                      */}
+                      {/* {selectedIndicator?.map((indicator, index) => {
                 const value = liveIndicatorData[indicator];
                 const paneIndex = paneIndexRef.current[indicator];
                 if (paneIndex === undefined || paneIndex === 0) return null;
@@ -2989,7 +3632,17 @@ json.dumps(result, default=json_default)
             </div>
 
             {/* Right Sidebar */}
-            <div className="right-sidebar-mobile" style={{ width: "70px", height: "100%", flexShrink: 0, borderLeft: "1px solid var(--border-color)", zIndex: 50 }}>
+            {!isFullscreen && (
+            <div
+              className="right-sidebar-mobile"
+              style={{
+                width: "70px",
+                height: "100%",
+                flexShrink: 0,
+                borderLeft: "1px solid var(--border-color)",
+                zIndex: 50,
+              }}
+            >
               <RightSidebar
                 isWatchlistOpen={activeTab !== "Alerts" && isWatchlistOpen}
                 toggleWatchlist={() => {
@@ -3034,6 +3687,7 @@ json.dumps(result, default=json_default)
                 }}
               />
             </div>
+            )}
           </div>
         </div>
         {/* <SourceCodePanel

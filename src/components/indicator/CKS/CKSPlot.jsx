@@ -17,7 +17,7 @@ export default function CKSPlot({
     const shortData = result?.data?.short;
 
     if (!Array.isArray(longData) || !Array.isArray(shortData)) return;
-    if (!longData.length && !shortData.length) return;
+    if (!longData?.length && !shortData?.length) return;
 
     /* 🔥 REMOVE OLD CKS */
 

@@ -57,7 +57,7 @@
 //   const handleKeyDown = (e) => {
 //     if (e.key === "ArrowDown") {
 //       e.preventDefault();
-//       setHighlighted((h) => Math.min(h + 1, filtered.length - 1));
+//       setHighlighted((h) => Math.min(h + 1, filtered?.length - 1));
 //     } else if (e.key === "ArrowUp") {
 //       e.preventDefault();
 //       setHighlighted((h) => Math.max(h - 1, 0));
@@ -136,7 +136,7 @@
 //             marginTop: 2,
 //           }}
 //         >
-//           {filtered.length === 0 ? (
+//           {filtered?.length === 0 ? (
 //             <div
 //               style={{
 //                 padding: "8px 12px",
@@ -247,7 +247,7 @@ export default function SearchSelect({ stocks, stock, setStock, onSelect, style 
   const handleKeyDown = (e) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlighted((h) => Math.min(h + 1, filtered.length - 1));
+      setHighlighted((h) => Math.min(h + 1, filtered?.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlighted((h) => Math.max(h - 1, 0));
@@ -316,7 +316,7 @@ export default function SearchSelect({ stocks, stock, setStock, onSelect, style 
           maxHeight: 260, overflowY: "auto",
           boxShadow: "0 8px 24px rgba(0,0,0,0.4)", marginTop: 3,
         }}>
-          {filtered.length === 0 ? (
+          {filtered?.length === 0 ? (
             <div style={{ padding: "10px 12px", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
               No results found
             </div>

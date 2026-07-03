@@ -12,6 +12,7 @@ import Backtest from "./pages/backtest/Backtest";
 import Signals from "./pages/Signals";
 import OptionChain from "./pages/OptionChain";
 import "./indicatorLogger";
+import OiBacktestChart from "./pages/OiBacktestChart";
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
             <Route path="/backtest" element={<Backtest />} />
             <Route path="/signals" element={<Signals />} />
             <Route path="/optionchain" element={<OptionChain />} />
+            <Route path="/oi-backtest" element={<OiBacktestChart/>}  />
           </Route>
         </Routes>
       </div>
