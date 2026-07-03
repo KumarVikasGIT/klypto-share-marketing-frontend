@@ -437,7 +437,7 @@ plot_markers(markers)`,
     };
 
     strategySocket.onAny((eventName, ...args) => {
-      console.log(`[STRATEGY SOCKET] ${eventName}:`, args);
+      // console.log(`[STRATEGY SOCKET] ${eventName}:`, args);
     });
     
     strategySocket.on(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
@@ -513,7 +513,7 @@ plot_markers(markers)`,
             });
           } else {
             console.log(
-              `Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`,
+              // `Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`,
             );
           }
 
