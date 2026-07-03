@@ -2397,7 +2397,7 @@ json.dumps(result)
                   min-width: 600px !important;
                 }
                 .buy-sell-btn {
-                  padding: 6px 12px !important;
+                  padding: 4px 8px !important;
                   font-size: 0.85rem !important;
                 }
               }
@@ -2951,7 +2951,7 @@ json.dumps(result)
                               );
                             }}
                             style={{
-                              padding: "10px 20px",
+                              padding: "4px 8px",
                               border: "1px solid green",
                               background: "rgba(16, 185, 129, 0.15)",
                               color: "green",
@@ -2983,7 +2983,7 @@ json.dumps(result)
                               );
                             }}
                             style={{
-                              padding: "10px 20px",
+                              padding: "4px 8px",
                               border: "1px solid red",
                               background: "rgba(239, 68, 68, 0.15)",
                               color: "red",
