@@ -2,7 +2,7 @@ import React from "react";
 import { FiX, FiSettings } from "react-icons/fi";
 import { Spinner } from "../tradingModals/Spinner";
 
-const LeftDepth = ({ onClose, predictResults, setSelectedCurrency, isPredicting }) => {
+const LeftDepth = ({ onClose, predictResults, setSelectedCurrency, isPredicting, predictionStatus }) => {
   const styles = {
     container: {
       display: "flex",
@@ -21,6 +21,30 @@ const LeftDepth = ({ onClose, predictResults, setSelectedCurrency, isPredicting 
       borderBottom: "1px solid var(--border-color)",
       fontWeight: "600",
       fontSize: "0.95rem",
+    },
+    progressContainer: {
+      padding: "16px",
+      borderBottom: "1px solid var(--border-color)",
+      background: "var(--bg-secondary)",
+    },
+    progressHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: "0.85rem",
+      marginBottom: "8px",
+      fontWeight: "600",
+    },
+    progressBarBg: {
+      width: "100%",
+      height: "8px",
+      background: "var(--border-color)",
+      borderRadius: "4px",
+      overflow: "hidden",
+    },
+    progressBarFill: {
+      height: "100%",
+      background: "#22c55e",
+      transition: "width 0.3s ease",
     },
     listContainer: {
       flex: 1,
@@ -73,8 +97,30 @@ const LeftDepth = ({ onClose, predictResults, setSelectedCurrency, isPredicting 
         <span>Strategy Results</span>
         <FiX style={{ cursor: "pointer" }} onClick={onClose} />
       </div>
+
+      {predictionStatus?.status === 'running' && (
+        <div style={styles.progressContainer}>
+          <div style={styles.progressHeader}>
+            <span>{predictionStatus.phase === 'fetching_ticks' ? 'Fetching Ticks...' : 'Predicting AI...'}</span>
+            <span>
+              {predictionStatus.total ? `${predictionStatus.processed || 0} / ${predictionStatus.total}` : ''}
+            </span>
+          </div>
+          <div style={styles.progressBarBg}>
+            <div 
+              style={{
+                ...styles.progressBarFill, 
+                width: predictionStatus.total 
+                  ? `${Math.max(5, ((predictionStatus.processed || 0) / predictionStatus.total) * 100)}%` 
+                  : "5%"
+              }} 
+            />
+          </div>
+        </div>
+      )}
+
       <div className="custom-scrollbar" style={styles.listContainer}>
-        {isPredicting ? (
+        {isPredicting && (!predictionStatus || predictionStatus.status !== 'running') ? (
           <div style={{ display: "flex", height: "100%", justifyContent: "center", alignItems: "center" }}>
             <Spinner />
           </div>

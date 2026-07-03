@@ -97,7 +97,7 @@ export default function AroonOscillatorInput(
   /* ================= HOVER VALUE ================= */
 
   latestIndicatorValuesRef.current[instanceId || "AO"] = {
-    oscillator: oscData[oscData.length - 1]?.value,
+    oscillator: oscData[oscData?.length - 1]?.value,
   };
 
   console.log(

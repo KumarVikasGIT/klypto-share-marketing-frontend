@@ -7,9 +7,20 @@ const DrawingToolbox = ({ selectedLine, position, onUpdate, onDelete, onClose })
   const [isReady, setIsReady] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  // Track if the user has manually moved the toolbox so we stop auto-repositioning
+  const hasDraggedRef = useRef(false);
+  const prevLineIdRef = useRef(null);
 
   useEffect(() => {
-    if (toolboxRef.current && position && !isDragging) {
+    // If the selected line changed, reset drag state so the toolbox anchors to the new line
+    if (selectedLine?.id !== prevLineIdRef.current) {
+      prevLineIdRef.current = selectedLine?.id;
+      hasDraggedRef.current = false;
+      setIsReady(false);
+    }
+
+    // Only auto-position if user hasn't manually moved it yet
+    if (toolboxRef.current && position && !hasDraggedRef.current) {
       setTimeout(() => {
         if (!toolboxRef.current) return;
         const parentRect = toolboxRef.current.parentElement.getBoundingClientRect();
@@ -36,7 +47,7 @@ const DrawingToolbox = ({ selectedLine, position, onUpdate, onDelete, onClose })
         setIsReady(true);
       }, 0);
     }
-  }, [position, isDragging]);
+  }, [position, selectedLine?.id]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -69,6 +80,10 @@ const DrawingToolbox = ({ selectedLine, position, onUpdate, onDelete, onClose })
       }
     };
     const handleMouseUp = () => {
+      if (isDragging) {
+        // Mark as manually positioned — won't auto-snap anymore
+        hasDraggedRef.current = true;
+      }
       setIsDragging(false);
     };
 

@@ -92,7 +92,7 @@ export default function DCPlot({
     const upper = dcGroup.upperData || [];
     const lower = dcGroup.lowerData || [];
 
-    if (!upper.length || !lower.length) return;
+    if (!upper?.length || !lower?.length) return;
     if (!canvasRef.current || !chart) return;
 
     const canvas = canvasRef.current;
@@ -113,7 +113,7 @@ export default function DCPlot({
 
     /* ---------- UPPER LINE ---------- */
 
-    for (let i = 0; i < upper.length; i++) {
+    for (let i = 0; i < upper?.length; i++) {
       const p = upper[i];
 
       const x = chart.timeScale().timeToCoordinate(p.time);
@@ -127,7 +127,7 @@ export default function DCPlot({
 
     /* ---------- LOWER LINE ---------- */
 
-    for (let i = lower.length - 1; i >= 0; i--) {
+    for (let i = lower?.length - 1; i >= 0; i--) {
       const p = lower[i];
 
       const x = chart.timeScale().timeToCoordinate(p.time);

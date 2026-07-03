@@ -1889,6 +1889,119 @@ export default function IndicatorPropertyDialog({
           </>
         );
 
+      case "VOLATILITY_MOMENTUM_PRO":
+        return (
+          <>
+            <div className="mb-3">
+              <label className="form-label">Session Start Hour</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.sessionStartHour}
+                onChange={(e) =>
+                  updateProperty("sessionStartHour", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Session Start Minute</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.sessionStartMin}
+                onChange={(e) =>
+                  updateProperty("sessionStartMin", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">ATR Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.atrLen}
+                onChange={(e) =>
+                  updateProperty("atrLen", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Volume Average Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.volLen}
+                onChange={(e) =>
+                  updateProperty("volLen", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Angle Calculation Length</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.angleLen}
+                onChange={(e) =>
+                  updateProperty("angleLen", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Opening Range Bars</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.orBars}
+                onChange={(e) =>
+                  updateProperty("orBars", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Channel ATR Multiplier</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={currentConfig?.channelMult}
+                onChange={(e) =>
+                  updateProperty("channelMult", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Sharp Trend Angle</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.sharpAngle}
+                onChange={(e) =>
+                  updateProperty("sharpAngle", Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Extreme Trend Angle</label>
+              <input
+                type="number"
+                className="form-control"
+                value={currentConfig?.extremeAngle}
+                onChange={(e) =>
+                  updateProperty("extremeAngle", Number(e.target.value))
+                }
+              />
+            </div>
+          </>
+        );
       case "CMO": {
         return (
           <BaseSettings

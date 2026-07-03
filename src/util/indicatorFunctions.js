@@ -1922,4 +1922,65 @@ export let indicatorStyleDefault = {
       visible: true,
     },
   },
+  VOLATILITY_MOMENTUM_PRO: {
+    openingRangeHigh: {
+      color: "rgba(0,200,83,1)",
+      width: 2,
+      visible: true,
+    },
+
+    openingRangeLow: {
+      color: "rgba(244,67,54,1)",
+      width: 2,
+      visible: true,
+    },
+
+    upperChannel: {
+      color: "rgba(255,152,0,1)",
+      width: 2,
+      visible: true,
+    },
+
+    lowerChannel: {
+      color: "rgba(255,152,0,1)",
+      width: 2,
+      visible: true,
+    },
+
+    channelFill: {
+      visible: true,
+      topFillColor1: "rgba(255,152,0,0.12)",
+      bottomFillColor1: "rgba(255,152,0,0.12)",
+    },
+
+    sharpUpSignals: {
+      color: "rgba(0,200,83,1)",
+      visible: true,
+    },
+
+    sharpDownSignals: {
+      color: "rgba(244,67,54,1)",
+      visible: true,
+    },
+
+    extremeUpSignals: {
+      color: "rgba(124,252,0,1)",
+      visible: true,
+    },
+
+    extremeDownSignals: {
+      color: "rgba(128,0,0,1)",
+      visible: true,
+    },
+
+    highMoveBackground: {
+      color: "rgba(255,152,0,0.12)",
+      visible: true,
+    },
+
+    is915Markers: {
+      color: "rgba(255,165,0,1)", // Orange like the image
+      visible: true,
+    },
+  },
 };

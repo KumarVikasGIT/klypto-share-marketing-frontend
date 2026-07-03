@@ -147,7 +147,7 @@ export default function BodyDNAPlot({
       })),
     ].sort((a, b) => a.time - b.time);
 
-    if (markersToSet.length > 0) {
+    if (markersToSet?.length > 0) {
       import("lightweight-charts").then(({ createSeriesMarkers }) => {
         const markersPrimitive = createSeriesMarkers(bodySeries, markersToSet);
         bodySeries.attachPrimitive(markersPrimitive);

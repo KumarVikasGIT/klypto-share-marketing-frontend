@@ -1956,37 +1956,103 @@ async function fetchDataForIndicators(
 
       case "VOLATILITY_MOMENTUM_PRO":
         return {
-          openingRangeHigh: rows
-            .filter((d) => d.openingRangeHigh != null && d.time != null)
-            .map((d) => ({
-              time: Number(d.time) + IST_OFFSET,
-              value: Number(d.openingRangeHigh),
-            }))
-            .sort((a, b) => a.time - b.time),
-
-          openingRangeLow: rows
-            .filter((d) => d.openingRangeLow != null && d.time != null)
-            .map((d) => ({
-              time: Number(d.time) + IST_OFFSET,
-              value: Number(d.openingRangeLow),
-            }))
-            .sort((a, b) => a.time - b.time),
-
-          volatilityUpperChannel: rows
-            .filter((d) => d.volatilityUpperChannel != null && d.time != null)
-            .map((d) => ({
-              time: Number(d.time) + IST_OFFSET,
-              value: Number(d.volatilityUpperChannel),
-            }))
-            .sort((a, b) => a.time - b.time),
-
-          volatilityLowerChannel: rows
-            .filter((d) => d.volatilityLowerChannel != null && d.time != null)
-            .map((d) => ({
-              time: Number(d.time) + IST_OFFSET,
-              value: Number(d.volatilityLowerChannel),
-            }))
-            .sort((a, b) => a.time - b.time),
+          type: "multi",
+          data: {
+            openingRangeHigh:
+              response?.data
+                ?.filter((d) => d.orHigh != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.orHigh),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            openingRangeLow:
+              response?.data
+                ?.filter((d) => d.orLow != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.orLow),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            upperChannel:
+              response?.data
+                ?.filter((d) => d.upperChannel != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.upperChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            lowerChannel:
+              response?.data
+                ?.filter((d) => d.lowerChannel != null && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.lowerChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            sharpUpSignals:
+              response?.data
+                ?.filter((d) => d.sharpUp && d.time != null && d.lowerChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.lowerChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            sharpDownSignals:
+              response?.data
+                ?.filter((d) => d.sharpDown && d.time != null && d.upperChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.upperChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            extremeUpSignals:
+              response?.data
+                ?.filter((d) => d.extremeUp && d.time != null && d.lowerChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.lowerChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            extremeDownSignals:
+              response?.data
+                ?.filter((d) => d.extremeDown && d.time != null && d.upperChannel != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: parseFloat(d.upperChannel),
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            highMoveBackground:
+              response?.data
+                ?.filter((d) => d.highMoveProbability && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: 1, // Just a boolean indicator for background fill
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+            is915Markers:
+              response?.data
+                ?.filter((d) => d.is915 && d.time != null)
+                .map((d) => ({
+                  time: Number(d.time) + IST_OFFSET,
+                  value: d.upperChannel != null ? parseFloat(d.upperChannel) : (d.lowerChannel != null ? parseFloat(d.lowerChannel) : 0),
+                  angle: d.angle,
+                  atrPower: d.atrPower,
+                  volPower: d.volPower,
+                  volMomentumScore: d.volMomentumScore,
+                }))
+                .filter((d) => !isNaN(d.value) && !isNaN(d.time))
+                .sort((a, b) => a.time - b.time) ?? [],
+          },
         };
 
       case "MACD":
@@ -2391,52 +2457,62 @@ async function fetchDataForIndicators(
               .map((d) => ({
                 time: Number(d.time) + IST_OFFSET,
                 value: Number(d.hma60),
-              })),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
             closeToHmaBoxes: rows
               .filter((d) => d?.closeToHmaBoxes != null)
               .map((d) => ({
                 time: Number(d.time) + IST_OFFSET,
                 value: Number(d.closeToHmaBoxes),
-              })),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
             highToHmaBoxes: rows
               .filter((d) => d?.highToHmaBoxes != null)
               .map((d) => ({
                 time: Number(d.time) + IST_OFFSET,
                 value: Number(d.highToHmaBoxes),
-              })),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
             lowToHmaBoxes: rows
               .filter((d) => d?.lowToHmaBoxes != null)
               .map((d) => ({
                 time: Number(d.time) + IST_OFFSET,
                 value: Number(d.lowToHmaBoxes),
-              })),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
-            upperZone: rows.map((d) => ({
-              time: Number(d.time) + IST_OFFSET,
-              value: Number(d.upperZone),
-            })),
+            upperZone: rows
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.upperZone),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
-            lowerZone: rows.map((d) => ({
-              time: Number(d.time) + IST_OFFSET,
-              value: Number(d.lowerZone),
-            })),
+            lowerZone: rows
+              .map((d) => ({
+                time: Number(d.time) + IST_OFFSET,
+                value: Number(d.lowerZone),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
             upperSignals: rows
               .filter((d) => d?.upperExtreme)
               .map((d) => ({
                 time: Number(d.time) + IST_OFFSET,
                 value: Number(d.closeToHmaBoxes),
-              })),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
             lowerSignals: rows
               .filter((d) => d?.lowerExtreme)
               .map((d) => ({
                 time: Number(d.time) + IST_OFFSET,
                 value: Number(d.closeToHmaBoxes),
-              })),
+              }))
+              .filter((d) => !isNaN(d.value) && !isNaN(d.time)),
 
             bgColors: rows
               .filter((d) => d?.bgColor)

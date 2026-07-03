@@ -20,6 +20,6 @@ export default function CMOInput(
   cmoSeries.setData(cmoData);
 
   latestIndicatorValuesRef.current[instanceId || "CMO"] = {
-    cmo: cmoData[cmoData.length - 1]?.value ?? null,
+    cmo: cmoData[cmoData?.length - 1]?.value ?? null,
   };
 }

@@ -97,8 +97,10 @@ export default function Candlestick() {
 
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isDepthOpen, setIsDepthOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [predictionStatus, setPredictionStatus] = useState(null);
   const [isPredicting, setIsPredicting] = useState(false);
+  const [isDepthOpen, setIsDepthOpen] = useState(false);
   const [predictResultData, setPredictResultData] = useState([]);
   const [detailsList, setDetailsList] = useState([]);
   const [activeTab, setActiveTab] = useState("Chart");
@@ -167,61 +169,15 @@ plot_markers(markers)`,
   const [dashboardSignals, setDashboardSignals] = useState([]);
   const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
 
-  const handleStrategyClick = async () => {
-    try {
-      setIsPredicting(true);
-      // Immediately open Results tab to show the spinner
-      setIsDepthOpen(true);
-      setIsWatchlistOpen(false);
-      setIsDetailsOpen(false);
-      if (activeTab === "Alerts") setActiveTab("Chart");
-
-      const apiUrl = import.meta.env.VITE_STRATEGY_API_URL;
-      const resp = await apiService.get(`${apiUrl}/api/predictResult`);
-      console.log("predict API result:", resp);
-
-      let data = [];
-      if (Array.isArray(resp)) {
-        data = resp;
-      } else if (resp?.signals) {
-        data = resp.signals;
-      } else if (resp?.data && Array.isArray(resp.data)) {
-        data = resp.data;
-      } else if (resp?.symbol) {
-        data = [resp];
-      }
-      const filtered = data.filter((item) => item.symbol && item.response);
-      console.log("predict API result (filtered):", filtered);
-
-      setPredictResultData(filtered);
-
-      // Plot markers by adding them to dashboardSignals
-      const mappedSignals = filtered.map((f) => {
-        let timeStr =
-          f.tick?.datetime ||
-          f.response?.entry_time ||
-          new Date().toISOString();
-        timeStr = timeStr.replace(" ", "T"); // Fix parsing for 'YYYY-MM-DD HH:mm:ss'
-
-        return {
-          symbol: f.symbol,
-          signalType: f.response?.type,
-          timestamp: timeStr,
-          segment: "SCRIPT",
-        };
-      });
-      console.log("Mapped Signals for Dashboard:", mappedSignals);
-
-      setDashboardSignals((prev) => [...prev, ...mappedSignals]);
-
-      // We must set isDeployed to true so the markers useEffect triggers and plots them
-      setIsDeployed(true);
-      setDeployedStrategyCode("API_PREDICTION");
-    } catch (err) {
-      console.error("Failed to fetch predict result:", err);
-    } finally {
-      setIsPredicting(false);
-    }
+  const handleStrategyClick = () => {
+    setIsPredicting(true);
+    setIsDepthOpen(true);
+    setIsWatchlistOpen(false);
+    setIsDetailsOpen(false);
+    if (activeTab === "Alerts") setActiveTab("Chart");
+    
+    setPredictResultData([]);
+    setPredictionStatus(null);
   };
 
   //code editor
@@ -427,16 +383,78 @@ plot_markers(markers)`,
       }
     };
 
+    const handleAiPredictionStatus = (data) => {
+      console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_PREDICTION_STATUS}:`, data);
+      
+      setPredictionStatus(data);
+      if (data.status === "running") {
+        setIsPredicting(true);
+        setIsDepthOpen(true);
+      } else if (data.status === "done") {
+        setIsPredicting(false);
+        // Optional: Add a toast notification here
+      }
+    };
+
+    const handleAiTradeSignal = (tradeData) => {
+      console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_TRADE_SIGNAL}:`, tradeData);
+      // Ensure Results pane is open
+      setIsDepthOpen(true);
+
+      const mappedSignal = {
+        symbol: tradeData.symbol,
+        response: {
+          type: tradeData.trade_type,
+          entry_time: tradeData.entry_time,
+          entry_price: tradeData.entry_price,
+          signal: tradeData.signal,
+        },
+        tick: {
+          datetime: tradeData.entry_time,
+        }
+      };
+
+      setPredictResultData((prev) => [mappedSignal, ...prev]);
+
+      // Add to dashboardSignals so it plots on the chart
+      let timeStr = tradeData.entry_time || tradeData.timestamp || new Date().toISOString();
+      timeStr = timeStr.replace(" ", "T");
+      setDashboardSignals((prev) => [
+        ...prev,
+        {
+          symbol: tradeData.symbol,
+          signalType: tradeData.trade_type,
+          timestamp: timeStr,
+          segment: "SCRIPT",
+        }
+      ]);
+      
+      setIsDeployed(true);
+      setDeployedStrategyCode("API_PREDICTION");
+      
+      // Optional: play notification sound
+      // playNotificationSound();
+    };
+
+    strategySocket.onAny((eventName, ...args) => {
+      console.log(`[STRATEGY SOCKET] ${eventName}:`, args);
+    });
+    
     strategySocket.on(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
     strategySocket.on(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
     strategySocket.on(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
     strategySocket.on(EVENTS.STRATEGY.ERROR, handleScannerError);
+    strategySocket.on(EVENTS.STRATEGY.AI_PREDICTION_STATUS, handleAiPredictionStatus);
+    strategySocket.on(EVENTS.STRATEGY.AI_TRADE_SIGNAL, handleAiTradeSignal);
 
     return () => {
+      strategySocket.offAny();
       strategySocket.off(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
       strategySocket.off(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
       strategySocket.off(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
       strategySocket.off(EVENTS.STRATEGY.ERROR, handleScannerError);
+      strategySocket.off(EVENTS.STRATEGY.AI_PREDICTION_STATUS, handleAiPredictionStatus);
+      strategySocket.off(EVENTS.STRATEGY.AI_TRADE_SIGNAL, handleAiTradeSignal);
     };
   }, []);
 
@@ -2467,6 +2485,7 @@ json.dumps(result)
                     predictResults={predictResultData}
                     setSelectedCurrency={setSelectedCurrency}
                     isPredicting={isPredicting}
+                    predictionStatus={predictionStatus}
                   />
                 </div>
               </div>

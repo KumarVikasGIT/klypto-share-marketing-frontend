@@ -35,9 +35,9 @@ export default function DCInput(
   /* ================= HOVER VALUES ================= */
 
   latestIndicatorValuesRef.current[instanceId || "DC"] = {
-    upper: upperData[upperData.length - 1]?.value,
-    basis: basisData[basisData.length - 1]?.value,
-    lower: lowerData[lowerData.length - 1]?.value,
+    upper: upperData[upperData?.length - 1]?.value,
+    basis: basisData[basisData?.length - 1]?.value,
+    lower: lowerData[lowerData?.length - 1]?.value,
   };
 
   /* ================= STORE RESULT ================= */

@@ -278,16 +278,18 @@ export const smartPriceFormatter = (price) => {
   if (price === undefined || price === null) return "";
   const absPrice = Math.abs(price);
   if (absPrice >= 1e9) return price.toExponential(2);
-  if (absPrice >= 1e6) return (price / 1e6).toFixed(2) + 'M';
-  
+  if (absPrice >= 1e6) return (price / 1e6).toFixed(2) + "M";
+
   if (absPrice > 0 && absPrice < 0.0001) {
-    return Number(price).toFixed(12).replace(/\.?0+$/, "");
+    return Number(price)
+      .toFixed(12)
+      .replace(/\.?0+$/, "");
   }
   return Number(price).toFixed(2);
 };
 
 export const defaultPriceFormat = {
-  type: 'custom',
+  type: "custom",
   minMove: 0.00000001,
   formatter: smartPriceFormatter,
 };
@@ -1006,6 +1008,20 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
           label: "StochRSI Background Fill",
           type: "fill",
         },
+      ];
+    case "VOLATILITY_MOMENTUM_PRO":
+      return [
+        { key: "openingRangeHigh", label: "Opening Range High", type: "line" },
+        { key: "openingRangeLow", label: "Opening Range Low", type: "line" },
+        { key: "upperChannel", label: "Upper Channel", type: "line" },
+        { key: "lowerChannel", label: "Lower Channel", type: "line" },
+        { key: "channelFill", label: "Channel Fill", type: "fill" },
+        { key: "sharpUpSignals", label: "Sharp Up", type: "line" },
+        { key: "sharpDownSignals", label: "Sharp Down", type: "line" },
+        { key: "extremeUpSignals", label: "Extreme Up", type: "line" },
+        { key: "extremeDownSignals", label: "Extreme Down", type: "line" },
+        { key: "highMoveBackground", label: "High Move Background", type: "fill" },
+        { key: "is915Markers", label: "9:15 Volatility Scan", type: "line" },
       ];
 
     case "MACD":
@@ -1960,7 +1976,7 @@ export const getRowsByIndicator = (indicator, maType, indicatorConfigs) => {
               label: "Falling",
               type: "fill",
             },
-          ]
+          ],
         },
         {
           key: "buySignals",
