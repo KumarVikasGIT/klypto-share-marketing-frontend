@@ -154,38 +154,38 @@ const LeftDepth = ({ onClose, predictResults, setSelectedCurrency, isPredicting,
                   </span>
                 </div>
 
-                {/* Row 2: Entry Price + Signal */}
+                {/* Row 2: Entry Price + Trend + RSI */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: "0.8rem", fontWeight: "600", color: isCall ? "#22c55e" : "#ef4444" }}>
                     ₹{item.response?.entry_price ?? "—"}
                   </span>
-                  <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)", background: "var(--bg-secondary)", padding: "1px 6px", borderRadius: "4px" }}>
-                    {item.response?.signal || "—"}
-                  </span>
-                </div>
-
-                {/* Row 3: Trend + Status + RSI */}
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {item.response?.trend && (
-                    <span style={{ fontSize: "0.68rem", color: item.response.trend === "UP" ? "#22c55e" : "#ef4444" }}>
-                      ↕ {item.response.trend}
-                    </span>
-                  )}
-                  {item.response?.status && (
-                    <span style={{ fontSize: "0.68rem", color: "var(--text-secondary)" }}>
-                      • {item.response.status}
-                    </span>
-                  )}
-                  {item.response?.rsi && (
-                    <span style={{ fontSize: "0.68rem", color: "var(--text-secondary)" }}>
-                      RSI: {Number(item.response.rsi).toFixed(1)}
-                    </span>
-                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end" }}>
+                    {item.response?.trend && (
+                      <span style={{ fontSize: "0.68rem", color: item.response.trend === "UP" ? "#22c55e" : "#ef4444" }}>
+                        {item.response.trend === "UP" ? "↑" : "↓"} {item.response.trend}
+                      </span>
+                    )}
+                    {item.response?.rsi && (
+                      <span style={{ fontSize: "0.68rem", color: "var(--text-secondary)" }}>
+                        RSI: {Number(item.response.rsi).toFixed(1)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Row 4: Time */}
                 <div style={styles.time}>
-                  {item.tick?.datetime || item.response?.entry_time || "N/A"}
+                  {(() => {
+                    const timeStr = item.tick?.datetime || item.response?.entry_time;
+                    if (!timeStr) return "N/A";
+                    try {
+                      const d = new Date(timeStr);
+                      if (isNaN(d.getTime())) return timeStr;
+                      return d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    } catch (e) {
+                      return timeStr;
+                    }
+                  })()}
                 </div>
               </div>
             );
