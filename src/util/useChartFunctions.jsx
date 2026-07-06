@@ -13,6 +13,7 @@ export default function useChartFunctions({
   toDate,
   socketRef,
   candlesRef,
+  onIndicatorLoaded,
 }) {
   /* ================= FETCH INDICATORS ================= */
   async function fetchIndicatorData(
@@ -22,27 +23,35 @@ export default function useChartFunctions({
   ) {
     if (!selectedIndicator?.length) return;
 
-    await Promise.all(
-      selectedIndicator.map(async (indItem) => {
-        // Support both {id, type} objects and legacy plain strings
-        const id = typeof indItem === "object" ? indItem.id : indItem;
-        const type = typeof indItem === "object" ? indItem.type : indItem;
-        try {
-          const result = await fetchDataForIndicators(
-            candlesRef.current,
-            selectedCurrency,
-            type,
-            timeframeValue,
-            fromDate,
-            toDate,
-            socketRef,
-          );
-          processIndicatorResponse(id, type, result);
-        } catch (error) {
-          console.log(error, "Indicator loading error");
-        }
-      }),
-    );
+    // Process in batches of 2 to avoid overwhelming the backend
+    const CONCURRENCY_LIMIT = 2;
+    for (let i = 0; i < selectedIndicator.length; i += CONCURRENCY_LIMIT) {
+      const batch = selectedIndicator.slice(i, i + CONCURRENCY_LIMIT);
+      
+      await Promise.all(
+        batch.map(async (indItem) => {
+          const id = typeof indItem === "object" ? indItem.id : indItem;
+          const type = typeof indItem === "object" ? indItem.type : indItem;
+          try {
+            const result = await fetchDataForIndicators(
+              candlesRef.current,
+              selectedCurrency,
+              type,
+              timeframeValue,
+              fromDate,
+              toDate,
+              socketRef,
+            );
+            processIndicatorResponse(id, type, result);
+            if (typeof onIndicatorLoaded === "function") {
+              onIndicatorLoaded(id);
+            }
+          } catch (error) {
+            console.log(error, "Indicator loading error");
+          }
+        })
+      );
+    }
   }
 
   // id = unique instance key, type = base indicator type (e.g. "RSI", "SMA")
@@ -823,15 +832,14 @@ async function fetchDataForIndicators(
             fromDate: fromDate,
             toDate: toDate,
             type,
-            candles,
           });
 
           const timeoutId = setTimeout(() => {
             socketRef.current?.off("indicatorDetailsError", onError);
             socketRef.current?.off("indicatorDetailsResponse", onResponse);
             innerResolve();
-            reject(new Error(`Timeout fetching indicator data for ${type}`));
-          }, 60000); // 60 seconds for large queries
+            reject(new Error("Timeout fetching indicator data"));
+          }, 120000); // 2 minutes (effectively removed for normal operations)
 
           const onResponse = (data) => {
             clearTimeout(timeoutId);
@@ -866,6 +874,8 @@ async function fetchDataForIndicators(
           value: d[field] != null ? Number(d[field]) : null,
         }))
         .filter((d) => d.value !== null) ?? [];
+
+    console.log("mapped conversion", response?.data, "conversionLine");
 
     switch (type) {
       /* ---------------- SINGLE VALUE ---------------- */
@@ -1697,7 +1707,9 @@ async function fetchDataForIndicators(
           data: {
             percentB:
               response?.data
-                ?.filter((d) => (d.bbperb ?? d.percentB) != null && d.time != null)
+                ?.filter(
+                  (d) => (d.bbperb ?? d.percentB) != null && d.time != null,
+                )
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
                   value: Number(d.bbperb ?? d.percentB),
@@ -1984,7 +1996,9 @@ async function fetchDataForIndicators(
                 .sort((a, b) => a.time - b.time) ?? [],
             sharpUpSignals:
               response?.data
-                ?.filter((d) => d.sharpUp && d.time != null && d.lowerChannel != null)
+                ?.filter(
+                  (d) => d.sharpUp && d.time != null && d.lowerChannel != null,
+                )
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
                   value: parseFloat(d.lowerChannel),
@@ -1993,7 +2007,10 @@ async function fetchDataForIndicators(
                 .sort((a, b) => a.time - b.time) ?? [],
             sharpDownSignals:
               response?.data
-                ?.filter((d) => d.sharpDown && d.time != null && d.upperChannel != null)
+                ?.filter(
+                  (d) =>
+                    d.sharpDown && d.time != null && d.upperChannel != null,
+                )
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
                   value: parseFloat(d.upperChannel),
@@ -2002,7 +2019,10 @@ async function fetchDataForIndicators(
                 .sort((a, b) => a.time - b.time) ?? [],
             extremeUpSignals:
               response?.data
-                ?.filter((d) => d.extremeUp && d.time != null && d.lowerChannel != null)
+                ?.filter(
+                  (d) =>
+                    d.extremeUp && d.time != null && d.lowerChannel != null,
+                )
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
                   value: parseFloat(d.lowerChannel),
@@ -2011,7 +2031,10 @@ async function fetchDataForIndicators(
                 .sort((a, b) => a.time - b.time) ?? [],
             extremeDownSignals:
               response?.data
-                ?.filter((d) => d.extremeDown && d.time != null && d.upperChannel != null)
+                ?.filter(
+                  (d) =>
+                    d.extremeDown && d.time != null && d.upperChannel != null,
+                )
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
                   value: parseFloat(d.upperChannel),
@@ -2032,7 +2055,12 @@ async function fetchDataForIndicators(
                 ?.filter((d) => d.is915 && d.time != null)
                 .map((d) => ({
                   time: Number(d.time) + IST_OFFSET,
-                  value: d.upperChannel != null ? parseFloat(d.upperChannel) : (d.lowerChannel != null ? parseFloat(d.lowerChannel) : 0),
+                  value:
+                    d.upperChannel != null
+                      ? parseFloat(d.upperChannel)
+                      : d.lowerChannel != null
+                        ? parseFloat(d.lowerChannel)
+                        : 0,
                   angle: d.angle,
                   atrPower: d.atrPower,
                   volPower: d.volPower,

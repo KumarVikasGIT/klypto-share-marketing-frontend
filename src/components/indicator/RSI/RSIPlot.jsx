@@ -278,7 +278,9 @@ export default function RSIPlot({
     ctx.save();
     ctx.translate(leftOffset, topOffset);
 
-    console.log("📏 Pane Rect size:", paneRect.width, "x", paneRect.height);
+    // Clip to timeScale width (prevent Y-axis bleed) and pane height (prevent bleeding into other panes)
+    ctx.rect(0, 0, paneChart.timeScale().width(), paneRect.height);
+    ctx.clip();
 
     ctx.beginPath();
     let pointsDrawn = 0;

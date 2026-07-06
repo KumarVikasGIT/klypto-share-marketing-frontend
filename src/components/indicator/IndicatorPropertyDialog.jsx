@@ -184,6 +184,8 @@ export default function IndicatorPropertyDialog({
     textAlign: "left",
   };
 
+  console.log("IndicatorPropertyDialog rendering! indicatorProperty:", indicatorProperty, "activeBarIndicator:", activeBarIndicator);
+
   // activeBarIndicator is now {id, type} — fall back to string for legacy compat
   const instanceId =
     typeof activeBarIndicator === "object"
@@ -2887,7 +2889,9 @@ export default function IndicatorPropertyDialog({
       onHide={() => setIndicatorProperty(false)}
       centered
       contentClassName="border-0 shadow-lg modal-dark-theme"
-      style={{ borderRadius: 16 }}
+      style={{ borderRadius: 16, zIndex: 9999999 }}
+      backdropClassName="indicator-modal-backdrop"
+      enforceFocus={false}
     >
       <Modal.Header closeButton className="border-0 pb-0 px-4 pt-4">
         <Modal.Title
@@ -3029,6 +3033,9 @@ export default function IndicatorPropertyDialog({
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: var(--text-secondary);
+      }
+      .indicator-modal-backdrop {
+        z-index: 9999998 !important;
       }
     `}</style>
       </Modal.Body>

@@ -7,15 +7,16 @@ export default function MARibbonPlot({
   indicatorStyle,
   indicatorSeriesRef,
   addSeries,
+  chart,
 }) {
   useEffect(() => {
     if (!result) return;
 
     if (indicatorSeriesRef.current?.MA_RIBBON) {
       Object.values(indicatorSeriesRef.current.MA_RIBBON).forEach((s) => {
-        if (s?.setData) {
+        if (s && typeof s.setData === "function") {
           try {
-            s.setData([]);
+            chart?.removeSeries(s);
           } catch {}
         }
       });

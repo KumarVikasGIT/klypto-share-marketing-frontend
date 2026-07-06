@@ -87,9 +87,11 @@ export default function IndicatorBar({
         </button>
 
         <button
-          onClick={() => {
-            setActiveBarIndicator(indicator);
-            setIndicatorProperty((prev) => !prev);
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log("Settings clicked! Indicator:", indicator, "Type:", type);
+            setActiveBarIndicator({ id: indicator, type });
+            setIndicatorProperty(true);
           }}
         >
           <IoSettingsOutline size={16} />

@@ -57,7 +57,10 @@ const GoToDateDialog = ({ onClose, onGoTo }) => {
         </div>
 
         {/* Inputs */}
-        <div className="p-4 flex gap-2">
+        <div 
+          className="p-4 flex gap-2" 
+          onKeyDown={(e) => { if (e.key === 'Enter') handleGoTo(); }}
+        >
           <div className="flex-1 flex items-center bg-[#2a2e39] border border-[#2962ff] rounded p-2 focus-within:ring-1 ring-[#2962ff]">
             <input 
               type="text" 
