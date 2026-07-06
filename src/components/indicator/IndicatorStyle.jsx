@@ -263,7 +263,7 @@ export default function IndicatorStyle({
                         position: "fixed",
                         top: palettePos.top,
                         left: palettePos.left,
-                        zIndex: 99999,
+                        zIndex: 99999999,
                         borderRadius: 10,
                         boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
                         overflow: "hidden",

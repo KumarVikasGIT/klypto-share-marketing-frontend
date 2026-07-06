@@ -1,4 +1,3 @@
-// import "bootstrap/dist/css/bootstrap.min.css"; //this is for temp
 import {
   createChart,
   CandlestickSeries,
@@ -69,6 +68,8 @@ export default function Candlestick() {
   const indicatorDataRef = useRef({});
   const panesRef = useRef({});
   const paneIndexRef = useRef({});
+  const chartDisposedRef = useRef(false);
+  const allCreatedSeriesRef = useRef([]);
   const syncingRef = useRef(false);
   const fetchedIndicatorsRef = useRef(new Set());
   const socketRef = useRef(null);
@@ -79,7 +80,6 @@ export default function Candlestick() {
   const scannerIntervalRef = useRef(null);
   const pyodideRef = useRef(null);
   const [isDeployed, setIsDeployed] = useState(false);
-  const [isPyodideReady, setIsPyodideReady] = useState(false);
 
   const normalize = (s) => s?.replace(/\s+/g, " ").trim().toUpperCase();
   const isSameSymbolName = (s1, s2) => {
@@ -97,7 +97,6 @@ export default function Candlestick() {
 
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -131,17 +130,15 @@ export default function Candlestick() {
     };
   });
 
-  const { 
-    activeTool, 
-    setActiveTool, 
-    clearAllDrawings, 
-    selectedLine, 
-    toolboxPos, 
+  const {
+    activeTool,
+    setActiveTool,
+    clearAllDrawings,
+    selectedLine,
+    toolboxPos,
     updateLine,
-    deleteLine, 
+    deleteLine,
     closeToolbox,
-    onDragLine,
-    getAnchorY
   } = useDrawingTools({
     chartRef,
     seriesRef,
@@ -186,16 +183,24 @@ plot_markers(markers)`,
     setIsWatchlistOpen(false);
     setIsDetailsOpen(false);
     if (activeTab === "Alerts") setActiveTab("Chart");
-    
+
     setPredictResultData([]);
     setPredictionStatus(null);
 
     // Fetch from REST API directly
-    apiService.get("/api/predictResult")
+    apiService
+      .get("/api/predictResult")
       .then((res) => {
-        const results = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        const results = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res)
+            ? res
+            : [];
         if (results.length > 0) {
-          console.log("[AI PREDICTION] REST results loaded on click:", results.length);
+          console.log(
+            "[AI PREDICTION] REST results loaded on click:",
+            results.length,
+          );
           setIsDepthOpen(true);
 
           const mapped = results.map((item) => ({
@@ -225,7 +230,8 @@ plot_markers(markers)`,
 
           // Also plot on chart
           const signals = results.map((item) => {
-            let timeStr = item.entry_time || item.created_at || new Date().toISOString();
+            let timeStr =
+              item.entry_time || item.created_at || new Date().toISOString();
             timeStr = timeStr.replace(" ", "T");
             return {
               symbol: item.symbol,
@@ -454,8 +460,11 @@ plot_markers(markers)`,
     };
 
     const handleAiPredictionStatus = (data) => {
-      console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_PREDICTION_STATUS}:`, data);
-      
+      console.log(
+        `[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_PREDICTION_STATUS}:`,
+        data,
+      );
+
       setPredictionStatus(data);
       if (data.status === "running") {
         setIsPredicting(true);
@@ -473,11 +482,19 @@ plot_markers(markers)`,
             }
 
             // No socket results — fetch from REST API as fallback
-            apiService.get("/api/predictResult")
+            apiService
+              .get("/api/predictResult")
               .then((res) => {
-                const results = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+                const results = Array.isArray(res?.data)
+                  ? res.data
+                  : Array.isArray(res)
+                    ? res
+                    : [];
                 if (results.length > 0) {
-                  console.log("[AI PREDICTION] Fallback REST results loaded:", results.length);
+                  console.log(
+                    "[AI PREDICTION] Fallback REST results loaded:",
+                    results.length,
+                  );
                   setIsDepthOpen(true);
 
                   const mapped = results.map((item) => ({
@@ -507,7 +524,10 @@ plot_markers(markers)`,
 
                   // Also plot on chart
                   const signals = results.map((item) => {
-                    let timeStr = item.entry_time || item.created_at || new Date().toISOString();
+                    let timeStr =
+                      item.entry_time ||
+                      item.created_at ||
+                      new Date().toISOString();
                     timeStr = timeStr.replace(" ", "T");
                     return {
                       symbol: item.symbol,
@@ -521,7 +541,9 @@ plot_markers(markers)`,
                   setIsDeployed(true);
                   setDeployedStrategyCode("API_PREDICTION");
                 } else {
-                  console.log("[AI PREDICTION] REST fallback returned no results.");
+                  console.log(
+                    "[AI PREDICTION] REST fallback returned no results.",
+                  );
                 }
               })
               .catch((err) => {
@@ -535,7 +557,10 @@ plot_markers(markers)`,
     };
 
     const handleAiTradeSignal = (tradeData) => {
-      console.log(`[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_TRADE_SIGNAL}:`, tradeData);
+      console.log(
+        `[STRATEGY SOCKET] ${EVENTS.STRATEGY.AI_TRADE_SIGNAL}:`,
+        tradeData,
+      );
       // Ensure Results pane is open
       setIsDepthOpen(true);
 
@@ -549,13 +574,14 @@ plot_markers(markers)`,
         },
         tick: {
           datetime: tradeData.entry_time,
-        }
+        },
       };
 
       setPredictResultData((prev) => [mappedSignal, ...prev]);
 
       // Add to dashboardSignals so it plots on the chart
-      let timeStr = tradeData.entry_time || tradeData.timestamp || new Date().toISOString();
+      let timeStr =
+        tradeData.entry_time || tradeData.timestamp || new Date().toISOString();
       timeStr = timeStr.replace(" ", "T");
       setDashboardSignals((prev) => [
         ...prev,
@@ -564,9 +590,9 @@ plot_markers(markers)`,
           signalType: tradeData.trade_type,
           timestamp: timeStr,
           segment: "SCRIPT",
-        }
+        },
       ]);
-      
+
       setIsDeployed(true);
       setDeployedStrategyCode("API_PREDICTION");
     };
@@ -574,12 +600,15 @@ plot_markers(markers)`,
     strategySocket.onAny((eventName, ...args) => {
       // console.log(`[STRATEGY SOCKET] ${eventName}:`, args);
     });
-    
+
     strategySocket.on(EVENTS.STRATEGY.PROGRESS, handleScannerProgress);
     strategySocket.on(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
     strategySocket.on(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
     strategySocket.on(EVENTS.STRATEGY.ERROR, handleScannerError);
-    strategySocket.on(EVENTS.STRATEGY.AI_PREDICTION_STATUS, handleAiPredictionStatus);
+    strategySocket.on(
+      EVENTS.STRATEGY.AI_PREDICTION_STATUS,
+      handleAiPredictionStatus,
+    );
     strategySocket.on(EVENTS.STRATEGY.AI_TRADE_SIGNAL, handleAiTradeSignal);
 
     return () => {
@@ -588,7 +617,10 @@ plot_markers(markers)`,
       strategySocket.off(EVENTS.STRATEGY.COMPLETE, handleScannerComplete);
       strategySocket.off(EVENTS.STRATEGY.NEW_SIGNAL, handleNewScannerSignal);
       strategySocket.off(EVENTS.STRATEGY.ERROR, handleScannerError);
-      strategySocket.off(EVENTS.STRATEGY.AI_PREDICTION_STATUS, handleAiPredictionStatus);
+      strategySocket.off(
+        EVENTS.STRATEGY.AI_PREDICTION_STATUS,
+        handleAiPredictionStatus,
+      );
       strategySocket.off(EVENTS.STRATEGY.AI_TRADE_SIGNAL, handleAiTradeSignal);
     };
   }, []);
@@ -647,9 +679,10 @@ plot_markers(markers)`,
               size: 1,
             });
           } else {
-            console.log(
+            console
+              .log
               // `Skipped marker for ${item.symbol}: doesn't match selected ${selectedCurrency?.name} or ${selectedCurrency?.symbol}`,
-            );
+              ();
           }
 
           newSignals.unshift({
@@ -1034,6 +1067,8 @@ json.dumps(result)
   const prevTimeframeRef = useRef(timeframeValue);
   const prevCurrencyRef = useRef(selectedCurrency);
   const prevChartTypeRef = useRef(chartType);
+  const prevFromDateRef = useRef(fromDate);
+  const prevToDateRef = useRef(toDate);
   const currentCandleRef = useRef(null);
   const lastCandleTimeRef = useRef(null);
   const candlesRef = useRef([]);
@@ -1180,7 +1215,9 @@ json.dumps(result)
     const isContextChange =
       prevTimeframeRef.current !== timeframeValue ||
       prevCurrencyRef.current !== selectedCurrency?.name ||
-      prevChartTypeRef.current !== chartType;
+      prevChartTypeRef.current !== chartType ||
+      prevFromDateRef.current !== fromDate ||
+      prevToDateRef.current !== toDate;
 
     let indicatorsToFetch = selectedIndicator;
 
@@ -1194,9 +1231,28 @@ json.dumps(result)
     } else {
       // 🔥 Reset on timeframe / currency / chartType change
       fetchedIndicatorsRef.current.clear();
-      // We purposefully DO NOT clear indicatorSeriesRef or indicatorDataRef here.
-      // They will be overwritten with new data once the fetch completes,
-      // avoiding a visual glitch where indicators disappear during loading or disconnects.
+
+      // Clear the series data so old candles don't show, but keep the series alive
+      // so the panes don't collapse! The plot components will handle destroying them.
+      if (allCreatedSeriesRef.current) {
+        allCreatedSeriesRef.current.forEach((item) => {
+          if (
+            item &&
+            item.series &&
+            typeof item.series.setData === "function"
+          ) {
+            try {
+              item.series.setData([]);
+            } catch (e) {}
+          }
+        });
+      }
+
+      // Explicitly clear old data so it doesn't render over the new symbol's chart
+      indicatorDataRef.current = {};
+      // DO NOT clear indicatorSeriesRef, panesRef, paneIndexRef!
+      // Keeping them allows the plot components to explicitly destroy the old series
+      // when they receive new data, preventing memory leaks and pane jumping.
     }
 
     setIndicatorLoading(true);
@@ -1212,38 +1268,93 @@ json.dumps(result)
       fetchedIndicatorsRef.current.add(ind.id),
     );
 
+    // ✅ Explicitly clean up REMOVED indicators
+    const currentIds = new Set(selectedIndicator?.map((ind) => ind.id) || []);
+    const removedIds = [...fetchedIndicatorsRef.current].filter(
+      (id) => !currentIds.has(id),
+    );
+
+    if (removedIds.length > 0) {
+      removedIds.forEach((id) => {
+        // Remove physical series
+        allCreatedSeriesRef.current = allCreatedSeriesRef.current.filter(
+          (item) => {
+            if (item.id === id) {
+              try {
+                chartRef.current?.removeSeries(item.series);
+              } catch (e) {}
+              return false;
+            }
+            return true;
+          },
+        );
+        // Remove tracking data
+        fetchedIndicatorsRef.current.delete(id);
+        if (indicatorDataRef.current) delete indicatorDataRef.current[id];
+        if (indicatorSeriesRef.current) delete indicatorSeriesRef.current[id];
+        if (panesRef.current) delete panesRef.current[id];
+        if (paneIndexRef.current) delete paneIndexRef.current[id];
+      });
+      setTimeout(() => setIndicatorUpdateTrigger((v) => v + 1), 0);
+    }
+
     // update previous values
     prevTimeframeRef.current = timeframeValue;
     prevCurrencyRef.current = selectedCurrency?.name;
     prevChartTypeRef.current = chartType;
-    // NOTE: fromDate and toDate are intentionally excluded — they affect candle data,
-    // not indicator fetching. Including them caused an infinite loop when GoToDate
-    // updated fromDate, which re-triggered this effect and set state repeatedly.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIndicator, selectedCurrency?.name, timeframeValue, chartType]);
+    prevFromDateRef.current = fromDate;
+    prevToDateRef.current = toDate;
+  }, [
+    selectedIndicator,
+    selectedCurrency?.name,
+    timeframeValue,
+    chartType,
+    fromDate,
+    toDate,
+  ]);
 
   const toggleIndicatorVisibility = (indicator) => {
     const currentVisible = indicatorVisibility[indicator] ?? true;
     const newVisibility = !currentVisible;
+
+    // Apply visibility to any manually tracked series in the specific component
     const seriesGroup = indicatorSeriesRef.current?.[indicator];
     if (seriesGroup) {
-      if (typeof seriesGroup.applyOptions === "function") {
-        seriesGroup.applyOptions({ visible: newVisibility });
-      } else {
-        Object.values(seriesGroup).forEach((series) => {
-          if (series?.applyOptions) {
+      Object.entries(seriesGroup).forEach(([key, series]) => {
+        if (key.startsWith("_")) return;
+        if (series && typeof series.applyOptions === "function") {
+          try {
             series.applyOptions({ visible: newVisibility });
+          } catch (e) {
+            console.warn("Failed to hide series", e);
+          }
+        }
+      });
+      if (seriesGroup._priceLines) {
+        Object.values(seriesGroup._priceLines).forEach((line) => {
+          if (line?.applyOptions) {
+            line.applyOptions({ visible: newVisibility });
           }
         });
-        if (seriesGroup._priceLines) {
-          Object.values(seriesGroup._priceLines).forEach((line) => {
-            if (line?.applyOptions) {
-              line.applyOptions({ visible: newVisibility });
-            }
-          });
-        }
       }
     }
+
+    // ✅ Fallback and globally apply visibility to ALL series that belong to this indicator
+    if (allCreatedSeriesRef.current) {
+      allCreatedSeriesRef.current.forEach((item) => {
+        if (
+          item &&
+          item.id === indicator &&
+          item.series &&
+          typeof item.series.applyOptions === "function"
+        ) {
+          try {
+            item.series.applyOptions({ visible: newVisibility });
+          } catch (e) {}
+        }
+      });
+    }
+
     setIndicatorVisibility((prev) => ({
       ...prev,
       [indicator]: newVisibility,
@@ -1268,8 +1379,9 @@ json.dumps(result)
 
     // Find the maximum pane index currently in use to avoid reusing indices
     const currentIndices = Object.values(paneIndexRef.current);
-    const maxIndex = currentIndices.length > 0 ? Math.max(...currentIndices) : 0;
-    
+    const maxIndex =
+      currentIndices.length > 0 ? Math.max(...currentIndices) : 0;
+
     const nextPane = maxIndex + 1;
     paneIndexRef.current[indicator] = nextPane;
 
@@ -1321,6 +1433,8 @@ json.dumps(result)
       paneIndex,
     );
 
+    allCreatedSeriesRef.current.push({ id: paneKey, series });
+
     if (paneIndex !== 0) {
       try {
         series.priceScale().applyOptions({
@@ -1358,7 +1472,9 @@ json.dumps(result)
               "at index",
               paneIndex,
             );
-            const indType = selectedIndicatorRef.current?.find(ind => ind.id === indicator)?.type;
+            const indType = selectedIndicatorRef.current?.find(
+              (ind) => ind.id === indicator,
+            )?.type;
             panesRef.current[indicator] = {
               chart: chartRef.current,
               pane: paneObj,
@@ -1377,39 +1493,68 @@ json.dumps(result)
       }
     }
 
-    // ✅ GLOBAL DATA SANITIZATION
+    // ✅ GLOBAL DATA SANITIZATION (Optimized for performance)
     // Protect Lightweight Charts from crashing when indicators pass null/NaN values
     const originalSetData = series.setData.bind(series);
     series.setData = (data) => {
       if (!Array.isArray(data)) return originalSetData(data);
 
-      const cleanedData = data.map((d) => {
-        if (!d || typeof d !== "object") return null;
-        
+      const cleanedData = [];
+      for (let i = 0; i < data.length; i++) {
+        const d = data[i];
+        if (!d || typeof d !== "object") continue;
+
         // Handle Line/Histogram/Area/Baseline series
         if ("value" in d) {
           if (d.value === null || Number.isNaN(Number(d.value))) {
-            return { time: d.time }; // Convert to whitespace gap
+            cleanedData.push({ time: d.time }); // Convert to whitespace gap
+          } else {
+            // Only create a new object if necessary, otherwise use as-is (but force number)
+            // To avoid object allocation, we mutate if we can, but since it's React state,
+            // we should probably avoid mutation. Creating an object is fine if we don't spread.
+            cleanedData.push({
+              time: d.time,
+              value: Number(d.value),
+              color: d.color,
+              topColor: d.topColor,
+              bottomColor: d.bottomColor,
+              lineColor: d.lineColor,
+              lineWidth: d.lineWidth,
+              close: d.close,
+              upperChannel: d.upperChannel,
+              lowerChannel: d.lowerChannel,
+              atr: d.atr,
+            });
           }
-          return { ...d, value: Number(d.value) }; // Force primitive number
         }
-        
         // Handle Candlestick/Bar series
         else if ("close" in d) {
           if (d.close === null || Number.isNaN(Number(d.close))) {
-            return { time: d.time }; // Convert to whitespace gap
+            cleanedData.push({ time: d.time });
+          } else {
+            cleanedData.push({
+              time: d.time,
+              open: d.open != null ? Number(d.open) : undefined,
+              high: d.high != null ? Number(d.high) : undefined,
+              low: d.low != null ? Number(d.low) : undefined,
+              close: Number(d.close),
+              color: d.color,
+              borderColor: d.borderColor,
+              wickColor: d.wickColor,
+            });
           }
-          return {
-            ...d,
-            open: d.open != null ? Number(d.open) : undefined,
-            high: d.high != null ? Number(d.high) : undefined,
-            low: d.low != null ? Number(d.low) : undefined,
-            close: Number(d.close)
-          };
+        } else {
+          cleanedData.push(d);
         }
+      }
 
-        return d;
-      }).filter(Boolean); // Remove any null mappings
+      // Cleanup undefined fields without spreading
+      for (let i = 0; i < cleanedData.length; i++) {
+        const item = cleanedData[i];
+        for (const key in item) {
+          if (item[key] === undefined) delete item[key];
+        }
+      }
 
       return originalSetData(cleanedData);
     };
@@ -1441,12 +1586,10 @@ json.dumps(result)
     });
   }
 
-
-
   //  ✅ INDICATOR REMOVAL — accepts instance id
   const removeIndicator = useCallback((instanceId) => {
     setSelectedIndicator((prev) => prev.filter((i) => i.id !== instanceId));
-    
+
     const entry = indicatorSeriesRef.current[instanceId];
     if (!entry) return;
 
@@ -1455,25 +1598,26 @@ json.dumps(result)
     const chart = pane?.chart ?? chartRef.current;
     if (!chart) return;
 
-    const panesCountBefore = typeof chart.panes === "function" ? chart.panes().length : 0;
+    const panesCountBefore =
+      typeof chart.panes === "function" ? chart.panes().length : 0;
 
-    const removeSeriesDeep = (item) => {
-      if (!item) return;
-      
-      if (Array.isArray(item)) {
-        item.forEach(removeSeriesDeep);
-      } else if (typeof item.setData === "function") {
-        try {
-          chart.removeSeries(item);
-        } catch {}
-      } else if (typeof item === "object") {
-        Object.values(item).forEach(removeSeriesDeep);
-      }
-    };
+    // Use global series tracking to remove ALL series associated with this indicator
+    if (allCreatedSeriesRef.current) {
+      allCreatedSeriesRef.current = allCreatedSeriesRef.current.filter(
+        (item) => {
+          if (item.id === instanceId) {
+            try {
+              chart.removeSeries(item.series);
+            } catch (e) {}
+            return false;
+          }
+          return true;
+        },
+      );
+    }
 
-    removeSeriesDeep(entry);
-    
-    const panesCountAfter = typeof chart.panes === "function" ? chart.panes().length : 0;
+    const panesCountAfter =
+      typeof chart.panes === "function" ? chart.panes().length : 0;
     const paneIndex = paneIndexRef.current[instanceId];
 
     if (paneIndex !== undefined && paneIndex !== 0) {
@@ -1510,18 +1654,34 @@ json.dumps(result)
   }, []);
   // ----------Main chart------------
   useEffect(() => {
+    chartDisposedRef.current = false;
     if (!containerRef.current) return;
     if (chartRef.current) return; // Prevent recreating the chart on every render
 
     const chart = createChart(containerRef.current, {
       ...ChartProprties,
     });
+
+    // Auto-cleanup our global refs whenever ANY series is physically removed
+    const originalRemoveSeries = chart.removeSeries.bind(chart);
+    chart.removeSeries = (series) => {
+      if (allCreatedSeriesRef.current) {
+        allCreatedSeriesRef.current = allCreatedSeriesRef.current.filter(
+          (item) => item.series !== series,
+        );
+      }
+      originalRemoveSeries(series);
+    };
+
     chartRef.current = chart;
     attachSync(chart);
 
     return () => {
-      chart.remove();
-      chartRef.current = null;
+      chartDisposedRef.current = true;
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
     };
   }, []); // Run only once
 
@@ -1552,7 +1712,7 @@ json.dumps(result)
     if (group && typeof group === "object" && !group.priceScale) {
       // It's a grouped multi-series indicator. Extract keys that map to actual Lightweight Charts series
       const seriesKeys = Object.keys(group).filter(
-        (k) => group[k] && typeof group[k].setData === "function"
+        (k) => group[k] && typeof group[k].setData === "function",
       );
       if (seriesKeys.length > 0) {
         keysToShow = seriesKeys;
@@ -1566,25 +1726,45 @@ json.dumps(result)
     }
 
     if (isSingleValue) {
-      const style = indicatorStyle?.[id]?.sma || indicatorStyle?.[id]?.ma || indicatorStyle?.[id]?.[type?.toLowerCase()] || indicatorStyle?.[type]?.sma || indicatorStyle?.[type]?.ma || indicatorStyle?.[type]?.[type?.toLowerCase()];
+      const style =
+        indicatorStyle?.[id]?.sma ||
+        indicatorStyle?.[id]?.ma ||
+        indicatorStyle?.[id]?.[type?.toLowerCase()] ||
+        indicatorStyle?.[type]?.sma ||
+        indicatorStyle?.[type]?.ma ||
+        indicatorStyle?.[type]?.[type?.toLowerCase()];
       if (style?.visible === false) return null;
       let color = style?.color;
-      
+
       const group = indicatorSeriesRef.current?.[id];
       if (group) {
-         // for single value, the series is usually the only key in the group, or it's the main type
-         const seriesKey = Object.keys(group).find(k => typeof group[k]?.options === 'function');
-         if (seriesKey) {
-            const opts = group[seriesKey].options();
-            color = opts.color || opts.lineColor || opts.topColor || color;
-         }
+        // for single value, the series is usually the only key in the group, or it's the main type
+        const seriesKey = Object.keys(group).find(
+          (k) => typeof group[k]?.options === "function",
+        );
+        if (seriesKey) {
+          const opts = group[seriesKey].options();
+          color = opts.color || opts.lineColor || opts.topColor || color;
+        }
       }
       color = color || "#333";
-      
-      const val = value != null ? (typeof value === 'object' ? Object.values(value)[0] : value) : null;
+
+      const val =
+        value != null
+          ? typeof value === "object"
+            ? Object.values(value)[0]
+            : value
+          : null;
       return (
-        <span id={`indicator-val-${id}-main`} style={{ color }} title={type} data-type={type}>
-          {val != null && Number.isFinite(Number(val)) ? Number(val).toFixed(2) : emptySymbol}
+        <span
+          id={`indicator-val-${id}-main`}
+          style={{ color }}
+          title={type}
+          data-type={type}
+        >
+          {val != null && Number.isFinite(Number(val))
+            ? Number(val).toFixed(2)
+            : emptySymbol}
           {val != null && showPercent ? "%" : ""}
         </span>
       );
@@ -1615,26 +1795,35 @@ json.dumps(result)
             }
           }
 
-          const style = indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
+          const style =
+            indicatorStyle?.[id]?.[key] || indicatorStyle?.[type]?.[key];
           if (style?.visible === false) return false;
           // Return true even if value is null, so the span is rendered for crosshair DOM updates
-          return true; 
+          return true;
         })
         .map((key) => {
           const val = value ? value[key] : null;
-          let color = indicatorStyle?.[id]?.[key]?.color || indicatorStyle?.[type]?.[key]?.color;
-          
+          let color =
+            indicatorStyle?.[id]?.[key]?.color ||
+            indicatorStyle?.[type]?.[key]?.color;
+
           // Dynamically read exact color from the plotted series to guarantee accuracy
           const group = indicatorSeriesRef.current?.[id];
-          if (group && group[key] && typeof group[key].options === 'function') {
+          if (group && group[key] && typeof group[key].options === "function") {
             const opts = group[key].options();
             color = opts.color || opts.lineColor || opts.topColor || color;
           }
-          
+
           color = color || "#333";
 
           return (
-            <span id={`indicator-val-${id}-${key}`} key={key} style={{ marginRight: 8, color }} title={key} data-type={type}>
+            <span
+              id={`indicator-val-${id}-${key}`}
+              key={key}
+              style={{ marginRight: 8, color }}
+              title={key}
+              data-type={type}
+            >
               {val != null && Number.isFinite(Number(val))
                 ? `${Number(val).toFixed(2)}${showPercent ? "%" : ""}`
                 : emptySymbol}
@@ -1653,6 +1842,7 @@ json.dumps(result)
       if (!Component) return null;
 
       const data = indicatorDataRef.current?.[id];
+      if (!data) return null; // Defer render until data is loaded to prevent empty pane
 
       // Scoped proxy: plot components write indicatorSeriesRef.current[type]
       // but we remap it to indicatorSeriesRef.current[id] so each instance is independent
@@ -1754,22 +1944,25 @@ json.dumps(result)
 
         const price = param.seriesData?.get(series);
         if (price !== undefined) {
-          indicatorValues[lineName] = typeof price === "object" ? price.value : price;
+          indicatorValues[lineName] =
+            typeof price === "object" ? price.value : price;
         }
       });
 
       const keys = Object.keys(indicatorValues);
       Object.entries(indicatorValues).forEach(([key, val]) => {
         let el = document.getElementById(`indicator-val-${indicator}-${key}`);
-        
+
         // Fallback for single-value indicators which render under the '-main' ID
         if (!el && keys.length === 1) {
           el = document.getElementById(`indicator-val-${indicator}-main`);
         }
-        
+
         if (el) {
-          const isAroon = el.getAttribute('data-type') === 'AROON';
-          el.textContent = Number.isFinite(val) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+          const isAroon = el.getAttribute("data-type") === "AROON";
+          el.textContent = Number.isFinite(val)
+            ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}`
+            : "Ø";
         }
       });
     });
@@ -1792,36 +1985,54 @@ json.dumps(result)
         charts.forEach((c) => c.clearCrosshairPosition?.());
         // Since we bypassed React state for live indicators, we need to show the last available data if crosshair leaves
         Object.keys(indicatorSeriesRef.current).forEach((indicator) => {
-          const mainEl = document.getElementById(`indicator-val-${indicator}-main`);
+          const mainEl = document.getElementById(
+            `indicator-val-${indicator}-main`,
+          );
           const group = indicatorSeriesRef.current[indicator];
-          
+
           if (mainEl) {
             let val = null;
             if (group) {
-              const seriesKey = Object.keys(group).find(k => group[k] && typeof group[k].data === 'function');
+              const seriesKey = Object.keys(group).find(
+                (k) => group[k] && typeof group[k].data === "function",
+              );
               if (seriesKey) {
-                 const dataArr = group[seriesKey].data();
-                 if (dataArr && dataArr.length > 0) {
-                    const lastData = dataArr[dataArr.length - 1];
-                    val = lastData.value !== undefined ? lastData.value : lastData.close;
-                 }
+                const dataArr = group[seriesKey].data();
+                if (dataArr && dataArr.length > 0) {
+                  const lastData = dataArr[dataArr.length - 1];
+                  val =
+                    lastData.value !== undefined
+                      ? lastData.value
+                      : lastData.close;
+                }
               }
             }
-            const isAroon = mainEl.getAttribute('data-type') === 'AROON';
-            mainEl.textContent = val != null && Number.isFinite(Number(val)) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+            const isAroon = mainEl.getAttribute("data-type") === "AROON";
+            mainEl.textContent =
+              val != null && Number.isFinite(Number(val))
+                ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}`
+                : "Ø";
           } else if (group) {
             Object.keys(group).forEach((key) => {
-              const el = document.getElementById(`indicator-val-${indicator}-${key}`);
+              const el = document.getElementById(
+                `indicator-val-${indicator}-${key}`,
+              );
               const series = group[key];
-              if (el && series && typeof series.data === 'function') {
+              if (el && series && typeof series.data === "function") {
                 const dataArr = series.data();
                 if (dataArr && dataArr.length > 0) {
-                   const lastData = dataArr[dataArr.length - 1];
-                   let val = lastData.value !== undefined ? lastData.value : lastData.close;
-                   const isAroon = el.getAttribute('data-type') === 'AROON';
-                   el.textContent = val != null && Number.isFinite(Number(val)) ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}` : "Ø";
+                  const lastData = dataArr[dataArr.length - 1];
+                  let val =
+                    lastData.value !== undefined
+                      ? lastData.value
+                      : lastData.close;
+                  const isAroon = el.getAttribute("data-type") === "AROON";
+                  el.textContent =
+                    val != null && Number.isFinite(Number(val))
+                      ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}`
+                      : "Ø";
                 } else {
-                   el.textContent = "Ø";
+                  el.textContent = "Ø";
                 }
               }
             });
@@ -1874,6 +2085,9 @@ json.dumps(result)
     toDate,
     socketRef,
     candlesRef,
+    onIndicatorLoaded: () => {
+      setIndicatorUpdateTrigger((v) => v + 1);
+    },
   });
 
   // ATTACH MAIN CHART
@@ -1928,7 +2142,7 @@ json.dumps(result)
     },
     handleHistoricalData: (response) => {
       console.log("HISTORICAL DATA RESPONSE", response?.data);
-      if (!chartRef.current) return;
+      if (!chartRef.current || chartDisposedRef.current) return;
 
       const raw = response?.data || [];
 
@@ -1949,17 +2163,25 @@ json.dumps(result)
       const symbolFromResponse =
         response?.symbol || raw[0]?.symbol || selectedCurrency?.name;
 
-      const parsedData = new Array(raw?.length);
+      const parsedData = [];
       for (let i = 0; i < raw.length; i++) {
         const d = raw[i];
-        parsedData[i] = {
-          time: Number(d.time) + IST_OFFSET,
-          open: parseFloat(d.open),
-          high: parseFloat(d.high),
-          low: parseFloat(d.low),
-          close: parseFloat(d.close),
-          volume: parseFloat(d.volume || 0),
-        };
+        const time = Number(d.time) + IST_OFFSET;
+        const open = parseFloat(d.open);
+        const high = parseFloat(d.high);
+        const low = parseFloat(d.low);
+        const close = parseFloat(d.close);
+        const volume = parseFloat(d.volume || 0);
+
+        if (
+          !Number.isNaN(time) &&
+          !Number.isNaN(open) &&
+          !Number.isNaN(high) &&
+          !Number.isNaN(low) &&
+          !Number.isNaN(close)
+        ) {
+          parsedData.push({ time, open, high, low, close, volume });
+        }
       }
       parsedData.sort((a, b) => a.time - b.time);
 
@@ -2042,9 +2264,13 @@ json.dumps(result)
             );
             seriesRef.current.customChartType = "line";
           }
-          seriesRef.current.setData(
-            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
-          );
+          try {
+            seriesRef.current.setData(
+              data?.map((d) => ({ time: d.time, value: Number(d.close) })),
+            );
+          } catch (e) {
+            console.error("Line setData error:", e);
+          }
           fetchStrategyMarkers();
           break;
         case "bar":
@@ -2055,7 +2281,11 @@ json.dumps(result)
             );
             seriesRef.current.customChartType = "bar";
           }
-          seriesRef.current.setData(data);
+          try {
+            seriesRef.current.setData(data);
+          } catch (e) {
+            console.error("Bar setData error:", e);
+          }
           fetchStrategyMarkers();
           break;
         case "area":
@@ -2066,9 +2296,13 @@ json.dumps(result)
             );
             seriesRef.current.customChartType = "area";
           }
-          seriesRef.current.setData(
-            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
-          );
+          try {
+            seriesRef.current.setData(
+              data?.map((d) => ({ time: d.time, value: Number(d.close) })),
+            );
+          } catch (e) {
+            console.error("Area setData error:", e);
+          }
           break;
         case "baseline":
           if (!seriesRef.current) {
@@ -2082,9 +2316,13 @@ json.dumps(result)
               baseValue: { type: "price", price: Number(data[0]?.close ?? 0) },
             });
           }
-          seriesRef.current.setData(
-            data?.map((d) => ({ time: d.time, value: Number(d.close) })),
-          );
+          try {
+            seriesRef.current.setData(
+              data?.map((d) => ({ time: d.time, value: Number(d.close) })),
+            );
+          } catch (e) {
+            console.error("Baseline setData error:", e);
+          }
           break;
         case "histogram":
           if (!seriesRef.current) {
@@ -2094,17 +2332,21 @@ json.dumps(result)
             );
             seriesRef.current.customChartType = "histogram";
           }
-          seriesRef.current.setData(
-            data?.map((d, index, arr) => {
-              const prev = arr[index - 1];
-              const isUp = prev ? d.close >= prev.close : true;
-              return {
-                time: d.time,
-                value: d.volume,
-                color: isUp ? "#22c55e" : "#ef4444",
-              };
-            }),
-          );
+          try {
+            seriesRef.current.setData(
+              data?.map((d, index, arr) => {
+                const prev = arr[index - 1];
+                const isUp = prev ? d.close >= prev.close : true;
+                return {
+                  time: d.time,
+                  value: d.volume,
+                  color: isUp ? "#22c55e" : "#ef4444",
+                };
+              }),
+            );
+          } catch (e) {
+            console.error("Histogram setData error:", e);
+          }
           break;
         case "heikinashi":
           if (!seriesRef.current) {
@@ -2114,7 +2356,11 @@ json.dumps(result)
             );
             seriesRef.current.customChartType = "heikinashi";
           }
-          seriesRef.current.setData(convertToHeikinAshi(data));
+          try {
+            seriesRef.current.setData(convertToHeikinAshi(data));
+          } catch (e) {
+            console.error("HA setData error:", e);
+          }
           break;
         case "hollowcandles":
           if (!seriesRef.current) {
@@ -2124,7 +2370,11 @@ json.dumps(result)
             );
             seriesRef.current.customChartType = "hollowcandles";
           }
-          seriesRef.current.setData(data);
+          try {
+            seriesRef.current.setData(data);
+          } catch (e) {
+            console.error("Hollow setData error:", e);
+          }
           break;
         default:
           if (!seriesRef.current) {
@@ -2134,38 +2384,17 @@ json.dumps(result)
             );
             seriesRef.current.customChartType = chartType;
           }
-          seriesRef.current.setData(data);
+          try {
+            seriesRef.current.setData(data);
+          } catch (e) {
+            console.error("Default setData error:", e);
+          }
       }
 
       seriesReadyRef.current = true;
 
-      if (
-        selectedIndicatorRef.current &&
-        selectedIndicatorRef.current.length > 0
-      ) {
-        fetchIndicatorData(
-          selectedIndicatorRef.current,
-          selectedCurrencyRef.current,
-          timeframeValue,
-        )
-          .then(() => {
-            setIndicatorUpdateTrigger((v) => v + 1);
-            // Defer overlay removal: give React one full render cycle + a
-            // small buffer so indicator Plot useEffects (SSL, RSI, etc.)
-            // complete their series.setData() calls before the overlay lifts.
-            setTimeout(() => {
-              setMainChartLoading(false);
-              symbolTransitioningRef.current = false;
-              setSymbolTransitioning(false);
-            }, 300);
-          })
-          .catch(() => {
-            // Even on error, lift the overlay
-            setMainChartLoading(false);
-            symbolTransitioningRef.current = false;
-            setSymbolTransitioning(false);
-          });
-      }
+      // Sequential indicator fetch removed to enable parallel loading.
+      // Indicators are fetched simultaneously via the selectedIndicator useEffect.
 
       if (
         lastDeployedMarkersRef.current &&
@@ -2217,15 +2446,9 @@ json.dumps(result)
 
         chartRef.current?.timeScale().fitContent();
 
-        // If there are indicators, keep overlay until they load too
-        if (selectedIndicatorRef.current?.length > 0) {
-          // overlay lifted by indicator fetch .finally() below
-        } else {
-          // No indicators — lift overlay now
-          setMainChartLoading(false);
-          symbolTransitioningRef.current = false;
-          setSymbolTransitioning(false);
-        }
+        setMainChartLoading(false);
+        symbolTransitioningRef.current = false;
+        setSymbolTransitioning(false);
       }, 150);
     },
     handleHistoricalError: (err) => {
@@ -2241,7 +2464,18 @@ json.dumps(result)
         const tickSymbol = normalize(tick.symbol);
 
         if (!isSameSymbolName(tickSymbol, activeSymbol)) return;
-        if (!seriesRef.current || !seriesReadyRef.current) return;
+
+        console.log(
+          `[LIVE TICK] Symbol: ${tickSymbol}, Active: ${activeSymbol}`,
+          tick,
+        );
+
+        if (
+          !seriesRef.current ||
+          !seriesReadyRef.current ||
+          chartDisposedRef.current
+        )
+          return;
 
         let rawTickTime = tick?.data?.time;
         let tickTime = Number(rawTickTime);
@@ -2251,14 +2485,6 @@ json.dumps(result)
         }
         if (tickTime > 10000000000) tickTime = Math.floor(tickTime / 1000);
         if (!Number.isFinite(tickTime)) return;
-
-        // Block ticks after 3:30 PM IST (930 minutes)
-        const dateObj = new Date(tickTime * 1000);
-        const istTime = new Date(
-          dateObj.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-        );
-        const currentMinutes = istTime.getHours() * 60 + istTime.getMinutes();
-        if (currentMinutes > 930) return;
 
         const adjustedTime = tickTime + IST_OFFSET;
         const normalizedTime =
@@ -2380,7 +2606,7 @@ json.dumps(result)
         const instId = typeof inst === "object" ? inst.id : inst;
         if (instType !== indicatorType) return;
         const seriesGroup = indicatorSeriesRef.current?.[instId];
-        if (!seriesGroup) return;
+        if (!seriesGroup || chartDisposedRef.current) return;
 
         const staticKeys = [
           "upper",
@@ -2569,14 +2795,16 @@ json.dumps(result)
           display: "flex",
           flexDirection: "column",
           overflowY: "auto",
-          ...(isFullscreen ? {
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-          } : {}),
+          ...(isFullscreen
+            ? {
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 9999,
+              }
+            : {}),
         }}
       >
         <div
@@ -2624,14 +2852,18 @@ json.dumps(result)
             `}</style>
             {/* Left Panel (Watchlist or Details) */}
             <div
-              className={`left-panel-mobile ${(!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen)) ? "is-open" : ""}`}
+              className={`left-panel-mobile ${!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen) ? "is-open" : ""}`}
               style={{
                 width:
-                  (!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen))
+                  !isFullscreen &&
+                  (isWatchlistOpen || isDetailsOpen || isDepthOpen)
                     ? "300px"
                     : "0px",
                 opacity:
-                  (!isFullscreen && (isWatchlistOpen || isDetailsOpen || isDepthOpen)) ? 1 : 0,
+                  !isFullscreen &&
+                  (isWatchlistOpen || isDetailsOpen || isDepthOpen)
+                    ? 1
+                    : 0,
                 overflow: "hidden",
                 height: "100%",
                 transition:
@@ -2788,10 +3020,10 @@ json.dumps(result)
                     overflowY: "hidden",
                   }}
                 >
-                  <DrawingToolbar 
-                    activeTool={activeTool} 
-                    setActiveTool={setActiveTool} 
-                    clearAllDrawings={clearAllDrawings} 
+                  <DrawingToolbar
+                    activeTool={activeTool}
+                    setActiveTool={setActiveTool}
+                    clearAllDrawings={clearAllDrawings}
                   />
                   <div
                     className="chart-and-panes-wrapper mobile-scrollable-chart"
@@ -3255,8 +3487,8 @@ json.dumps(result)
                                       toggleIndicatorVisibility
                                     }
                                     removeIndicator={removeIndicator}
-                                    setActiveBarIndicator={() =>
-                                      setActiveBarIndicator({ id, type })
+                                    setActiveBarIndicator={
+                                      setActiveBarIndicator
                                     }
                                     setIndicatorProperty={setIndicatorProperty}
                                     setActiveSourceIndicator={() =>
@@ -3314,8 +3546,8 @@ json.dumps(result)
                                       toggleIndicatorVisibility
                                     }
                                     removeIndicator={removeIndicator}
-                                    setActiveBarIndicator={() =>
-                                      setActiveBarIndicator({ id, type })
+                                    setActiveBarIndicator={
+                                      setActiveBarIndicator
                                     }
                                     setIndicatorProperty={setIndicatorProperty}
                                     setActiveSourceIndicator={() =>
@@ -3335,169 +3567,7 @@ json.dumps(result)
                       )}
 
                       {/* -----------------OLD INDICATOR BAR (COMMENTED)------------------- */}
-                      {/*
-                      {selectedIndicator?.length > 0 && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 90,
-                            left: 8,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                            zIndex: 50,
-                          }}
-                        >
-                          <style>{`
-    .ind-btn {
-      background: transparent;
-      border: none;
-      padding: 2px;
-      cursor: pointer;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      transition: color 0.15s;
-    }
-    .ind-btn:hover { color: var(--text-primary); }
-  `}</style>
 
-                          {selectedIndicator &&
-                            selectedIndicator.map((ind) => {
-                              const { id, type } = ind;
-                              const value = liveIndicatorData[id];
-                              return (
-                                <div
-                                  key={id}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: 12,
-                                    background: "var(--bg-secondary)",
-                                    border: "1px solid var(--border-color)",
-                                    color: "var(--text-primary)",
-                                    borderRadius: 6,
-                                    padding: "0 10px",
-                                    height: 32,
-                                    fontSize: 12,
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      color: "var(--text-secondary)",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        color: "var(--text-primary)",
-                                        fontWeight: 500,
-                                      }}
-                                    >
-                                      {type}
-                                    </span>
-                                    {" : "}
-                                    {(() => {
-                                      const cfg = {
-                                        ...(indicatorConfigDefault[type] || {}),
-                                        ...(indicatorConfigs?.[id] || {}),
-                                      };
-                                      const len =
-                                        cfg?.length ?? cfg.baseLen ?? "";
-                                      const src = cfg.source ?? "";
-                                      return `${len}${src ? " " + src : ""}`;
-                                    })()}
-                                    <span style={{ display: "flex", gap: 6 }}>
-                                      {renderValue(id, type, value)}
-                                    </span>
-                                  </span>
-
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 4,
-                                    }}
-                                  >
-                                    <button
-                                      className="ind-btn"
-                                      title={
-                                        indicatorVisibility[id] === false
-                                          ? "Show Indicator"
-                                          : "Hide Indicator"
-                                      }
-                                      onClick={() =>
-                                        toggleIndicatorVisibility(id)
-                                      }
-                                    >
-                                      {indicatorVisibility[id] === false ? (
-                                        <IoEyeOffOutline size={15} />
-                                      ) : (
-                                        <IoEyeOutline size={15} />
-                                      )}
-                                    </button>
-
-                                    <button
-                                      className="ind-btn"
-                                      title="Settings"
-                                      onClick={() => {
-                                        setActiveBarIndicator({ id, type });
-                                        setIndicatorProperty((prev) => !prev);
-                                      }}
-                                    >
-                                      <IoSettingsOutline size={14} />
-                                    </button>
-
-                                    <button
-                                      className="ind-btn"
-                                      title="Source code"
-                                      onClick={() => {
-                                        setActiveSourceIndicator(type);
-                                        setShowSourcePanel(true);
-                                      }}
-                                    >
-                                      <FaCode size={14} />
-                                    </button>
-
-                                    <button
-                                      className="ind-btn"
-                                      title="Remove"
-                                      onClick={() => removeIndicator(id)}
-                                    >
-                                      <IoCloseSharp size={16} />
-                                    </button>
-
-                                    <button
-                                      className="ind-btn"
-                                      title="More"
-                                      style={{ marginLeft: 4 }}
-                                    >
-                                      <FiMoreHorizontal size={16} />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
-                                  {showAlertForm && (
-                                    <IndicatorAlert
-                                      onClose={closeAlert}
-                                      value={value}
-                                      liveOhlcv={liveOhlcv}
-                                      symbol={selectedCurrency}
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
-                      */}
                       {/* {selectedIndicator?.map((indicator, index) => {
                 const value = liveIndicatorData[indicator];
                 const paneIndex = paneIndexRef.current[indicator];
@@ -3692,60 +3762,60 @@ json.dumps(result)
 
             {/* Right Sidebar */}
             {!isFullscreen && (
-            <div
-              className="right-sidebar-mobile"
-              style={{
-                width: "70px",
-                height: "100%",
-                flexShrink: 0,
-                borderLeft: "1px solid var(--border-color)",
-                zIndex: 50,
-              }}
-            >
-              <RightSidebar
-                isWatchlistOpen={activeTab !== "Alerts" && isWatchlistOpen}
-                toggleWatchlist={() => {
-                  const willOpen =
-                    activeTab === "Alerts" ? true : !isWatchlistOpen;
-                  if (activeTab === "Alerts") setActiveTab("Chart");
-                  setIsWatchlistOpen(willOpen);
-                  if (willOpen) {
-                    setIsDetailsOpen(false); // close others
-                    setIsDepthOpen(false);
-                  }
+              <div
+                className="right-sidebar-mobile"
+                style={{
+                  width: "70px",
+                  height: "100%",
+                  flexShrink: 0,
+                  borderLeft: "1px solid var(--border-color)",
+                  zIndex: 50,
                 }}
-                isDetailsOpen={isDetailsOpen}
-                toggleDetails={() => {
-                  setIsDetailsOpen((prev) => !prev);
-                  if (!isDetailsOpen) {
-                    setIsWatchlistOpen(false);
-                    setIsDepthOpen(false);
-                  }
-                }}
-                isAlertsOpen={activeTab === "Alerts"}
-                toggleAlerts={() => {
-                  if (activeTab === "Alerts") {
-                    setActiveTab("Chart");
-                  } else {
-                    setActiveTab("Alerts");
-                    // Close left panels when alerts opens
-                    setIsWatchlistOpen(false);
-                    setIsDetailsOpen(false);
-                    setIsDepthOpen(false);
-                  }
-                }}
-                isDepthOpen={activeTab !== "Alerts" && isDepthOpen}
-                toggleDepth={() => {
-                  const willOpen = !isDepthOpen;
-                  if (activeTab === "Alerts") setActiveTab("Chart");
-                  setIsDepthOpen(willOpen);
-                  if (willOpen) {
-                    setIsWatchlistOpen(false);
-                    setIsDetailsOpen(false);
-                  }
-                }}
-              />
-            </div>
+              >
+                <RightSidebar
+                  isWatchlistOpen={activeTab !== "Alerts" && isWatchlistOpen}
+                  toggleWatchlist={() => {
+                    const willOpen =
+                      activeTab === "Alerts" ? true : !isWatchlistOpen;
+                    if (activeTab === "Alerts") setActiveTab("Chart");
+                    setIsWatchlistOpen(willOpen);
+                    if (willOpen) {
+                      setIsDetailsOpen(false); // close others
+                      setIsDepthOpen(false);
+                    }
+                  }}
+                  isDetailsOpen={isDetailsOpen}
+                  toggleDetails={() => {
+                    setIsDetailsOpen((prev) => !prev);
+                    if (!isDetailsOpen) {
+                      setIsWatchlistOpen(false);
+                      setIsDepthOpen(false);
+                    }
+                  }}
+                  isAlertsOpen={activeTab === "Alerts"}
+                  toggleAlerts={() => {
+                    if (activeTab === "Alerts") {
+                      setActiveTab("Chart");
+                    } else {
+                      setActiveTab("Alerts");
+                      // Close left panels when alerts opens
+                      setIsWatchlistOpen(false);
+                      setIsDetailsOpen(false);
+                      setIsDepthOpen(false);
+                    }
+                  }}
+                  isDepthOpen={activeTab !== "Alerts" && isDepthOpen}
+                  toggleDepth={() => {
+                    const willOpen = !isDepthOpen;
+                    if (activeTab === "Alerts") setActiveTab("Chart");
+                    setIsDepthOpen(willOpen);
+                    if (willOpen) {
+                      setIsWatchlistOpen(false);
+                      setIsDetailsOpen(false);
+                    }
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>

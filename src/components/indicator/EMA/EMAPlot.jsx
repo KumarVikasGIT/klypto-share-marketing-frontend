@@ -121,6 +121,11 @@ export default function EMAPlot({
 
     if (!fill?.visible) return;
 
+    ctx.save();
+    // Clip to timeScale width (prevent bleeding into y-axis) and canvas height (prevent bleeding into oscillators)
+    ctx.rect(0, 0, chart.timeScale().width(), canvas.height);
+    ctx.clip();
+
     ctx.beginPath();
 
     /* upper band */
@@ -158,6 +163,7 @@ export default function EMAPlot({
 
     ctx.fillStyle = fill?.topFillColor1 || "rgba(76,175,80,0.2)";
     ctx.fill();
+    ctx.restore();
   };
 
 

@@ -130,7 +130,7 @@ export default function SSLPlot({
       Object.values(indicatorSeriesRef.current.SSL_HYBRID).forEach((s) => {
         if (s?.setData) {
           try {
-            s.setData([]);
+            chart?.removeSeries(s);
           } catch {}
         }
       });
