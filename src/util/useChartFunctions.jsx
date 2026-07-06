@@ -830,8 +830,8 @@ async function fetchDataForIndicators(
             socketRef.current?.off("indicatorDetailsError", onError);
             socketRef.current?.off("indicatorDetailsResponse", onResponse);
             innerResolve();
-            reject(new Error("Timeout fetching indicator data"));
-          }, 15000);
+            reject(new Error(`Timeout fetching indicator data for ${type}`));
+          }, 60000); // 60 seconds for large queries
 
           const onResponse = (data) => {
             clearTimeout(timeoutId);
@@ -850,24 +850,14 @@ async function fetchDataForIndicators(
 
           socketRef.current?.once("indicatorDetailsResponse", onResponse);
           socketRef.current?.once("indicatorDetailsError", onError);
-
-          // Fail-safe timeout to prevent hanging the queue
-          setTimeout(() => {
-            socketRef.current?.off("indicatorDetailsResponse", onResponse);
-            socketRef.current?.off("indicatorDetailsError", onError);
-            innerResolve();
-            resolve(null);
-          }, 10000);
         });
       });
     });
 
-    console.log("Raw indicator data for", type, ":", response);
-    console.log("Raw first point:", response?.data?.[0]);
-    console.log(
-      "Raw last point:",
-      response?.data?.[response?.data?.length - 1],
-    );
+    if (!response || !response.data) {
+      console.warn(`No indicator data received for ${type}`);
+      return null;
+    }
 
     const mapLine = (arr, field) =>
       arr
@@ -876,8 +866,6 @@ async function fetchDataForIndicators(
           value: d[field] != null ? Number(d[field]) : null,
         }))
         .filter((d) => d.value !== null) ?? [];
-
-    console.log("mapped conversion", response?.data, "conversionLine");
 
     switch (type) {
       /* ---------------- SINGLE VALUE ---------------- */

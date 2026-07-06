@@ -2241,6 +2241,9 @@ json.dumps(result)
         const tickSymbol = normalize(tick.symbol);
 
         if (!isSameSymbolName(tickSymbol, activeSymbol)) return;
+        
+        console.log(`[LIVE TICK] Symbol: ${tickSymbol}, Active: ${activeSymbol}`, tick);
+
         if (!seriesRef.current || !seriesReadyRef.current) return;
 
         let rawTickTime = tick?.data?.time;
@@ -2251,14 +2254,6 @@ json.dumps(result)
         }
         if (tickTime > 10000000000) tickTime = Math.floor(tickTime / 1000);
         if (!Number.isFinite(tickTime)) return;
-
-        // Block ticks after 3:30 PM IST (930 minutes)
-        const dateObj = new Date(tickTime * 1000);
-        const istTime = new Date(
-          dateObj.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-        );
-        const currentMinutes = istTime.getHours() * 60 + istTime.getMinutes();
-        if (currentMinutes > 930) return;
 
         const adjustedTime = tickTime + IST_OFFSET;
         const normalizedTime =
