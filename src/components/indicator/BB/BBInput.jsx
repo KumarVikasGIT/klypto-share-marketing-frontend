@@ -35,6 +35,11 @@ export default function BBInput(
   group?.lower?.setData(lower);
   group?.basis?.setData(basis);
 
+  if (group) {
+    group.upperData = upper;
+    group.lowerData = lower;
+  }
+
   latestIndicatorValuesRef.current[instanceId || "BB"] = {
     upper: upper[upper?.length - 1]?.value ?? null,
     lower: lower[lower?.length - 1]?.value ?? null,

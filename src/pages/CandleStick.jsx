@@ -1,3 +1,4 @@
+import { throttleChartEvents } from '../util/throttleChartEvents';
 import {
   createChart,
   CandlestickSeries,
@@ -68,6 +69,7 @@ export default function Candlestick() {
   const indicatorDataRef = useRef({});
   const panesRef = useRef({});
   const paneIndexRef = useRef({});
+  const dummySeriesRef = useRef({});
   const chartDisposedRef = useRef(false);
   const allCreatedSeriesRef = useRef([]);
   const syncingRef = useRef(false);
@@ -1232,24 +1234,24 @@ json.dumps(result)
       // 🔥 Reset on timeframe / currency / chartType change
       fetchedIndicatorsRef.current.clear();
 
-      // Clear the series data so old candles don't show, but keep the series alive
-      // so the panes don't collapse! The plot components will handle destroying them.
-      if (allCreatedSeriesRef.current) {
-        allCreatedSeriesRef.current.forEach((item) => {
-          if (
-            item &&
-            item.series &&
-            typeof item.series.setData === "function"
-          ) {
-            try {
-              item.series.setData([]);
-            } catch (e) {}
-          }
-        });
-      }
+      // Keep the series alive with their old data so the UI does not change
+      // until the new data response comes! (User request)
+      // if (allCreatedSeriesRef.current) {
+      //   allCreatedSeriesRef.current.forEach((item) => {
+      //     if (
+      //       item &&
+      //       item.series &&
+      //       typeof item.series.setData === "function"
+      //     ) {
+      //       try {
+      //         item.series.setData([]);
+      //       } catch (e) {}
+      //     }
+      //   });
+      // }
 
       // Explicitly clear old data so it doesn't render over the new symbol's chart
-      indicatorDataRef.current = {};
+      // indicatorDataRef.current = {};
       // DO NOT clear indicatorSeriesRef, panesRef, paneIndexRef!
       // Keeping them allows the plot components to explicitly destroy the old series
       // when they receive new data, preventing memory leaks and pane jumping.
@@ -1369,12 +1371,19 @@ json.dumps(result)
   };
 
   const getPaneIndex = (indicator) => {
-    const baseType = getBaseTypeFromId(indicator);
+    // Extract root instance ID (e.g., "BODY915DNA_0" from "BODY915DNA_0_70")
+    let rootId = indicator;
+    const rootMatch = indicator.match(/^([A-Z0-9_]+?_\d+)/);
+    if (rootMatch) {
+      rootId = rootMatch[1];
+    }
+
+    const baseType = getBaseTypeFromId(rootId);
     // overlay indicators → always main pane
     if (!PANE_INDICATORS.has(baseType)) return 0;
 
-    if (paneIndexRef.current[indicator] !== undefined) {
-      return paneIndexRef.current[indicator];
+    if (paneIndexRef.current[rootId] !== undefined) {
+      return paneIndexRef.current[rootId];
     }
 
     // Find the maximum pane index currently in use to avoid reusing indices
@@ -1383,7 +1392,7 @@ json.dumps(result)
       currentIndices.length > 0 ? Math.max(...currentIndices) : 0;
 
     const nextPane = maxIndex + 1;
-    paneIndexRef.current[indicator] = nextPane;
+    paneIndexRef.current[rootId] = nextPane;
 
     return nextPane;
   };
@@ -1403,6 +1412,26 @@ json.dumps(result)
 
     const paneKey = explicitPaneKey || indicator;
     const paneIndex = getPaneIndex(paneKey);
+
+    // Prevent this pane from ever collapsing automatically by adding an invisible dummy series
+    if (paneIndex !== 0 && !dummySeriesRef.current[paneIndex]) {
+      try {
+        // Use the same NEW API as addSeries: addSeries(SeriesType, options, paneIndex)
+        const dummy = chartRef.current.addSeries(
+          LineSeries,
+          {
+            visible: false,
+            autoscaleInfoProvider: () => null,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          },
+          paneIndex,
+        );
+        dummy.setData([{ time: '2000-01-01', value: 0 }]);
+        dummySeriesRef.current[paneIndex] = dummy;
+      } catch (err) {}
+    }
 
     // Force visibility to match the master toggle state if it's explicitly set to false
     const isVisible =
@@ -1623,6 +1652,12 @@ json.dumps(result)
     if (paneIndex !== undefined && paneIndex !== 0) {
       if (panesCountAfter === panesCountBefore) {
         // Lightweight charts didn't auto-remove it, so we manually remove it
+        // First remove the dummy series for this pane (so the pane becomes empty & auto-collapses)
+        const dummy = dummySeriesRef.current[paneIndex];
+        if (dummy) {
+          try { chart.removeSeries(dummy); } catch (e) {}
+          delete dummySeriesRef.current[paneIndex];
+        }
         try {
           if (typeof chart.removePane === "function") {
             chart.removePane(paneIndex);
@@ -1630,10 +1665,13 @@ json.dumps(result)
         } catch (err) {
           console.warn("Failed to remove pane explicitly", err);
         }
+      } else {
+        // Pane auto-removed — still need to clear the stale dummy ref
+        delete dummySeriesRef.current[paneIndex];
       }
     }
 
-    // ALWAYS shift paneIndexRef for all indicators whose index is above the removed pane.
+    // ALWAYS shift paneIndexRef AND dummySeriesRef for all indicators whose index is above the removed pane.
     // This must happen regardless of auto-remove vs manual-remove, because in both
     // cases, LightweightCharts renumbers all subsequent panes by -1.
     if (paneIndex !== undefined && paneIndex !== 0) {
@@ -1642,6 +1680,17 @@ json.dumps(result)
           paneIndexRef.current[key] -= 1;
         }
       });
+      // Shift dummy series indices down too
+      const newDummyRef = {};
+      Object.keys(dummySeriesRef.current).forEach((k) => {
+        const ki = Number(k);
+        if (ki > paneIndex) {
+          newDummyRef[ki - 1] = dummySeriesRef.current[k];
+        } else {
+          newDummyRef[ki] = dummySeriesRef.current[k];
+        }
+      });
+      dummySeriesRef.current = newDummyRef;
     }
 
     delete indicatorSeriesRef.current[instanceId];
@@ -1658,9 +1707,9 @@ json.dumps(result)
     if (!containerRef.current) return;
     if (chartRef.current) return; // Prevent recreating the chart on every render
 
-    const chart = createChart(containerRef.current, {
+    const chart = throttleChartEvents(createChart(containerRef.current, {
       ...ChartProprties,
-    });
+    }));
 
     // Auto-cleanup our global refs whenever ANY series is physically removed
     const originalRemoveSeries = chart.removeSeries.bind(chart);
@@ -1738,13 +1787,17 @@ json.dumps(result)
 
       const group = indicatorSeriesRef.current?.[id];
       if (group) {
-        // for single value, the series is usually the only key in the group, or it's the main type
-        const seriesKey = Object.keys(group).find(
-          (k) => typeof group[k]?.options === "function",
-        );
-        if (seriesKey) {
-          const opts = group[seriesKey].options();
+        if (typeof group.options === "function") {
+          const opts = group.options();
           color = opts.color || opts.lineColor || opts.topColor || color;
+        } else {
+          const seriesKey = Object.keys(group).find(
+            (k) => typeof group[k]?.options === "function",
+          );
+          if (seriesKey) {
+            const opts = group[seriesKey].options();
+            color = opts.color || opts.lineColor || opts.topColor || color;
+          }
         }
       }
       color = color || "#333";
@@ -1759,6 +1812,7 @@ json.dumps(result)
         <span
           id={`indicator-val-${id}-main`}
           style={{ color }}
+          data-default-color={color}
           title={type}
           data-type={type}
         >
@@ -1821,6 +1875,7 @@ json.dumps(result)
               id={`indicator-val-${id}-${key}`}
               key={key}
               style={{ marginRight: 8, color }}
+              data-default-color={color}
               title={key}
               data-type={type}
             >
@@ -1944,13 +1999,17 @@ json.dumps(result)
 
         const price = param.seriesData?.get(series);
         if (price !== undefined) {
-          indicatorValues[lineName] =
-            typeof price === "object" ? price.value : price;
+          indicatorValues[lineName] = {
+            value: typeof price === "object" ? price.value : price,
+            color: typeof price === "object" && price.color ? price.color : null
+          };
         }
       });
 
       const keys = Object.keys(indicatorValues);
-      Object.entries(indicatorValues).forEach(([key, val]) => {
+      Object.entries(indicatorValues).forEach(([key, dataObj]) => {
+        const val = dataObj.value;
+        const dynamicColor = dataObj.color;
         let el = document.getElementById(`indicator-val-${indicator}-${key}`);
 
         // Fallback for single-value indicators which render under the '-main' ID
@@ -2738,7 +2797,7 @@ json.dumps(result)
     if (!chartRef.current) return;
 
     // Check if the target date is earlier than our currently fetched fromDate
-    const targetTimeMs = targetDate.getTime();
+    const adjustedDate = new Date(targetDate); const isIntraday = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "60m", "120m", "240m"].includes(timeframeValue); if (isIntraday) { adjustedDate.setHours(9, 15, 0, 0); } const targetTimeMs = adjustedDate.getTime();
     const currentFromTimeMs = new Date(fromDate).getTime();
 
     if (targetTimeMs < currentFromTimeMs) {
@@ -3046,7 +3105,7 @@ json.dumps(result)
                         overflow: "hidden",
                         display: "flex",
                         flexDirection: "column",
-                        minHeight: 450,
+                        minHeight: 450, cursor: activeTool ? "crosshair" : "default",
                       }}
                     >
                       <DrawingToolbox
@@ -3844,3 +3903,4 @@ json.dumps(result)
     </>
   );
 }
+

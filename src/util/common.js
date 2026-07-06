@@ -53,7 +53,7 @@ export const ChartProprties = {
   },
   rightPriceScale: {
     autoScale: true,
-    mode: 1,
+    mode: 0,
     scaleMargins: {
       top: 0.2,
       bottom: 0.2,
@@ -73,7 +73,7 @@ export const ChartProprties = {
     },
   },
   crosshair: {
-    mode: 1,
+    mode: 0,
     vertLine: {
       visible: true,
       labelVisible: true,

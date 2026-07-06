@@ -7,6 +7,7 @@ export default function BBPlot({
   indicatorStyle,
   indicatorSeriesRef,
   addSeries,
+  removeSeries,
   chart,
   containerRef,
 }) {
@@ -22,6 +23,7 @@ export default function BBPlot({
         if (s?.setData) {
           try {
             s.setData([]);
+            if (removeSeries) removeSeries(s);
           } catch {}
         }
       });
