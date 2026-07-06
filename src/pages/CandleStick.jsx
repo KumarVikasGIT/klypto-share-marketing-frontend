@@ -189,6 +189,65 @@ plot_markers(markers)`,
     
     setPredictResultData([]);
     setPredictionStatus(null);
+
+    // Fetch from REST API directly
+    apiService.get("/api/predictResult")
+      .then((res) => {
+        const results = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        if (results.length > 0) {
+          console.log("[AI PREDICTION] REST results loaded on click:", results.length);
+          setIsDepthOpen(true);
+
+          const mapped = results.map((item) => ({
+            symbol: item.symbol,
+            response: {
+              type: item.trade_type,
+              entry_time: item.entry_time,
+              entry_price: item.entry_price,
+              signal: item.signal,
+              trend: item.trend,
+              status: item.status,
+              rsi: item.rsi,
+              candle_open: item.candle_open,
+              candle_high: item.candle_high,
+              candle_low: item.candle_low,
+              candle_close: item.candle_close,
+              candle_volume: item.candle_volume,
+            },
+            tick: {
+              datetime: item.entry_time,
+            },
+            uuid: item.uuid,
+            created_at: item.created_at,
+          }));
+
+          setPredictResultData(mapped);
+
+          // Also plot on chart
+          const signals = results.map((item) => {
+            let timeStr = item.entry_time || item.created_at || new Date().toISOString();
+            timeStr = timeStr.replace(" ", "T");
+            return {
+              symbol: item.symbol,
+              signalType: item.trade_type,
+              timestamp: timeStr,
+              segment: "SCRIPT",
+            };
+          });
+
+          setDashboardSignals((prev) => [...prev, ...signals]);
+          setIsDeployed(true);
+          setDeployedStrategyCode("API_PREDICTION");
+        } else {
+          console.log("[AI PREDICTION] REST returned no results.");
+        }
+      })
+      .catch((err) => {
+        console.warn("[AI PREDICTION] REST fetch failed:", err);
+      })
+      .finally(() => {
+        setIsPredicting(false);
+      });
   };
 
   //code editor
