@@ -3,7 +3,7 @@ const EVENTS = {
     GET: "getManualHistoricalData",
     RESPONSE: "historicalDataResponse",
     ERROR: "historicalDataError",
-    LIVETICKS: "liveticks",
+    LIVETICKS: "liveTick",
   },
   INDICATOR: {
     GET: "getIndicatorDetails",

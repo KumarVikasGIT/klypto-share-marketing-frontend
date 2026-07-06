@@ -2,6 +2,8 @@ import apiService from "../services/apiServices";
 import { getRowsByIndicator } from "./common";
 import socket from "../services/websocket/socket";
 
+let globalFetchSessionId = 0;
+
 const IST_OFFSET = 19800;
 
 export default function useChartFunctions({
@@ -14,6 +16,7 @@ export default function useChartFunctions({
   socketRef,
   candlesRef,
   onIndicatorLoaded,
+  onIndicatorLoadingChange,
 }) {
   /* ================= FETCH INDICATORS ================= */
   async function fetchIndicatorData(
@@ -23,9 +26,16 @@ export default function useChartFunctions({
   ) {
     if (!selectedIndicator?.length) return;
 
-    // Process in batches of 2 to avoid overwhelming the backend
-    const CONCURRENCY_LIMIT = 2;
+    const currentSessionId = ++globalFetchSessionId;
+
+    // Process sequentially (1 at a time) to avoid overwhelming the backend and unblock UI thread
+    const CONCURRENCY_LIMIT = 1;
     for (let i = 0; i < selectedIndicator.length; i += CONCURRENCY_LIMIT) {
+      if (currentSessionId !== globalFetchSessionId) {
+        console.log("Fetch session aborted due to symbol/timeframe change.");
+        break; // Cancel the rest of the queue
+      }
+
       const batch = selectedIndicator.slice(i, i + CONCURRENCY_LIMIT);
       
       await Promise.all(
@@ -33,6 +43,7 @@ export default function useChartFunctions({
           const id = typeof indItem === "object" ? indItem.id : indItem;
           const type = typeof indItem === "object" ? indItem.type : indItem;
           try {
+            if (onIndicatorLoadingChange) onIndicatorLoadingChange(id, true);
             const result = await fetchDataForIndicators(
               candlesRef.current,
               selectedCurrency,
@@ -42,12 +53,22 @@ export default function useChartFunctions({
               toDate,
               socketRef,
             );
+            
+            // Critical: check if session changed while waiting for API
+            if (currentSessionId !== globalFetchSessionId) {
+              return; // Ignore the outdated response
+            }
+
             processIndicatorResponse(id, type, result);
             if (typeof onIndicatorLoaded === "function") {
               onIndicatorLoaded(id);
             }
           } catch (error) {
-            console.log(error, "Indicator loading error");
+            console.error(`Failed to fetch indicator ${type}:`, error);
+          } finally {
+            if (currentSessionId === globalFetchSessionId && onIndicatorLoadingChange) {
+              onIndicatorLoadingChange(id, false);
+            }
           }
         })
       );

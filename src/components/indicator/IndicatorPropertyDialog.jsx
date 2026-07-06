@@ -177,6 +177,8 @@ export default function IndicatorPropertyDialog({
   fromDate,
   toDate,
   setIndicatorLoading,
+  indicatorDataRef,
+  setPaneLoadingState,
 }) {
   const labelStyle = {
     display: "inline-block",
@@ -257,6 +259,7 @@ export default function IndicatorPropertyDialog({
 
     setIndicatorProperty(false);
     setIndicatorLoading(true); // START LOADER
+    if (setPaneLoadingState) setPaneLoadingState(instanceId, true);
 
     // Build the socket request
     const longInterval =
@@ -284,6 +287,7 @@ export default function IndicatorPropertyDialog({
     const responseHandler = (response) => {
       console.log("[IndicatorProperty] updateIndicatorResponse:", response);
       setIndicatorLoading(false); // STOP LOADER
+      if (setPaneLoadingState) setPaneLoadingState(instanceId, false);
 
       const hasValidData =
         response?.success !== false &&
@@ -295,6 +299,11 @@ export default function IndicatorPropertyDialog({
           response?.message || response?.error || "Unknown or empty response",
         );
         return;
+      }
+
+      // Save the response data to indicatorDataRef so it survives re-renders
+      if (indicatorDataRef && indicatorDataRef.current) {
+        // (Removed raw assignment to prevent data corruption)
       }
 
       updateIndicatorFromInput(
@@ -319,6 +328,7 @@ export default function IndicatorPropertyDialog({
             "[IndicatorProperty] updateIndicatorResponse timed out (5m)",
           );
           socket.off("updateIndicatorResponse", responseHandler);
+          if (setPaneLoadingState) setPaneLoadingState(instanceId, false);
         }
         return false;
       });

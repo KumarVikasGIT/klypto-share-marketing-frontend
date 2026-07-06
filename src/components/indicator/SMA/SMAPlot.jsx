@@ -7,6 +7,7 @@ export default function SMAPlot({
   indicatorStyle,
   indicatorSeriesRef,
   addSeries,
+  removeSeries,
   chart,
   containerRef,
   indicatorConfigs,
@@ -23,6 +24,7 @@ export default function SMAPlot({
         if (s?.setData) {
           try {
             s.setData([]);
+            if (removeSeries) removeSeries(s);
           } catch {}
         }
       });
