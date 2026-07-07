@@ -47,7 +47,8 @@ export default function IndicatorBar({
         height: 24,
         fontSize: 12,
         whiteSpace: "nowrap",
-        transition: "all 0.2s ease-in-out"
+        transition: "all 0.2s ease-in-out",
+        cursor: "default"
       }}
     >
 

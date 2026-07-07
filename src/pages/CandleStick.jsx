@@ -164,6 +164,7 @@ export default function Candlestick() {
   const [liveOhlcv, setLiveOhlcv] = useState({});
   const [liveIndicatorData, setLiveIndicatorData] = useState({});
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+  const [isPyodideReady, setIsPyodideReady] = useState(false);
   const [mainChartLoading, setMainChartLoading] = useState(false);
   const [symbolTransitioning, setSymbolTransitioning] = useState(false);
   const symbolTransitioningRef = useRef(false);
@@ -2025,6 +2026,12 @@ json.dumps(result)
           el.textContent = Number.isFinite(val)
             ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}`
             : "Ø";
+          if (dynamicColor) {
+            el.style.color = dynamicColor;
+          } else {
+            const defaultColor = el.getAttribute("data-default-color");
+            if (defaultColor) el.style.color = defaultColor;
+          }
         }
       });
     });
@@ -2066,6 +2073,12 @@ json.dumps(result)
                     lastData.value !== undefined
                       ? lastData.value
                       : lastData.close;
+                  if (lastData.color) {
+                    mainEl.style.color = lastData.color;
+                  } else {
+                    const defaultColor = mainEl.getAttribute("data-default-color");
+                    if (defaultColor) mainEl.style.color = defaultColor;
+                  }
                 }
               }
             }
@@ -2093,6 +2106,12 @@ json.dumps(result)
                     val != null && Number.isFinite(Number(val))
                       ? `${Number(val).toFixed(2)}${isAroon ? "%" : ""}`
                       : "Ø";
+                  if (lastData.color) {
+                    el.style.color = lastData.color;
+                  } else {
+                    const defaultColor = el.getAttribute("data-default-color");
+                    if (defaultColor) el.style.color = defaultColor;
+                  }
                 } else {
                   el.textContent = "Ø";
                 }
@@ -2592,10 +2611,23 @@ json.dumps(result)
         else candlesRef.current.push(updatedBar);
         lastCandleTimeRef.current = normalizedTime;
 
+        const timeScale = chartRef.current?.timeScale();
+        const oldRange = timeScale?.getVisibleLogicalRange();
+        const isGap = currentCandleRef.current && (normalizedTime - currentCandleRef.current.time > intervalSec * 10);
+
+        if (isGap && timeScale) {
+          timeScale.applyOptions({ shiftVisibleRangeOnNewBar: false });
+        }
+
         try {
           seriesRef.current.update(updatedBar);
         } catch (e) {
           console.warn("[LiveTick] Series update failed:", e.message);
+        }
+
+        if (isGap && timeScale) {
+          if (oldRange) timeScale.setVisibleLogicalRange(oldRange);
+          timeScale.applyOptions({ shiftVisibleRangeOnNewBar: true });
         }
 
         if (ohlcvDisplayRef.current) {
@@ -2806,6 +2838,7 @@ json.dumps(result)
     if (targetTimeMs < currentFromTimeMs) {
       // Need to fetch older data first
       pendingGoToDateRef.current = targetDate;
+      setMainChartLoading(true);
 
       // Update fromDate to 30 days before the target date just to be safe
       const newFrom = new Date(targetDate);
@@ -2816,7 +2849,8 @@ json.dumps(result)
 
     if (!candlesRef.current?.length) return;
 
-    const targetTimeSec = Math.floor(targetTimeMs / 1000);
+    const IST_OFFSET = 19800;
+    const targetTimeSec = Math.floor(targetTimeMs / 1000) + IST_OFFSET;
 
     // Find the closest candle
     let closestIndex = 0;
