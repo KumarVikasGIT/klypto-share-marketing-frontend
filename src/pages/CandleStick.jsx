@@ -154,8 +154,23 @@ export default function Candlestick() {
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 7);
+    const minDate = new Date("2024-10-01");
+    if (d < minDate) return "2024-10-01";
     return d.toISOString().split("T")[0];
   });
+
+  const handleSetFromDate = (newDate) => {
+    const minDate = new Date("2024-10-01");
+    let d = new Date(newDate);
+    if (isNaN(d.getTime())) {
+      d = new Date();
+    }
+    if (d < minDate) {
+      setFromDate("2024-10-01");
+    } else {
+      setFromDate(d.toISOString().split("T")[0]);
+    }
+  };
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedIndicator, setSelectedIndicator] = useState([]);
   const [rangeValue, setRangeValue] = useState("1000");
@@ -245,7 +260,7 @@ plot_markers(markers)`,
             };
           });
 
-          setDashboardSignals((prev) => [...prev, ...signals]);
+          setDashboardSignals(signals);
           setIsDeployed(true);
           setDeployedStrategyCode("API_PREDICTION");
         } else {
@@ -1038,7 +1053,7 @@ json.dumps(result)
     } else {
       d.setFullYear(d.getFullYear() - 5); // 5 years for daily/weekly
     }
-    setFromDate(d.toISOString().split("T")[0]);
+    handleSetFromDate(d.toISOString().split("T")[0]);
   }, [timeframeValue]);
 
   const addStockToDetails = (stock) => {
@@ -1758,6 +1773,17 @@ json.dumps(result)
     const emptySymbol = "Ø";
     const showPercent = type === "AROON";
 
+    const toFullOpacity = (c) => {
+      if (!c || typeof c !== "string") return c;
+      if (c.startsWith("rgba")) {
+        return c.replace(/,\s*[\d.]+\s*\)/, ", 1)");
+      }
+      if (c.startsWith("#") && c.length === 9) {
+        return c.substring(0, 7);
+      }
+      return c;
+    };
+
     let keysToShow = null;
     let isSingleValue = false;
 
@@ -1804,7 +1830,7 @@ json.dumps(result)
           }
         }
       }
-      color = color || "#333";
+      color = toFullOpacity(color || "#333");
 
       const val =
         value != null
@@ -1872,7 +1898,7 @@ json.dumps(result)
             color = opts.color || opts.lineColor || opts.topColor || color;
           }
 
-          color = color || "#333";
+          color = toFullOpacity(color || "#333");
 
           return (
             <span
@@ -2843,7 +2869,7 @@ json.dumps(result)
       // Update fromDate to 30 days before the target date just to be safe
       const newFrom = new Date(targetDate);
       newFrom.setDate(newFrom.getDate() - 30);
-      setFromDate(newFrom.toISOString().split("T")[0]);
+      handleSetFromDate(newFrom.toISOString().split("T")[0]);
       return; // The useEffect above will call handleGoToDate again once loaded
     }
 
@@ -3094,7 +3120,7 @@ json.dumps(result)
                     toggleIndicator={toggleIndicator}
                     fromDate={fromDate}
                     toDate={toDate}
-                    setFromDate={setFromDate}
+                    setFromDate={handleSetFromDate}
                     setToDate={setToDate}
                     alertResult={matchedCoins}
                     addAlert={addAlert}
@@ -3564,7 +3590,11 @@ json.dumps(result)
                             }}
                           >
                             {selectedIndicator
-                              .filter((ind) => !PANE_INDICATORS.has(ind.type) || (PANE_INDICATORS.has(ind.type) && !panesRef.current[ind.id]?.pane))
+                              .filter((ind) => {
+                                // Only show indicator bar if data has arrived (series exists)
+                                if (!indicatorSeriesRef.current || !indicatorSeriesRef.current[ind.id]) return false;
+                                return !PANE_INDICATORS.has(ind.type);
+                              })
                               .map((ind) => {
                                 const { id, type } = ind;
                                 const value = liveIndicatorData[id];
@@ -3602,7 +3632,10 @@ json.dumps(result)
 
                           {/* Pane Indicators (Portals) */}
                           {selectedIndicator
-                            .filter((ind) => PANE_INDICATORS.has(ind.type))
+                            .filter((ind) => {
+                              if (!indicatorSeriesRef.current || !indicatorSeriesRef.current[ind.id]) return false;
+                              return PANE_INDICATORS.has(ind.type);
+                            })
                             .map((ind) => {
                               const { id, type } = ind;
                               const value = liveIndicatorData[id];

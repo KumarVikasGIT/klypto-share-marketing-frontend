@@ -400,6 +400,10 @@ const GoldChart = () => {
     // Optimize: Request only last 30 days of data for intraday intervals to speed up loading
     const initialFromDate = new Date();
     initialFromDate.setDate(initialFromDate.getDate() - 30);
+    const minDate = new Date("2024-10-01");
+    if (initialFromDate < minDate) {
+      initialFromDate.setTime(minDate.getTime());
+    }
     const fromDateStr = initialFromDate.toISOString().split("T")[0];
 
     setIsLoading(true);
