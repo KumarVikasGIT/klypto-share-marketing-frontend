@@ -58,6 +58,7 @@ export const ListingModal = ({
   toggleIndicator,
   setAlertResult,
   alertResult,
+  initialSearch,
   renderActions,
   timeframeValue,
   onSubmit,
@@ -77,11 +78,16 @@ export const ListingModal = ({
   useEffect(() => {
     if (isOpen) {
       document.body.classList.add("listing-modal-open");
+      if (title === "Symbol Search" && initialSearch) {
+        setSearchCurrency(initialSearch);
+      }
     } else {
       document.body.classList.remove("listing-modal-open");
+      setSearchCurrency(""); // reset on close
+      setSearchIndicator("");
     }
     return () => document.body.classList.remove("listing-modal-open");
-  }, [isOpen]);
+  }, [isOpen, initialSearch, title]);
 
   // const [options, setOptions] = useState([]);
   const [indices, setIndices] = useState([]);
@@ -414,7 +420,7 @@ export const ListingModal = ({
                 style={{
                   background: "var(--bg-secondary)",
                   color: "var(--text-secondary)",
-                  borderColor: "var(--border-color)",
+                  borderColor: "rgba(255, 255, 255, 0.2)",
                 }}
               >
                 <FiSearch />
@@ -423,7 +429,8 @@ export const ListingModal = ({
                 style={{
                   background: "var(--bg-secondary)",
                   color: "var(--text-primary)",
-                  borderColor: "var(--border-color)",
+                  borderColor: "rgba(255, 255, 255, 0.2)",
+                  boxShadow: "none",
                 }}
                 type="text"
                 autoFocus
@@ -544,7 +551,7 @@ export const ListingModal = ({
                 style={{
                   background: "var(--bg-secondary)",
                   color: "var(--text-secondary)",
-                  borderColor: "var(--border-color)",
+                  borderColor: "rgba(255, 255, 255, 0.2)",
                 }}
               >
                 <FiSearch />
@@ -553,7 +560,8 @@ export const ListingModal = ({
                 style={{
                   background: "var(--bg-secondary)",
                   color: "var(--text-primary)",
-                  borderColor: "var(--border-color)",
+                  borderColor: "rgba(255, 255, 255, 0.2)",
+                  boxShadow: "none",
                 }}
                 type="text"
                 autoFocus
