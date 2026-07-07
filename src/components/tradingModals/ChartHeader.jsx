@@ -122,10 +122,10 @@ export default function ChartHeader({
   tomorrow.setDate(tomorrow.getDate() + 1);
   const maxDate = tomorrow.toISOString().split("T")[0];
 
-  const [modalConfig, setModalConfig] = useState({ open: false, title: "", items: [] });
+  const [modalConfig, setModalConfig] = useState({ open: false, title: "", items: [], initialSearch: "" });
 
-  const openModal  = (title, items) => setModalConfig({ open: true, title, items });
-  const closeModal = () => setModalConfig((prev) => ({ ...prev, open: false }));
+  const openModal  = (title, items, initialSearch = "") => setModalConfig({ open: true, title, items, initialSearch });
+  const closeModal = () => setModalConfig((prev) => ({ ...prev, open: false, initialSearch: "" }));
 
   async function fetchTimeframe() {
     setLoading(true);
@@ -143,6 +143,29 @@ export default function ChartHeader({
   }
 
   useEffect(() => { fetchTimeframe(); }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check if key is alphabetic and no modifier keys are active
+      if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Prevent opening if the user is typing in an input or textarea
+        if (
+          document.activeElement.tagName === "INPUT" ||
+          document.activeElement.tagName === "TEXTAREA" ||
+          document.activeElement.isContentEditable
+        ) {
+          return;
+        }
+        
+        // Open symbol search modal and pass the pressed key
+        e.preventDefault();
+        openModal("Symbol Search", undefined, e.key);
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 0, fontSize: "0.85rem" }}>
@@ -291,6 +314,7 @@ export default function ChartHeader({
         isOpen={modalConfig.open}
         onClose={closeModal}
         title={modalConfig.title}
+        initialSearch={modalConfig.initialSearch}
         selectedCurrency={selectedCurrency}
         setSelectedCurrency={setSelectedCurrency}
         selectedIndicator={selectedIndicator}

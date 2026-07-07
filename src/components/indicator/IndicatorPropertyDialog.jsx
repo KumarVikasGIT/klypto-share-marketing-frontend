@@ -186,7 +186,7 @@ export default function IndicatorPropertyDialog({
     textAlign: "left",
   };
 
-  console.log("IndicatorPropertyDialog rendering! indicatorProperty:", indicatorProperty, "activeBarIndicator:", activeBarIndicator);
+  // console.log("IndicatorPropertyDialog rendering! indicatorProperty:", indicatorProperty, "activeBarIndicator:", activeBarIndicator);
 
   // activeBarIndicator is now {id, type} — fall back to string for legacy compat
   const instanceId =
