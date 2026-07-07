@@ -467,11 +467,18 @@ export const ListingModal = ({
                           }
                         }}
                         className="d-flex justify-content-between align-items-center"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "var(--bg-tertiary)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "var(--bg-secondary)";
+                        }}
                         style={{
                           cursor: "pointer",
                           background: "var(--bg-secondary)",
                           color: "var(--text-primary)",
                           borderColor: "var(--border-color)",
+                          transition: "background 0.2s ease",
                         }}
                       >
                         <div className="d-flex align-items-center gap-2">
@@ -583,6 +590,12 @@ export const ListingModal = ({
                           setSelectedIndicator((prev) => [...prev, newInst]);
                           // Modal stays open so user can add more indicators
                         }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "var(--bg-tertiary)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "var(--bg-secondary)";
+                        }}
                         style={{
                           cursor: "pointer",
                           display: "flex",
@@ -592,6 +605,7 @@ export const ListingModal = ({
                           background: "var(--bg-secondary)",
                           color: "var(--text-primary)",
                           borderColor: "var(--border-color)",
+                          transition: "background 0.2s ease",
                         }}
                       >
                         <div>

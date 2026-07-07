@@ -423,6 +423,7 @@ export let indicatorConfigDefault = {
     upperZone: 5.0,
     lowerZone: -5.0,
   },
+  
 };
 
 export let indicatorStyleDefault = {
