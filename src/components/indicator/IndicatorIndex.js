@@ -247,6 +247,7 @@ export const indicatorInputs = {
   BODY915DNA: BodyDNAInput,
   HMA60_BOX_DISTANCE: HMABoxInput,
   VOLATILITY_MOMENTUM_PRO: VolatilityMomentumProInput,
+  
 };
 
 export function updateIndicatorFromInput(

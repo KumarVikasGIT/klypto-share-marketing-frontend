@@ -203,6 +203,13 @@ export default function IndicatorPropertyDialog({
     ...(indicatorConfigs[instanceId] || indicatorConfigs[activeType] || {}),
   };
 
+  const initialConfigRef = React.useRef(null);
+  useEffect(() => {
+    if (indicatorProperty) {
+      initialConfigRef.current = JSON.stringify(currentConfig);
+    }
+  }, [indicatorProperty, activeBarIndicator]);
+
   const updateProperty = (key, value) => {
     setIndicatorConfigs((prev) => ({
       ...prev,
@@ -248,6 +255,13 @@ export default function IndicatorPropertyDialog({
   ========================== */
   const handleIndicatorPropertyChange = async () => {
     const config = currentConfig;
+
+    if (initialConfigRef.current === JSON.stringify(config)) {
+      console.log("[IndicatorProperty] Config unchanged, closing modal.");
+      setIndicatorProperty(false);
+      return;
+    }
+
     const { maType } = config;
 
     const payload = {

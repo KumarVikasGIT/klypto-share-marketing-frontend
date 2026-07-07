@@ -347,11 +347,11 @@ const Overview = ({ selectedCurrency, onBack }) => {
     emit("getAllStocks");
 
     const payload = { symbol: targetSymbol };
-    console.log(
-      `[Overview Emit] Event: ${EVENTS.OVERVIEW.GET}`,
-      "Payload:",
-      payload,
-    );
+    // console.log(
+    //   `[Overview Emit] Event: ${EVENTS.OVERVIEW.GET}`,
+    //   "Payload:",
+    //   payload,
+    // );
     emit(EVENTS.OVERVIEW.GET, payload);
   }, [selectedCurrency, emit]);
 

@@ -81,6 +81,7 @@ export default function Candlestick() {
   const lastDeployedMarkersRef = useRef(null);
   const scannerIntervalRef = useRef(null);
   const pyodideRef = useRef(null);
+  const lastIndicatorRequestRef = useRef(0);
   const [isDeployed, setIsDeployed] = useState(false);
 
   const normalize = (s) => s?.replace(/\s+/g, " ").trim().toUpperCase();
@@ -1371,12 +1372,7 @@ json.dumps(result)
   };
 
   const getPaneIndex = (indicator) => {
-    // Extract root instance ID (e.g., "BODY915DNA_0" from "BODY915DNA_0_70")
-    let rootId = indicator;
-    const rootMatch = indicator.match(/^([A-Z0-9_]+?_\d+)/);
-    if (rootMatch) {
-      rootId = rootMatch[1];
-    }
+    const rootId = indicator;
 
     const baseType = getBaseTypeFromId(rootId);
     // overlay indicators → always main pane
@@ -1647,23 +1643,30 @@ json.dumps(result)
 
     const panesCountAfter =
       typeof chart.panes === "function" ? chart.panes().length : 0;
-    const paneIndex = paneIndexRef.current[instanceId];
+    
+    const rootId = instanceId;
+    const paneIndex = paneIndexRef.current[rootId];
 
     if (paneIndex !== undefined && paneIndex !== 0) {
       if (panesCountAfter === panesCountBefore) {
-        // Lightweight charts didn't auto-remove it, so we manually remove it
         // First remove the dummy series for this pane (so the pane becomes empty & auto-collapses)
         const dummy = dummySeriesRef.current[paneIndex];
         if (dummy) {
           try { chart.removeSeries(dummy); } catch (e) {}
           delete dummySeriesRef.current[paneIndex];
         }
-        try {
-          if (typeof chart.removePane === "function") {
-            chart.removePane(paneIndex);
+        
+        const panesCountAfterDummy = typeof chart.panes === "function" ? chart.panes().length : 0;
+        
+        if (panesCountAfterDummy === panesCountBefore) {
+          // Lightweight charts STILL didn't auto-remove it, so we manually remove it
+          try {
+            if (typeof chart.removePane === "function") {
+              chart.removePane(paneIndex);
+            }
+          } catch (err) {
+            console.warn("Failed to remove pane explicitly", err);
           }
-        } catch (err) {
-          console.warn("Failed to remove pane explicitly", err);
         }
       } else {
         // Pane auto-removed — still need to clear the stale dummy ref
@@ -1676,7 +1679,7 @@ json.dumps(result)
     // cases, LightweightCharts renumbers all subsequent panes by -1.
     if (paneIndex !== undefined && paneIndex !== 0) {
       Object.keys(paneIndexRef.current).forEach((key) => {
-        if (key !== instanceId && paneIndexRef.current[key] > paneIndex) {
+        if (key !== rootId && paneIndexRef.current[key] > paneIndex) {
           paneIndexRef.current[key] -= 1;
         }
       });
@@ -1696,7 +1699,7 @@ json.dumps(result)
     delete indicatorSeriesRef.current[instanceId];
     delete latestIndicatorValuesRef.current[instanceId];
     fetchedIndicatorsRef.current.delete(instanceId);
-    delete paneIndexRef.current[instanceId];
+    delete paneIndexRef.current[rootId];
 
     // the DOM pane cleanup
     delete panesRef.current[paneKey];
@@ -2524,10 +2527,10 @@ json.dumps(result)
 
         if (!isSameSymbolName(tickSymbol, activeSymbol)) return;
 
-        console.log(
-          `[LIVE TICK] Symbol: ${tickSymbol}, Active: ${activeSymbol}`,
-          tick,
-        );
+        // console.log(
+        //   `[LIVE TICK] Symbol: ${tickSymbol}, Active: ${activeSymbol}`,
+        //   tick,
+        // );
 
         if (
           !seriesRef.current ||
@@ -2647,7 +2650,7 @@ json.dumps(result)
     handleLiveIndicator: (payload) => {
       if (!payload?.success || !payload?.type) return;
 
-      console.log(`[LiveIndicator] Payload:`, payload);
+      // console.log(`[LiveIndicator] Payload:`, payload);
 
       const indicatorType = payload.type;
       const dataArray = payload.data;
@@ -3527,7 +3530,7 @@ json.dumps(result)
                             }}
                           >
                             {selectedIndicator
-                              .filter((ind) => getPaneIndex(ind.id) === 0)
+                              .filter((ind) => !PANE_INDICATORS.has(ind.type) || (PANE_INDICATORS.has(ind.type) && !panesRef.current[ind.id]?.pane))
                               .map((ind) => {
                                 const { id, type } = ind;
                                 const value = liveIndicatorData[id];
@@ -3565,7 +3568,7 @@ json.dumps(result)
 
                           {/* Pane Indicators (Portals) */}
                           {selectedIndicator
-                            .filter((ind) => getPaneIndex(ind.id) !== 0)
+                            .filter((ind) => PANE_INDICATORS.has(ind.type))
                             .map((ind) => {
                               const { id, type } = ind;
                               const value = liveIndicatorData[id];
