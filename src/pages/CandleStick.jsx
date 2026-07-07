@@ -152,6 +152,10 @@ export default function Candlestick() {
 
   const [activePropertyDialog, setActivePropertyDialog] = useState(null);
   const [fromDate, setFromDate] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chart_fromDate");
+      if (saved) return saved;
+    } catch (e) {}
     const d = new Date();
     d.setMonth(d.getMonth() - 7);
     const minDate = new Date("2024-10-01");
@@ -171,8 +175,20 @@ export default function Candlestick() {
       setFromDate(d.toISOString().split("T")[0]);
     }
   };
-  const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
-  const [selectedIndicator, setSelectedIndicator] = useState([]);
+  const [toDate, setToDate] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chart_toDate");
+      if (saved) return saved;
+    } catch (e) {}
+    return new Date().toISOString().split("T")[0];
+  });
+  const [selectedIndicator, setSelectedIndicator] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chart_selectedIndicator");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
   const [rangeValue, setRangeValue] = useState("1000");
   const [chartType, setChartType] = useState("candlestick");
   const [isMarketOpen, setIsMarketOpen] = useState(false);
@@ -1080,7 +1096,13 @@ json.dumps(result)
   const [indicatorLoading, setIndicatorLoading] = useState(false);
   const [showSourcePanel, setShowSourcePanel] = useState(false);
   const [activeSourceIndicator, setActiveSourceIndicator] = useState(null);
-  const [indicatorVisibility, setIndicatorVisibility] = useState({});
+  const [indicatorVisibility, setIndicatorVisibility] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chart_indicatorVisibility");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {};
+  });
   const [activeBarIndicator, setActiveBarIndicator] = useState("");
   const [indicatorUpdateTrigger, setIndicatorUpdateTrigger] = useState(0);
   const prevTimeframeRef = useRef(timeframeValue);
@@ -1132,13 +1154,62 @@ json.dumps(result)
     }
   }, [activeTab]);
 
-  const [indicatorConfigs, setIndicatorConfigs] = useState({}); // keyed by instance id
+  const [indicatorConfigs, setIndicatorConfigs] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chart_indicatorConfigs");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {};
+  }); // keyed by instance id
 
-  const [indicatorStyle, setIndicatorStyle] = useState(indicatorStyleDefault);
+  const [indicatorStyle, setIndicatorStyle] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chart_indicatorStyle");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return indicatorStyleDefault;
+  });
   const indicatorStyleRef = useRef(indicatorStyle);
 
   useEffect(() => {
     indicatorStyleRef.current = indicatorStyle;
+  }, [indicatorStyle]);
+
+  // Sync state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("chart_fromDate", fromDate);
+    } catch (e) {}
+  }, [fromDate]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chart_toDate", toDate);
+    } catch (e) {}
+  }, [toDate]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chart_selectedIndicator", JSON.stringify(selectedIndicator));
+    } catch (e) {}
+  }, [selectedIndicator]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chart_indicatorVisibility", JSON.stringify(indicatorVisibility));
+    } catch (e) {}
+  }, [indicatorVisibility]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chart_indicatorConfigs", JSON.stringify(indicatorConfigs));
+    } catch (e) {}
+  }, [indicatorConfigs]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chart_indicatorStyle", JSON.stringify(indicatorStyle));
+    } catch (e) {}
   }, [indicatorStyle]);
   const isUp = liveOhlcv?.close >= liveOhlcv?.open;
   const valueColor = isUp ? "text-green-500" : "text-red-500";
