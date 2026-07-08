@@ -1,8 +1,12 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import { IoCloseSharp } from "react-icons/io5";
 import { FaPlay, FaTrash } from "react-icons/fa";
 import { Spinner } from "../tradingModals/Spinner";
+import {
+  generateStrategyFromPrompt,
+  PROMPT_SUGGESTIONS,
+} from "../../util/strategyPromptGenerator";
 
 const CodeEditorPanel = ({
   onClose,
@@ -11,6 +15,9 @@ const CodeEditorPanel = ({
   onEdit,
   editorCode,
   setEditorCode,
+  templateCode,
+  templateLabel = "TA Template",
+  helperText = "Preloaded: ta, np, pd, df, const(), open, high, low, close, volume, time | actions: plot, buy, sell, alert",
   isDeployed,
   isDeploying,
 }) => {
@@ -18,13 +25,19 @@ const CodeEditorPanel = ({
     document.documentElement.getAttribute("data-theme") || "dark",
   );
   const [hasErrors, setHasErrors] = useState(false);
+  const [promptInput, setPromptInput] = useState("");
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    {
+      role: "assistant",
+      text: "Describe a strategy in plain English and I will generate code directly into the editor.",
+    },
+  ]);
 
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
-  const lastValidCode = useRef(editorCode);
-
-  const TEMPLATE_PREFIX = "markers = []\n";
-  const TEMPLATE_SUFFIX = "\nplot_markers(markers)";
+  const completionProviderRef = useRef(null);
+  const chatScrollRef = useRef(null);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -37,50 +50,217 @@ const CodeEditorPanel = ({
     return () => observer.disconnect();
   }, []);
 
-  const handleChange = (value) => {
-    if (!value) return;
-
-    if (
-      !value.startsWith(TEMPLATE_PREFIX) ||
-      !value.endsWith(TEMPLATE_SUFFIX)
-    ) {
-      // Revert the editor if they try to delete the prefix or suffix
-      if (editorRef.current) {
-        editorRef.current.setValue(lastValidCode.current);
+  useEffect(
+    () => () => {
+      if (completionProviderRef.current) {
+        completionProviderRef.current.dispose();
+        completionProviderRef.current = null;
       }
-      return;
-    }
+    },
+    [],
+  );
 
-    lastValidCode.current = value;
-    setEditorCode(value);
+  useEffect(() => {
+    if (!chatScrollRef.current) return;
+    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [chatMessages]);
+
+  const handleChange = (value) => {
+    setEditorCode(value || "");
 
     if (onEdit) onEdit();
   };
 
+  const registerStrategyCompletions = useCallback((monaco) => {
+    if (completionProviderRef.current) {
+      completionProviderRef.current.dispose();
+    }
+
+    completionProviderRef.current = monaco.languages.registerCompletionItemProvider(
+      "python",
+      {
+        triggerCharacters: [".", "(", ","],
+        provideCompletionItems(model, position) {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+
+          return {
+            suggestions: [
+              {
+                label: "import pandas_ta as ta",
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText: "import pandas_ta as ta",
+                range,
+              },
+              {
+                label: "import numpy as np",
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText: "import numpy as np",
+                range,
+              },
+              {
+                label: "import pandas as pd",
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText: "import pandas as pd",
+                range,
+              },
+              {
+                label: "ta.bbands",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'ta.bbands(close, length=${1:20}, std=${2:2})',
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                documentation: "Returns Bollinger Bands with pandas_ta-style keys.",
+                range,
+              },
+              {
+                label: "ta.sma",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: "ta.sma(close, length=${1:20})",
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+              {
+                label: "ta.ema",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: "ta.ema(close, length=${1:20})",
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+              {
+                label: "ta.rsi",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: "ta.rsi(close, length=${1:14})",
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+              {
+                label: "const",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: "const(${1:70})",
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                documentation: "Create a full-length constant series for plots or comparisons.",
+                range,
+              },
+              {
+                label: "np.full",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: "np.full(len(close), ${1:70})",
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                documentation: "Create a full-length constant series with the numpy shim.",
+                range,
+              },
+              {
+                label: "pd.Series",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: "pd.Series([${1:30}] * len(close))",
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                documentation: "Create a pandas-style series in the sandbox.",
+                range,
+              },
+              {
+                label: "df rolling mean",
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText: 'df["${1:close}"].rolling(window=${2:20}).mean()',
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                documentation: "Use the preloaded DataFrame with pandas-style rolling calculations.",
+                range,
+              },
+              {
+                label: "ta.macd",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText:
+                  "ta.macd(close, fast=${1:12}, slow=${2:26}, signal=${3:9})",
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+              {
+                label: "plot",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'plot("${1:Series Name}", ${2:series}, color="${3:#22c55e}")',
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+              {
+                label: "buy",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'buy(${1:condition}, label="${2:BUY}")',
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+              {
+                label: "sell",
+                kind: monaco.languages.CompletionItemKind.Function,
+                insertText: 'sell(${1:condition}, label="${2:SELL}")',
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+              {
+                label: "TA starter function",
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText:
+                  'def run_strategy():\n    ${1:pass}\n\nrun_strategy()',
+                insertTextRules:
+                  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                range,
+              },
+            ],
+          };
+        },
+      },
+    );
+  }, []);
+
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
-
-    editor.onDidChangeCursorPosition((e) => {
-      const model = editor.getModel();
-
-      const editableStart = TEMPLATE_PREFIX.split("\n").length;
-      const editableEnd =
-        model.getLineCount() - TEMPLATE_SUFFIX.split("\n").length + 1;
-
-      if (e.position.lineNumber < editableStart) {
-        editor.setPosition({
-          lineNumber: editableStart,
-          column: 1,
-        });
-      } else if (e.position.lineNumber > editableEnd) {
-        editor.setPosition({
-          lineNumber: editableEnd,
-          column: model.getLineMaxColumn(editableEnd),
-        });
-      }
-    });
+    registerStrategyCompletions(monaco);
   };
+
+  const handleLoadTemplate = () => {
+    if (!templateCode) return;
+    setEditorCode(templateCode);
+    if (onEdit) onEdit();
+  };
+
+  const handleGenerateFromPrompt = useCallback(() => {
+    const cleanedPrompt = promptInput.trim();
+    if (!cleanedPrompt || isGeneratingPrompt) return;
+
+    setIsGeneratingPrompt(true);
+
+    try {
+      const generated = generateStrategyFromPrompt(cleanedPrompt);
+      setEditorCode(generated.code);
+      if (onEdit) onEdit();
+
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "user", text: cleanedPrompt },
+        { role: "assistant", text: generated.reply },
+      ]);
+      setPromptInput("");
+      editorRef.current?.focus?.();
+    } finally {
+      setIsGeneratingPrompt(false);
+    }
+  }, [isGeneratingPrompt, onEdit, promptInput, setEditorCode]);
 
   const handleValidate = useCallback((markers) => {
     // MarkerSeverity.Error is 8
@@ -132,14 +312,37 @@ const CodeEditorPanel = ({
         >
           Code Editor
         </span>
-        <IoCloseSharp
+        <div
           style={{
-            cursor: "pointer",
-            color: "var(--text-secondary)",
-            fontSize: "1.2rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
           }}
-          onClick={onClose}
-        />
+        >
+          <button
+            onClick={handleLoadTemplate}
+            style={{
+              padding: "6px 10px",
+              borderRadius: "6px",
+              border: "1px solid rgba(34,197,94,0.35)",
+              background: "rgba(34,197,94,0.08)",
+              color: "#22c55e",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {templateLabel}
+          </button>
+          <IoCloseSharp
+            style={{
+              cursor: "pointer",
+              color: "var(--text-secondary)",
+              fontSize: "1.2rem",
+            }}
+            onClick={onClose}
+          />
+        </div>
       </div>
       <div
         style={{
@@ -149,6 +352,191 @@ const CodeEditorPanel = ({
           flexDirection: "column",
         }}
       >
+        <div
+          style={{
+            padding: "10px 14px",
+            borderBottom: "1px solid var(--border-color)",
+            background: "rgba(34,197,94,0.05)",
+            color: "var(--text-secondary)",
+            fontSize: "0.76rem",
+            lineHeight: 1.5,
+          }}
+        >
+          {helperText}
+        </div>
+        <div
+          style={{
+            padding: "12px 14px",
+            borderBottom: "1px solid var(--border-color)",
+            background:
+              "linear-gradient(180deg, rgba(59,130,246,0.08) 0%, rgba(34,197,94,0.04) 100%)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                marginBottom: "4px",
+              }}
+            >
+              Strategy Chatbot
+            </div>
+            <div
+              style={{
+                fontSize: "0.76rem",
+                color: "var(--text-secondary)",
+                lineHeight: 1.5,
+              }}
+            >
+              Ask for a setup like "RSI 14 mean reversion with 30/70 levels"
+              or "EMA 9/21 crossover with long only entries". I will generate
+              editable strategy code and load it into the editor.
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+            {PROMPT_SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => setPromptInput(suggestion)}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(59,130,246,0.22)",
+                  background: "rgba(59,130,246,0.08)",
+                  color: "#60a5fa",
+                  fontSize: "0.72rem",
+                  cursor: "pointer",
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+
+          <div
+            ref={chatScrollRef}
+            style={{
+              maxHeight: "132px",
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              paddingRight: "4px",
+            }}
+          >
+            {chatMessages.map((message, index) => (
+              <div
+                key={`${message.role}-${index}`}
+                style={{
+                  alignSelf:
+                    message.role === "user" ? "flex-end" : "flex-start",
+                  maxWidth: "88%",
+                  padding: "8px 10px",
+                  borderRadius: "12px",
+                  background:
+                    message.role === "user"
+                      ? "rgba(59,130,246,0.14)"
+                      : "rgba(15,23,42,0.5)",
+                  border:
+                    message.role === "user"
+                      ? "1px solid rgba(59,130,246,0.22)"
+                      : "1px solid var(--border-color)",
+                  color:
+                    message.role === "user"
+                      ? "#bfdbfe"
+                      : "var(--text-secondary)",
+                  fontSize: "0.76rem",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {message.text}
+              </div>
+            ))}
+          </div>
+
+          <textarea
+            value={promptInput}
+            onChange={(e) => setPromptInput(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault();
+                handleGenerateFromPrompt();
+              }
+            }}
+            placeholder="Describe the strategy you want to generate..."
+            style={{
+              minHeight: "78px",
+              resize: "vertical",
+              borderRadius: "10px",
+              border: "1px solid var(--border-color)",
+              background: "var(--bg-primary)",
+              color: "var(--text-primary)",
+              padding: "10px 12px",
+              fontSize: "0.82rem",
+              lineHeight: 1.5,
+              outline: "none",
+            }}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "10px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "0.72rem",
+                color: "var(--text-secondary)",
+              }}
+            >
+              Press `Ctrl+Enter` to generate and replace the editor code.
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerateFromPrompt}
+              disabled={!promptInput.trim() || isGeneratingPrompt}
+              style={{
+                padding: "9px 12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(59,130,246,0.35)",
+                background:
+                  !promptInput.trim() || isGeneratingPrompt
+                    ? "var(--bg-secondary)"
+                    : "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)",
+                color:
+                  !promptInput.trim() || isGeneratingPrompt
+                    ? "var(--text-secondary)"
+                    : "#fff",
+                cursor:
+                  !promptInput.trim() || isGeneratingPrompt
+                    ? "not-allowed"
+                    : "pointer",
+                fontWeight: 700,
+                fontSize: "0.78rem",
+                minWidth: "150px",
+              }}
+            >
+              {isGeneratingPrompt ? "Generating..." : "Generate Strategy"}
+            </button>
+          </div>
+        </div>
         <Editor
           height="100%"
           defaultLanguage="python"

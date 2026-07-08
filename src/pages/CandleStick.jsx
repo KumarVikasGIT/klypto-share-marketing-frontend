@@ -9,6 +9,7 @@ import {
   BaselineSeries,
   createSeriesMarkers,
 } from "lightweight-charts";
+import axios from "axios";
 import React from "react";
 import { createPortal } from "react-dom";
 import { LuCirclePlus, LuCircleMinus } from "react-icons/lu";
@@ -58,6 +59,47 @@ import apiService from "../services/apiServices";
 import useDrawingTools from "../util/useDrawingTools";
 import DrawingToolbar from "../components/tradingModals/DrawingToolbar";
 import DrawingToolbox from "../components/tradingModals/DrawingToolbox";
+import {
+  analyzeSmartPlotLayout,
+  DEFAULT_MAIN_SCALE_MARGINS,
+} from "../util/smartPlotLayout";
+
+const StrategyEChartsPanel = React.lazy(
+  () => import("../components/strategy/StrategyEChartsPanel"),
+);
+
+const PANDAS_TA_TEMPLATE = `# Preloaded chart series:
+# open, high, low, close, volume, time
+#
+# Preloaded helpers:
+# ta.sma, ta.ema, ta.rsi, ta.macd, ta.atr, ta.bbands,
+# ta.supertrend, ta.vwap, ta.stoch, ta.adx,
+# ta.highest, ta.lowest, ta.crossover, ta.crossunder
+# np.full, np.where, pd.Series, pd.DataFrame, df.copy()
+# const(value) -> full-length constant series
+#
+# Optional imports still work:
+# import numpy as np
+# import pandas as pd
+# import pandas_ta as ta
+
+def run_strategy():
+    bb = ta.bbands(close, length=20, std=2)
+    bb_upper = bb["BBU_20_2.0"]
+    bb_middle = bb["BBM_20_2.0"]
+    bb_lower = bb["BBL_20_2.0"]
+
+    long_entry = ta.crossover(close, bb_lower)
+    short_entry = ta.crossunder(close, bb_upper)
+
+    plot("BB Upper", bb_upper, color="#ef4444")
+    plot("BB Middle", bb_middle, color="#f59e0b")
+    plot("BB Lower", bb_lower, color="#22c55e")
+
+    buy(long_entry, label="BB LONG")
+    sell(short_entry, label="BB SHORT")
+
+run_strategy()`;
 
 export default function Candlestick() {
   const chartRef = useRef();
@@ -76,7 +118,7 @@ export default function Candlestick() {
   const fetchedIndicatorsRef = useRef(new Set());
   const socketRef = useRef(null);
   const chartIndicatorHandlerRef = useRef(null);
-  const customScriptSeriesRef = useRef(null);
+  const customScriptSeriesRef = useRef([]);
   const customScriptMarkersRef = useRef(null);
   const lastDeployedMarkersRef = useRef(null);
   const scannerIntervalRef = useRef(null);
@@ -200,17 +242,19 @@ export default function Candlestick() {
   const [symbolTransitioning, setSymbolTransitioning] = useState(false);
   const symbolTransitioningRef = useRef(false);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
-  const [editorCode, setEditorCode] = useState(
-    `markers = []
-# user strategy here
-plot_markers(markers)`,
-  );
+  const [editorCode, setEditorCode] = useState(PANDAS_TA_TEMPLATE);
   const [openScannerTrigger, setOpenScannerTrigger] = useState(0);
   const [customSignals, setCustomSignals] = useState([]);
   const [isDeploying, setIsDeploying] = useState(false);
   const [scannerProgressData, setScannerProgressData] = useState(null);
   const [dashboardSignals, setDashboardSignals] = useState([]);
   const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
+  const [strategyStudioData, setStrategyStudioData] = useState(null);
+  const [isStrategyStudioCollapsed, setIsStrategyStudioCollapsed] = useState(false);
+  const hasStrategyStudio =
+    strategyStudioData &&
+    Array.isArray(strategyStudioData?.result?.plots) &&
+    strategyStudioData.result.plots.length > 0;
 
   const handleStrategyClick = () => {
     setIsPredicting(true);
@@ -338,21 +382,43 @@ plot_markers(markers)`,
     };
   }, []);
 
-  const handleClearCode = useCallback(() => {
-    if (customScriptSeriesRef.current && chartRef.current) {
-      if (Array.isArray(customScriptSeriesRef.current)) {
-        customScriptSeriesRef.current.forEach((series) => {
-          try {
-            chartRef.current.removeSeries(series);
-          } catch (e) {}
-        });
-      } else {
-        try {
-          chartRef.current.removeSeries(customScriptSeriesRef.current);
-        } catch (e) {}
-      }
-      customScriptSeriesRef.current = null;
+  const clearCustomScriptOverlaySeries = useCallback(() => {
+    const plottedSeries = Array.isArray(customScriptSeriesRef.current)
+      ? customScriptSeriesRef.current.filter(Boolean)
+      : [];
+
+    if (plottedSeries.length === 0) {
+      customScriptSeriesRef.current = [];
+      return;
     }
+
+    const activeChart = chartRef.current;
+    const seriesSet = new Set(plottedSeries);
+
+    if (activeChart) {
+      plottedSeries.forEach((series) => {
+        try {
+          activeChart.removeSeries(series);
+        } catch (e) {}
+      });
+    }
+
+    allCreatedSeriesRef.current = allCreatedSeriesRef.current.filter(
+      (entry) => !seriesSet.has(entry.series),
+    );
+    customScriptSeriesRef.current = [];
+
+    try {
+      chartRef.current?.priceScale("right").applyOptions({
+        autoScale: true,
+        mode: 0,
+        scaleMargins: DEFAULT_MAIN_SCALE_MARGINS,
+      });
+    } catch (error) {}
+  }, []);
+
+  const handleClearCode = useCallback(() => {
+    clearCustomScriptOverlaySeries();
     if (customScriptMarkersRef.current) {
       try {
         customScriptMarkersRef.current.setMarkers([]);
@@ -368,8 +434,143 @@ plot_markers(markers)`,
     setCustomSignals([]);
     setDashboardSignals([]);
     setDeployedStrategyCode(null);
+    setStrategyStudioData(null);
+    setIsStrategyStudioCollapsed(false);
     setIsDeployed(false);
-  }, []);
+  }, [clearCustomScriptOverlaySeries]);
+
+  function toCustomScriptNumericValue(value) {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+  }
+
+  function toCustomScriptPlotData(values) {
+    if (!Array.isArray(values)) return [];
+
+    return values
+      .map((point) => {
+        const time = Number(point?.time);
+        if (!Number.isFinite(time)) return null;
+
+        return {
+          time,
+          value: toCustomScriptNumericValue(point?.value),
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function applyCustomScriptPlots(result) {
+    clearCustomScriptOverlaySeries();
+
+    if (!Array.isArray(result?.plots) || result.plots.length === 0) {
+      return { rendered: 0, skipped: [] };
+    }
+
+    const fallbackColors = [
+      "#00ff88",
+      "#ffaa00",
+      "#4fc3f7",
+      "#ff6b6b",
+      "#b388ff",
+      "#ffd54f",
+    ];
+    const skipped = [];
+    const renderedSeries = [];
+    const plotEntries = [];
+
+    result.plots.forEach((plot, index) => {
+      const plotName = plot?.name || `Plot ${index + 1}`;
+      const plotType = String(plot?.type || "line").toLowerCase();
+
+      if (plotType !== "line" && plotType !== "horizontal_line") {
+        skipped.push(`${plotName} uses unsupported type "${plot?.type}"`);
+        return;
+      }
+
+      const seriesData = toCustomScriptPlotData(plot?.values);
+      if (seriesData.length === 0) {
+        skipped.push(`${plotName} returned no drawable values`);
+        return;
+      }
+
+      plotEntries.push({
+        index,
+        seriesData,
+        plot,
+      });
+    });
+
+    const smartLayout = analyzeSmartPlotLayout({
+      plotEntries,
+      candles: candlesRef.current,
+    });
+
+    try {
+      chartRef.current?.priceScale("right").applyOptions(
+        smartLayout.mainPriceScaleOptions || {
+          autoScale: true,
+          mode: 0,
+          scaleMargins: DEFAULT_MAIN_SCALE_MARGINS,
+        },
+      );
+    } catch (error) {}
+
+    smartLayout.plans.forEach((plan) => {
+      const plotName = plan.plot?.name || `Plot ${plan.index + 1}`;
+      const series = addSeries(`CUSTOM_SCRIPT_PLOT_${plan.index}`, LineSeries, {
+        ...chartSeriesStyles.line,
+        color:
+          plan.styleOptions?.color ||
+          plan.plot?.color ||
+          fallbackColors[plan.index % fallbackColors.length],
+        lineWidth: plan.styleOptions?.lineWidth ?? 2,
+        lineStyle: plan.styleOptions?.lineStyle ?? 0,
+        priceScaleId: plan.priceScaleId,
+        scaleMargins: plan.priceScaleOptions?.scaleMargins,
+        priceLineVisible: plan.styleOptions?.priceLineVisible ?? false,
+        lastValueVisible: plan.styleOptions?.lastValueVisible ?? true,
+        crosshairMarkerVisible:
+          plan.styleOptions?.crosshairMarkerVisible ?? true,
+      });
+
+      if (!series?.setData) {
+        skipped.push(`${plotName} could not create a chart series`);
+        return;
+      }
+
+      series.setData(plan.seriesData);
+      if (plan.priceScaleOptions) {
+        try {
+          series.priceScale().applyOptions(plan.priceScaleOptions);
+        } catch (error) {
+          console.warn(
+            `[Custom Strategy] Failed to apply ${plan.placement} scale for ${plotName}`,
+            error,
+          );
+        }
+      }
+      renderedSeries.push(series);
+    });
+
+    customScriptSeriesRef.current = renderedSeries;
+    return { rendered: renderedSeries.length, skipped };
+  }
+
+  useEffect(() => {
+    clearCustomScriptOverlaySeries();
+    setStrategyStudioData(null);
+    setIsStrategyStudioCollapsed(false);
+  }, [
+    clearCustomScriptOverlaySeries,
+    selectedCurrency?.name,
+    selectedCurrency?.symbol,
+    timeframeValue,
+  ]);
 
   // 1. Initial Dashboard Fetch (Replaces Polling)
   useEffect(() => {
@@ -962,6 +1163,7 @@ json.dumps(result)
             background: "var(--bg-secondary)",
             color: "var(--text-primary)",
           });
+          setIsDeploying(false);
           return;
         }
 
@@ -975,12 +1177,41 @@ json.dumps(result)
           setIsCodeEditorOpen(false);
         }
 
-        const payload = {
-          strategy_code: `${code}`,
-          use_historical_only: !isMarketOpen,
-        };
         const localUser = JSON.parse(localStorage.getItem("session") || "{}");
         const userId = localUser?.user?.id || localUser?.user?._id || "123";
+        const candles = (candlesRef?.current || [])
+          .map((candle) => ({
+            time: candle.time,
+            open: Number(candle.open),
+            high: Number(candle.high),
+            low: Number(candle.low),
+            close: Number(candle.close),
+            volume: Number(candle.volume || 0),
+          }))
+          .filter(
+            (candle) =>
+              candle.time !== undefined &&
+              Number.isFinite(candle.open) &&
+              Number.isFinite(candle.high) &&
+              Number.isFinite(candle.low) &&
+              Number.isFinite(candle.close) &&
+              Number.isFinite(candle.volume),
+          );
+
+        const payload = {
+          code: `${code}`,
+          symbol:
+            selectedCurrency?.symbol ||
+            selectedCurrency?.name ||
+            selectedCurrency?.stock_code ||
+            "UNKNOWN",
+          timeframe: timeframeValue,
+          candles,
+          settings: {
+            use_historical_only: !isMarketOpen,
+          },
+          user_id: String(userId),
+        };
 
         console.log("🚀 [API] Triggering run-scanner API...");
         console.log("📦 [API] Payload:", payload);
@@ -992,14 +1223,97 @@ json.dumps(result)
           return;
         }
 
-        const response = await apiService.post(
-          `/api/strategy/run-scanner`,
+        const strategyApiBaseUrl =
+          import.meta.env.VITE_STRATEGY_API_URL ||
+          import.meta.env.VITE_API_BASE_URL ||
+          "http://localhost:4001";
+
+        const response = await axios.post(
+          `${strategyApiBaseUrl}/api/strategy/run-scanner`,
           payload,
+          {
+            timeout: 600000,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
         );
+        const result = response?.data || {};
+        console.log("✅ [API] run-scanner response:", result);
+
+        if (Array.isArray(result.logs) && result.logs.length > 0) {
+          console.groupCollapsed(
+            `[Custom Strategy] ${payload.symbol} ${payload.timeframe} logs`,
+          );
+          result.logs.forEach((entry) => console.log(entry));
+          console.groupEnd();
+        }
+
+        if (Array.isArray(result.errors) && result.errors.length > 0) {
+          Swal.fire({
+            icon: "error",
+            title: "Python Execution Error",
+            text: result.errors
+              .map((error) =>
+                error?.line
+                  ? `Line ${error.line}: ${error.message}`
+                  : error?.message || "Script failed",
+              )
+              .join("\n"),
+            background: "var(--bg-secondary)",
+            color: "var(--text-primary)",
+          });
+          setIsDeploying(false);
+          return;
+        }
+
+        const plotResult = applyCustomScriptPlots(result);
+        if (plotResult.skipped.length > 0) {
+          console.warn("[Custom Strategy] Skipped plots:", plotResult.skipped);
+        }
+
+        if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+          console.warn("[Custom Strategy] Warnings:", result.warnings);
+        }
+
+        setStrategyStudioData({
+          symbol: payload.symbol,
+          timeframe: payload.timeframe,
+          candles,
+          result,
+        });
+        setIsStrategyStudioCollapsed(false);
+
+        const responseSignals = Array.isArray(result.signals)
+          ? result.signals
+              .map((signal) => {
+                const numericTime = Number(signal.time);
+                const utcTime = Number.isFinite(numericTime)
+                  ? numericTime - 19800
+                  : undefined;
+                return {
+                  symbol: payload.symbol,
+                  name: payload.symbol,
+                  token: selectedCurrency?.token,
+                  signalType: signal.side || signal.label,
+                  type: signal.side || signal.label,
+                  unix_timestamp: utcTime,
+                  timestamp:
+                    utcTime !== undefined
+                      ? new Date(utcTime * 1000).toISOString()
+                      : signal.time,
+                  segment: "SCRIPT",
+                };
+              })
+              .filter((signal) => signal.signalType && signal.timestamp !== undefined)
+          : [];
+
+        setDashboardSignals(responseSignals);
 
         // Decoupled: We don't fetch and plot here anymore. The useEffect handles it.
         setDeployedStrategyCode(code);
         setIsDeployed(true);
+        setIsDeploying(false);
       } catch (err) {
         console.error("Python Execution Error:", err);
         Swal.fire({
@@ -3225,7 +3539,8 @@ json.dumps(result)
                       flexDirection: "column",
                       flex: 1,
                       minWidth: 0,
-                      overflow: "hidden",
+                      overflowX: "hidden",
+                      overflowY: hasStrategyStudio ? "auto" : "hidden",
                       position: "relative",
                     }}
                   >
@@ -3239,7 +3554,8 @@ json.dumps(result)
                         overflow: "hidden",
                         display: "flex",
                         flexDirection: "column",
-                        minHeight: 450, cursor: activeTool ? "crosshair" : "default",
+                        minHeight: hasStrategyStudio ? 320 : 450,
+                        cursor: activeTool ? "crosshair" : "default",
                       }}
                     >
                       <DrawingToolbox
@@ -3887,6 +4203,37 @@ json.dumps(result)
                     </div>
                   </div>
 
+                  {hasStrategyStudio && (
+                    <React.Suspense
+                      fallback={
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            borderTop: "1px solid var(--border-color)",
+                            background:
+                              "linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)",
+                            padding: "18px 16px",
+                            color: "var(--text-secondary)",
+                            fontSize: "0.82rem",
+                          }}
+                        >
+                          Loading Strategy Studio...
+                        </div>
+                      }
+                    >
+                      <StrategyEChartsPanel
+                        candles={strategyStudioData.candles}
+                        result={strategyStudioData.result}
+                        symbol={strategyStudioData.symbol}
+                        timeframe={strategyStudioData.timeframe}
+                        collapsed={isStrategyStudioCollapsed}
+                        onToggleCollapsed={() =>
+                          setIsStrategyStudioCollapsed((prev) => !prev)
+                        }
+                      />
+                    </React.Suspense>
+                  )}
+
                   {isCodeEditorOpen && (
                     <CodeEditorPanel
                       onClose={() => setIsCodeEditorOpen(false)}
@@ -3895,6 +4242,9 @@ json.dumps(result)
                       onEdit={() => setIsDeployed(false)}
                       editorCode={editorCode}
                       setEditorCode={setEditorCode}
+                      templateCode={PANDAS_TA_TEMPLATE}
+                      templateLabel="TA Template"
+                      helperText="Preloaded: ta, np, pd, df, const(), open/high/low/close/volume/time | optional imports: pandas_ta, numpy, pandas | output helpers: plot, buy, sell, alert"
                       isDeployed={isDeployed}
                       isDeploying={isDeploying}
                     />
