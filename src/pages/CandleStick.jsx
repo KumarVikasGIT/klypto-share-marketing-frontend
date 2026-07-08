@@ -82,6 +82,8 @@ export default function Candlestick() {
   const scannerIntervalRef = useRef(null);
   const pyodideRef = useRef(null);
   const lastIndicatorRequestRef = useRef(0);
+  const lastHistoricalRequestRef = useRef({ key: null, at: 0 });
+  const lastLiveTickRequestRef = useRef({ key: null, at: 0 });
   const [isDeployed, setIsDeployed] = useState(false);
 
   const normalize = (s) => s?.replace(/\s+/g, " ").trim().toUpperCase();
@@ -2286,7 +2288,7 @@ json.dumps(result)
 
   const emitRef = useRef(null);
 
-  const requestHistoricalData = useCallback(() => {
+  const requestHistoricalData = useCallback((force = false) => {
     if (!selectedCurrency || !timeframeValue) return;
     setNoDataAvailable(false);
     const historicalPayload = {
@@ -2295,17 +2297,46 @@ json.dumps(result)
       fromDate: fromDate,
       toDate: toDate,
     };
+    const requestKey = JSON.stringify(historicalPayload);
+    const now = Date.now();
+    if (
+      !force &&
+      lastHistoricalRequestRef.current.key === requestKey &&
+      now - lastHistoricalRequestRef.current.at < 2000
+    ) {
+      return false;
+    }
+    lastHistoricalRequestRef.current = { key: requestKey, at: now };
     console.log("📬 getManualHistoricalData Payload:", historicalPayload);
     if (emitRef.current) {
       emitRef.current(EVENTS.CHART.GET, historicalPayload);
     }
+    return true;
   }, [selectedCurrency, timeframeValue, fromDate, toDate]);
+
+  const requestLiveTick = useCallback((force = false) => {
+    const symbol = selectedCurrency?.name || selectedCurrency?.symbol;
+    if (!symbol || !emitRef.current) return;
+    const requestKey = symbol.toUpperCase();
+    const now = Date.now();
+    if (
+      !force &&
+      lastLiveTickRequestRef.current.key === requestKey &&
+      now - lastLiveTickRequestRef.current.at < 1500
+    ) {
+      return false;
+    }
+    lastLiveTickRequestRef.current = { key: requestKey, at: now };
+    emitRef.current(EVENTS.OVERVIEW.GET, { symbol });
+    return true;
+  }, [selectedCurrency]);
 
   // ── Central Socket Hook ──
   const { emit, once, connect, connected, id, off } = useSocket({
     handleConnect: () => {
-      console.log("✅ SOCKET CONNECTED", connected);
-      requestHistoricalData();
+      console.log("✅ SOCKET CONNECTED", true);
+      requestHistoricalData(true);
+      requestLiveTick(true);
 
       if (
         selectedIndicatorRef.current &&
@@ -2655,7 +2686,13 @@ json.dumps(result)
         )
           return;
 
-        let rawTickTime = tick?.data?.time;
+        const liveData = tick?.data || tick?.tick || {};
+        let rawTickTime =
+          liveData?.time ??
+          liveData?.tickTime ??
+          liveData?.datetime ??
+          tick?.overview?.exchange_trade_time ??
+          tick?.raw?.exchange_timestamp;
         let tickTime = Number(rawTickTime);
 
         if (!Number.isFinite(tickTime)) {
@@ -2671,14 +2708,18 @@ json.dumps(result)
         if (!Number.isFinite(normalizedTime) || normalizedTime <= 0) return;
 
         const price = Number(
-          tick.data.close ?? tick.data.price ?? tick.data.ltp,
+          liveData.close ??
+            liveData.price ??
+            liveData.ltp ??
+            liveData.last_traded_price,
         );
         if (!Number.isFinite(price)) return;
 
+        const previousCandle = currentCandleRef.current;
         let updatedBar;
         if (
-          !currentCandleRef.current ||
-          normalizedTime > currentCandleRef.current.time
+          !previousCandle ||
+          normalizedTime > previousCandle.time
         ) {
           updatedBar = {
             time: normalizedTime,
@@ -2686,17 +2727,15 @@ json.dumps(result)
             high: price,
             low: price,
             close: price,
-            volume: Number(tick.data.volume || 0),
+            volume: Number(liveData.volume || 0),
           };
         } else {
           updatedBar = {
-            ...currentCandleRef.current,
-            high: Math.max(currentCandleRef.current.high, price),
-            low: Math.min(currentCandleRef.current.low, price),
+            ...previousCandle,
+            high: Math.max(previousCandle.high, price),
+            low: Math.min(previousCandle.low, price),
             close: price,
-            volume:
-              Number(currentCandleRef.current.volume || 0) +
-              Number(tick.data.volume || 0),
+            volume: Number(liveData.volume || previousCandle.volume || 0),
           };
         }
 
@@ -2710,7 +2749,9 @@ json.dumps(result)
 
         const timeScale = chartRef.current?.timeScale();
         const oldRange = timeScale?.getVisibleLogicalRange();
-        const isGap = currentCandleRef.current && (normalizedTime - currentCandleRef.current.time > intervalSec * 10);
+        const isGap =
+          previousCandle &&
+          normalizedTime - previousCandle.time > intervalSec * 10;
 
         if (isGap && timeScale) {
           timeScale.applyOptions({ shiftVisibleRangeOnNewBar: false });
@@ -2870,12 +2911,8 @@ json.dumps(result)
     setSymbolTransitioning(true);
 
     if (connected && selectedCurrency && timeframeValue) {
-      emit(EVENTS.CHART.GET, {
-        symbol: selectedCurrency?.name,
-        interval: timeframeValue,
-        fromDate: fromDate,
-        toDate: toDate,
-      });
+      requestHistoricalData();
+      requestLiveTick();
     }
 
     setMainChartLoading(true);
@@ -2885,7 +2922,16 @@ json.dumps(result)
     }, 10000);
 
     return () => clearTimeout(timeout);
-  }, [selectedCurrency, timeframeValue, chartType, fromDate, toDate]);
+  }, [
+    selectedCurrency,
+    timeframeValue,
+    chartType,
+    fromDate,
+    toDate,
+    connected,
+    requestHistoricalData,
+    requestLiveTick,
+  ]);
 
   const zoomCharts = (delta) => {
     const charts = [
@@ -3935,7 +3981,9 @@ json.dumps(result)
                   height: "100%",
                 }}
               >
-                <OptionChain onBack={() => setActiveTab("Chart")} />
+                {activeTab === "Option Chain" && (
+                  <OptionChain onBack={() => setActiveTab("Chart")} />
+                )}
               </div>
 
               <div
@@ -4044,4 +4092,3 @@ json.dumps(result)
     </>
   );
 }
-
