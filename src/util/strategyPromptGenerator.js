@@ -47,12 +47,12 @@ function inferTradeMode(normalizedPrompt) {
 
 function buildSignalBlock({ longEntry, shortEntry, mode, longLabel, shortLabel }) {
   if (mode === "long-only") {
-    return `buy(${longEntry}, label="${longLabel}")\nexit(${shortEntry}, label="LONG EXIT")`;
+    return `signal(${longEntry}, side="BUY", label="${longLabel}")\nsignal(${shortEntry}, side="EXIT", label="LONG EXIT")`;
   }
   if (mode === "short-only") {
-    return `sell(${shortEntry}, label="${shortLabel}")\nexit(${longEntry}, label="SHORT EXIT")`;
+    return `signal(${shortEntry}, side="SELL", label="${shortLabel}")\nsignal(${longEntry}, side="EXIT", label="SHORT EXIT")`;
   }
-  return `buy(${longEntry}, label="${longLabel}")\nsell(${shortEntry}, label="${shortLabel}")`;
+  return `signal(${longEntry}, side="BUY", label="${longLabel}")\nsignal(${shortEntry}, side="SELL", label="${shortLabel}")`;
 }
 
 function buildHeader(prompt, title, assumptions = []) {
@@ -61,7 +61,32 @@ function buildHeader(prompt, title, assumptions = []) {
     ? assumptions.map((item) => `# - ${item}`).join("\n")
     : "# - Adjust parameters, labels, and colors before deploying.";
 
-  return `# Auto-generated strategy from your prompt.\n# Strategy: ${title}\n# Prompt: ${safePrompt}\n# Preloaded: ta, np, pd, df, const(), open, high, low, close, volume, time\n# Assumptions:\n${assumptionLines}\n\n`;
+  return `# Auto-generated indicator strategy from your prompt.
+# Strategy: ${title}
+# Prompt: ${safePrompt}
+# Python calculates. JSON describes. Frontend renders.
+from chartlab import indicator, input_int, input_float, input_bool, input_color
+from chartlab import plot, plot_histogram, hline, fill, signal
+import pandas_ta as ta
+
+# Context: ctx.open, ctx.high, ctx.low, ctx.close, ctx.volume, ctx.time
+# Settings panel inputs can be added with input_int/input_float/input_bool/input_color.
+# Assumptions:
+${assumptionLines}
+
+`;
+}
+
+function buildIndicatorFunction({ title, pane, body }) {
+  return `@indicator(name="${title}", pane="${pane}")\ndef run_strategy(ctx):\n${body}\n`;
+}
+
+function indent(lines) {
+  return lines
+    .trim()
+    .split("\n")
+    .map((line) => `    ${line}`)
+    .join("\n");
 }
 
 function buildEmaSmaStrategy(prompt, normalizedPrompt) {
@@ -103,40 +128,35 @@ function buildEmaSmaStrategy(prompt, normalizedPrompt) {
   }
 
   const mode = inferTradeMode(normalizedPrompt);
-  const fastFn = fastKind === "sma" ? "ta.sma" : "ta.ema";
-  const slowFn = slowKind === "sma" ? "ta.sma" : "ta.ema";
   const fastName = `${fastKind.toUpperCase()} ${fastLength}`;
   const slowName = `${slowKind.toUpperCase()} ${slowLength}`;
   const title = `${fastName} / ${slowName} crossover`;
+  const body = indent(`
+fast_line = ctx.ta.${fastKind}(ctx.close, length=${fastLength})
+slow_line = ctx.ta.${slowKind}(ctx.close, length=${slowLength})
 
-  const code = `${buildHeader(prompt, title, [
-    "Generated a crossover strategy from the moving-average keywords in your prompt.",
-    "Long entries trigger when the fast line crosses above the slow line.",
-    "Short entries trigger when the fast line crosses below the slow line.",
-  ])}def run_strategy():
-    fast_line = ${fastFn}(close, length=${fastLength})
-    slow_line = ${slowFn}(close, length=${slowLength})
+long_entry = ctx.ta.crossover(fast_line, slow_line)
+short_entry = ctx.ta.crossunder(fast_line, slow_line)
 
-    long_entry = ta.crossover(fast_line, slow_line)
-    short_entry = ta.crossunder(fast_line, slow_line)
+plot(fast_line, title="${fastName}", color="#22c55e", width=2)
+plot(slow_line, title="${slowName}", color="#f59e0b", width=2)
 
-    plot("${fastName}", fast_line, color="#22c55e", pane="overlay")
-    plot("${slowName}", slow_line, color="#f59e0b", pane="overlay")
-
-    ${buildSignalBlock({
-      longEntry: "long_entry",
-      shortEntry: "short_entry",
-      mode,
-      longLabel: "LONG",
-      shortLabel: "SHORT",
-    }).replace(/\n/g, "\n    ")}
-
-run_strategy()
-`;
+${buildSignalBlock({
+  longEntry: "long_entry",
+  shortEntry: "short_entry",
+  mode,
+  longLabel: "LONG",
+  shortLabel: "SHORT",
+})}
+`);
 
   return {
     title,
-    code,
+    code:
+      buildHeader(prompt, title, [
+        "Generated a crossover strategy from the moving-average keywords in your prompt.",
+        "Fast/slow lines render on the price chart as overlays.",
+      ]) + buildIndicatorFunction({ title, pane: "overlay", body }),
     reply: `I generated a ${title} strategy and loaded it into the editor. Fast/slow lengths are ${fastLength}/${slowLength}.`,
   };
 }
@@ -159,51 +179,42 @@ function buildRsiStrategy(prompt, normalizedPrompt) {
   const title = useTrendLevel
     ? `RSI ${rsiLength} 50-level trend`
     : `RSI ${rsiLength} mean reversion`;
+  const longEntry = useTrendLevel
+    ? "ctx.ta.crossover(rsi_value, 50)"
+    : `ctx.ta.crossover(rsi_value, ${oversold})`;
+  const shortEntry = useTrendLevel
+    ? "ctx.ta.crossunder(rsi_value, 50)"
+    : `ctx.ta.crossunder(rsi_value, ${overbought})`;
+  const body = indent(`
+rsi_value = ctx.ta.rsi(ctx.close, length=${rsiLength})
 
-  const signalLogic = useTrendLevel
-    ? {
-        longEntry: "ta.crossover(rsi_value, middle_line)",
-        shortEntry: "ta.crossunder(rsi_value, middle_line)",
-      }
-    : {
-        longEntry: "ta.crossover(rsi_value, oversold_line)",
-        shortEntry: "ta.crossunder(rsi_value, overbought_line)",
-      };
+long_entry = ${longEntry}
+short_entry = ${shortEntry}
 
-  const code = `${buildHeader(prompt, title, [
-    "Generated an RSI strategy from the momentum keywords in your prompt.",
-    useTrendLevel
-      ? "This version uses the 50 level as the trend pivot."
-      : `This version uses ${oversold}/${overbought} as oversold/overbought thresholds.`,
-    "Reference levels are created with const() so plots stay chart-length safe.",
-  ])}def run_strategy():
-    rsi_value = ta.rsi(close, length=${rsiLength})
-    overbought_line = const(${overbought})
-    middle_line = const(50)
-    oversold_line = const(${oversold})
+plot(rsi_value, title="RSI ${rsiLength}", color="#3b82f6", width=2)
+hline(${overbought}, "Overbought", color="#ef4444")
+hline(50, "Middle", color="#9ca3af")
+hline(${oversold}, "Oversold", color="#22c55e")
+fill(rsi_value, 50, color_top="rgba(59,130,246,0.28)", color_bottom="rgba(59,130,246,0.02)")
 
-    long_entry = ${signalLogic.longEntry}
-    short_entry = ${signalLogic.shortEntry}
-
-    plot("RSI ${rsiLength}", rsi_value, color="#3b82f6", pane="oscillator")
-    plot("Overbought", overbought_line, color="#ef4444", pane="oscillator")
-    plot("Middle", middle_line, color="#9ca3af", pane="oscillator")
-    plot("Oversold", oversold_line, color="#22c55e", pane="oscillator")
-
-    ${buildSignalBlock({
-      longEntry: "long_entry",
-      shortEntry: "short_entry",
-      mode,
-      longLabel: "RSI LONG",
-      shortLabel: "RSI SHORT",
-    }).replace(/\n/g, "\n    ")}
-
-run_strategy()
-`;
+${buildSignalBlock({
+  longEntry: "long_entry",
+  shortEntry: "short_entry",
+  mode,
+  longLabel: "RSI LONG",
+  shortLabel: "RSI SHORT",
+})}
+`);
 
   return {
     title,
-    code,
+    code:
+      buildHeader(prompt, title, [
+        "Generated an RSI strategy from the momentum keywords in your prompt.",
+        useTrendLevel
+          ? "This version uses the 50 level as the trend pivot."
+          : `This version uses ${oversold}/${overbought} as oversold/overbought thresholds.`,
+      ]) + buildIndicatorFunction({ title, pane: "oscillator", body }),
     reply: `I generated an ${title} strategy and loaded it into the editor with ${oversold}/${overbought} reference levels.`,
   };
 }
@@ -215,38 +226,35 @@ function buildBollingerStrategy(prompt, normalizedPrompt) {
   const std = Number(stdMatch?.[1] || 2);
   const mode = inferTradeMode(normalizedPrompt);
   const title = `Bollinger Bands ${length}, ${std}`;
+  const body = indent(`
+bb_middle = ctx.ta.sma(ctx.close, length=${length})
+bb_std = ctx.ta.stdev(ctx.close, length=${length})
+bb_upper = bb_middle + (bb_std * ${std})
+bb_lower = bb_middle - (bb_std * ${std})
 
-  const code = `${buildHeader(prompt, title, [
-    "Generated a Bollinger Bands reversal strategy from your prompt.",
-    "Long entries trigger on lower-band crosses and short entries on upper-band crosses.",
-    "Bands are plotted on the main price chart.",
-  ])}def run_strategy():
-    bb = ta.bbands(close, length=${length}, std=${std})
-    bb_upper = bb["BBU_${length}_${Number(std).toFixed(1)}"]
-    bb_middle = bb["BBM_${length}_${Number(std).toFixed(1)}"]
-    bb_lower = bb["BBL_${length}_${Number(std).toFixed(1)}"]
+long_entry = ctx.ta.crossover(ctx.close, bb_lower)
+short_entry = ctx.ta.crossunder(ctx.close, bb_upper)
 
-    long_entry = ta.crossover(close, bb_lower)
-    short_entry = ta.crossunder(close, bb_upper)
+plot(bb_upper, title="BB Upper", color="#ef4444", width=1)
+plot(bb_middle, title="BB Middle", color="#f59e0b", width=1)
+plot(bb_lower, title="BB Lower", color="#22c55e", width=1)
 
-    plot("BB Upper", bb_upper, color="#ef4444", pane="overlay")
-    plot("BB Middle", bb_middle, color="#f59e0b", pane="overlay")
-    plot("BB Lower", bb_lower, color="#22c55e", pane="overlay")
-
-    ${buildSignalBlock({
-      longEntry: "long_entry",
-      shortEntry: "short_entry",
-      mode,
-      longLabel: "BB LONG",
-      shortLabel: "BB SHORT",
-    }).replace(/\n/g, "\n    ")}
-
-run_strategy()
-`;
+${buildSignalBlock({
+  longEntry: "long_entry",
+  shortEntry: "short_entry",
+  mode,
+  longLabel: "BB LONG",
+  shortLabel: "BB SHORT",
+})}
+`);
 
   return {
     title,
-    code,
+    code:
+      buildHeader(prompt, title, [
+        "Generated a Bollinger Bands reversal strategy from your prompt.",
+        "Bands are calculated with SMA and rolling standard deviation inside the sandbox.",
+      ]) + buildIndicatorFunction({ title, pane: "overlay", body }),
     reply: `I generated a ${title} strategy and loaded it into the editor using lower/upper band cross signals.`,
   };
 }
@@ -256,41 +264,39 @@ function buildMacdStrategy(prompt, normalizedPrompt) {
   const signalMatch = normalizedPrompt.match(/signal\s*(\d+)/);
   const fast = clampNumber(values[0], 12);
   const slow = clampNumber(values[1], 26);
-  const signal = clampNumber(signalMatch?.[1], 9);
+  const signalLength = clampNumber(signalMatch?.[1], 9);
   const mode = inferTradeMode(normalizedPrompt);
-  const title = `MACD ${fast}/${slow}/${signal}`;
+  const title = `MACD ${fast}/${slow}/${signalLength}`;
+  const body = indent(`
+macd_data = ctx.ta.macd(ctx.close, fast=${fast}, slow=${slow}, signal=${signalLength})
+macd_line = macd_data["macd"]
+signal_line = macd_data["signal"]
+histogram = macd_data["histogram"]
 
-  const code = `${buildHeader(prompt, title, [
-    "Generated a MACD crossover strategy from your prompt.",
-    "Signals use MACD line crossovers against the signal line.",
-    "Histogram is plotted for quick momentum context.",
-  ])}def run_strategy():
-    macd_data = ta.macd(close, fast=${fast}, slow=${slow}, signal=${signal})
-    macd_line = macd_data["MACD_${fast}_${slow}_${signal}"]
-    signal_line = macd_data["MACDs_${fast}_${slow}_${signal}"]
-    histogram = macd_data["MACDh_${fast}_${slow}_${signal}"]
+long_entry = ctx.ta.crossover(macd_line, signal_line)
+short_entry = ctx.ta.crossunder(macd_line, signal_line)
 
-    long_entry = ta.crossover(macd_line, signal_line)
-    short_entry = ta.crossunder(macd_line, signal_line)
+plot(macd_line, title="MACD", color="#3b82f6", width=2)
+plot(signal_line, title="MACD Signal", color="#f59e0b", width=2)
+plot_histogram(histogram, title="MACD Histogram", color="#22c55e")
+hline(0, "Zero", color="#9ca3af")
 
-    plot("MACD", macd_line, color="#3b82f6", pane="momentum")
-    plot("MACD Signal", signal_line, color="#f59e0b", pane="momentum")
-    plot("MACD Histogram", histogram, color="#22c55e", pane="momentum")
-
-    ${buildSignalBlock({
-      longEntry: "long_entry",
-      shortEntry: "short_entry",
-      mode,
-      longLabel: "MACD LONG",
-      shortLabel: "MACD SHORT",
-    }).replace(/\n/g, "\n    ")}
-
-run_strategy()
-`;
+${buildSignalBlock({
+  longEntry: "long_entry",
+  shortEntry: "short_entry",
+  mode,
+  longLabel: "MACD LONG",
+  shortLabel: "MACD SHORT",
+})}
+`);
 
   return {
     title,
-    code,
+    code:
+      buildHeader(prompt, title, [
+        "Generated a MACD crossover strategy from your prompt.",
+        "MACD, signal, and histogram render together in a momentum pane.",
+      ]) + buildIndicatorFunction({ title, pane: "momentum", body }),
     reply: `I generated a ${title} strategy and loaded it into the editor with MACD, signal, and histogram plots.`,
   };
 }
@@ -298,33 +304,30 @@ run_strategy()
 function buildVwapStrategy(prompt, normalizedPrompt) {
   const mode = inferTradeMode(normalizedPrompt);
   const title = "VWAP crossover";
+  const body = indent(`
+vwap_line = ta.vwap(ctx.high, ctx.low, ctx.close, ctx.volume)
 
-  const code = `${buildHeader(prompt, title, [
-    "Generated a VWAP crossover strategy from your prompt.",
-    "Long entries trigger when price crosses above VWAP.",
-    "Short entries trigger when price crosses below VWAP.",
-  ])}def run_strategy():
-    vwap_line = ta.vwap(high, low, close, volume)
+long_entry = ctx.ta.crossover(ctx.close, vwap_line)
+short_entry = ctx.ta.crossunder(ctx.close, vwap_line)
 
-    long_entry = ta.crossover(close, vwap_line)
-    short_entry = ta.crossunder(close, vwap_line)
+plot(vwap_line, title="VWAP", color="#8b5cf6", width=2)
 
-    plot("VWAP", vwap_line, color="#8b5cf6", pane="overlay")
-
-    ${buildSignalBlock({
-      longEntry: "long_entry",
-      shortEntry: "short_entry",
-      mode,
-      longLabel: "VWAP LONG",
-      shortLabel: "VWAP SHORT",
-    }).replace(/\n/g, "\n    ")}
-
-run_strategy()
-`;
+${buildSignalBlock({
+  longEntry: "long_entry",
+  shortEntry: "short_entry",
+  mode,
+  longLabel: "VWAP LONG",
+  shortLabel: "VWAP SHORT",
+})}
+`);
 
   return {
     title,
-    code,
+    code:
+      buildHeader(prompt, title, [
+        "Generated a VWAP crossover strategy from your prompt.",
+        "VWAP renders on the price chart as an overlay.",
+      ]) + buildIndicatorFunction({ title, pane: "overlay", body }),
     reply: "I generated a VWAP crossover strategy and loaded it into the editor.",
   };
 }
@@ -334,38 +337,34 @@ function buildSupertrendStrategy(prompt, normalizedPrompt) {
   const multiplierMatch = normalizedPrompt.match(/multiplier\s*(?:=|of)?\s*(\d+(?:\.\d+)?)/);
   const length = clampNumber(lengthMatch?.[1], 10);
   const multiplier = Number(multiplierMatch?.[1] || 3);
-  const multiplierLabel = Number(multiplier).toFixed(1);
   const mode = inferTradeMode(normalizedPrompt);
   const title = `Supertrend ${length}, ${multiplier}`;
+  const body = indent(`
+supertrend_data = ta.supertrend(ctx.high, ctx.low, ctx.close, length=${length}, multiplier=${multiplier})
+trend_line = supertrend_data["supertrend"]
+direction = supertrend_data["direction"]
 
-  const code = `${buildHeader(prompt, title, [
-    "Generated a Supertrend strategy from your prompt.",
-    "Entries use Supertrend direction flips across zero.",
-    "The trend line is plotted on the price chart.",
-  ])}def run_strategy():
-    supertrend_data = ta.supertrend(high, low, close, length=${length}, multiplier=${multiplier})
-    trend_line = supertrend_data["SUPERT_${length}_${multiplierLabel}"]
-    direction = supertrend_data["SUPERTd_${length}_${multiplierLabel}"]
+long_entry = ctx.ta.crossover(direction, 0)
+short_entry = ctx.ta.crossunder(direction, 0)
 
-    long_entry = ta.crossover(direction, 0)
-    short_entry = ta.crossunder(direction, 0)
+plot(trend_line, title="Supertrend", color="#22c55e", width=2)
 
-    plot("Supertrend", trend_line, color="#22c55e", pane="overlay")
-
-    ${buildSignalBlock({
-      longEntry: "long_entry",
-      shortEntry: "short_entry",
-      mode,
-      longLabel: "ST LONG",
-      shortLabel: "ST SHORT",
-    }).replace(/\n/g, "\n    ")}
-
-run_strategy()
-`;
+${buildSignalBlock({
+  longEntry: "long_entry",
+  shortEntry: "short_entry",
+  mode,
+  longLabel: "ST LONG",
+  shortLabel: "ST SHORT",
+})}
+`);
 
   return {
     title,
-    code,
+    code:
+      buildHeader(prompt, title, [
+        "Generated a Supertrend strategy from your prompt.",
+        "Entries use direction flips across zero.",
+      ]) + buildIndicatorFunction({ title, pane: "overlay", body }),
     reply: `I generated a ${title} strategy and loaded it into the editor using Supertrend direction flips.`,
   };
 }
@@ -375,66 +374,38 @@ function buildBreakoutStrategy(prompt, normalizedPrompt) {
   const lookback = clampNumber(lookbackMatch?.[1], 20);
   const mode = inferTradeMode(normalizedPrompt);
   const title = `${lookback}-bar breakout`;
+  const body = indent(`
+breakout_high = ctx.ta.highest(ctx.high, ${lookback})
+breakout_low = ctx.ta.lowest(ctx.low, ${lookback})
 
-  const code = `${buildHeader(prompt, title, [
-    "Generated a price breakout strategy from your prompt.",
-    "Entries use the rolling highest high and lowest low.",
-    "This works well as a baseline momentum template.",
-  ])}def run_strategy():
-    breakout_high = ta.highest(high, ${lookback})
-    breakout_low = ta.lowest(low, ${lookback})
+long_entry = ctx.ta.crossover(ctx.close, breakout_high)
+short_entry = ctx.ta.crossunder(ctx.close, breakout_low)
 
-    long_entry = ta.crossover(close, breakout_high)
-    short_entry = ta.crossunder(close, breakout_low)
+plot(breakout_high, title="Breakout High", color="#ef4444", width=1)
+plot(breakout_low, title="Breakout Low", color="#22c55e", width=1)
 
-    plot("Breakout High", breakout_high, color="#ef4444", pane="overlay")
-    plot("Breakout Low", breakout_low, color="#22c55e", pane="overlay")
-
-    ${buildSignalBlock({
-      longEntry: "long_entry",
-      shortEntry: "short_entry",
-      mode,
-      longLabel: "BO LONG",
-      shortLabel: "BO SHORT",
-    }).replace(/\n/g, "\n    ")}
-
-run_strategy()
-`;
+${buildSignalBlock({
+  longEntry: "long_entry",
+  shortEntry: "short_entry",
+  mode,
+  longLabel: "BO LONG",
+  shortLabel: "BO SHORT",
+})}
+`);
 
   return {
     title,
-    code,
+    code:
+      buildHeader(prompt, title, [
+        "Generated a price breakout strategy from your prompt.",
+        "Entries use rolling highest high and lowest low levels.",
+      ]) + buildIndicatorFunction({ title, pane: "overlay", body }),
     reply: `I generated a ${title} strategy and loaded it into the editor using rolling breakout levels.`,
   };
 }
 
 function buildFallbackStrategy(prompt) {
-  const title = "EMA 9/21 crossover";
-  const code = `${buildHeader(prompt, title, [
-    "I did not detect a specific indicator family, so I used a safe default crossover template.",
-    "You can keep the structure and swap indicators or lengths quickly.",
-    "If you want a different style, mention RSI, MACD, Bollinger, VWAP, Supertrend, or breakout.",
-  ])}def run_strategy():
-    fast_line = ta.ema(close, length=9)
-    slow_line = ta.ema(close, length=21)
-
-    long_entry = ta.crossover(fast_line, slow_line)
-    short_entry = ta.crossunder(fast_line, slow_line)
-
-    plot("EMA 9", fast_line, color="#22c55e", pane="overlay")
-    plot("EMA 21", slow_line, color="#f59e0b", pane="overlay")
-
-    buy(long_entry, label="LONG")
-    sell(short_entry, label="SHORT")
-
-run_strategy()
-`;
-
-  return {
-    title,
-    code,
-    reply: "I generated a default EMA 9/21 crossover strategy and loaded it into the editor. Mention a specific indicator to make it more targeted.",
-  };
+  return buildEmaSmaStrategy(prompt, "ema 9/21 crossover");
 }
 
 export function generateStrategyFromPrompt(prompt) {

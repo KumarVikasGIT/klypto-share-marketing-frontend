@@ -7,6 +7,7 @@ import {
   generateStrategyFromPrompt,
   PROMPT_SUGGESTIONS,
 } from "../../util/strategyPromptGenerator";
+import IndicatorFeaturePanel from "../../chart/settings/IndicatorFeaturePanel";
 
 const CodeEditorPanel = ({
   onClose,
@@ -20,6 +21,10 @@ const CodeEditorPanel = ({
   helperText = "Preloaded: ta, np, pd, df, const(), open, high, low, close, volume, time | actions: plot, buy, sell, alert",
   isDeployed,
   isDeploying,
+  indicatorContract,
+  indicatorSettings = {},
+  onIndicatorSettingsChange,
+  onIndicatorSettingsRerun,
 }) => {
   const [theme, setTheme] = useState(
     document.documentElement.getAttribute("data-theme") || "dark",
@@ -110,34 +115,41 @@ const CodeEditorPanel = ({
                 range,
               },
               {
+                label: "from chartlab import ...",
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText:
+                  "from chartlab import indicator, input_int, plot, hline, fill, signal",
+                range,
+              },
+              {
                 label: "ta.bbands",
                 kind: monaco.languages.CompletionItemKind.Function,
-                insertText: 'ta.bbands(close, length=${1:20}, std=${2:2})',
+                insertText: 'ta.bbands(ctx.close, length=${1:20}, std=${2:2})',
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 documentation: "Returns Bollinger Bands with pandas_ta-style keys.",
                 range,
               },
               {
-                label: "ta.sma",
+                label: "ctx.ta.sma",
                 kind: monaco.languages.CompletionItemKind.Function,
-                insertText: "ta.sma(close, length=${1:20})",
+                insertText: "ctx.ta.sma(ctx.close, length=${1:20})",
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
               },
               {
-                label: "ta.ema",
+                label: "ctx.ta.ema",
                 kind: monaco.languages.CompletionItemKind.Function,
-                insertText: "ta.ema(close, length=${1:20})",
+                insertText: "ctx.ta.ema(ctx.close, length=${1:20})",
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
               },
               {
-                label: "ta.rsi",
+                label: "ctx.ta.rsi",
                 kind: monaco.languages.CompletionItemKind.Function,
-                insertText: "ta.rsi(close, length=${1:14})",
+                insertText: "ctx.ta.rsi(ctx.close, length=${1:14})",
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
@@ -182,7 +194,7 @@ const CodeEditorPanel = ({
                 label: "ta.macd",
                 kind: monaco.languages.CompletionItemKind.Function,
                 insertText:
-                  "ta.macd(close, fast=${1:12}, slow=${2:26}, signal=${3:9})",
+                  "ctx.ta.macd(ctx.close, fast=${1:12}, slow=${2:26}, signal=${3:9})",
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
@@ -190,32 +202,32 @@ const CodeEditorPanel = ({
               {
                 label: "plot",
                 kind: monaco.languages.CompletionItemKind.Function,
-                insertText: 'plot("${1:Series Name}", ${2:series}, color="${3:#22c55e}")',
+                insertText: 'plot(${1:series}, title="${2:Series Name}", color="${3:#22c55e}")',
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
               },
               {
-                label: "buy",
+                label: "signal buy",
                 kind: monaco.languages.CompletionItemKind.Function,
-                insertText: 'buy(${1:condition}, label="${2:BUY}")',
+                insertText: 'signal(${1:condition}, side="BUY", label="${2:BUY}")',
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
               },
               {
-                label: "sell",
+                label: "signal sell",
                 kind: monaco.languages.CompletionItemKind.Function,
-                insertText: 'sell(${1:condition}, label="${2:SELL}")',
+                insertText: 'signal(${1:condition}, side="SELL", label="${2:SELL}")',
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
               },
               {
-                label: "TA starter function",
+                label: "chartlab indicator",
                 kind: monaco.languages.CompletionItemKind.Snippet,
                 insertText:
-                  'def run_strategy():\n    ${1:pass}\n\nrun_strategy()',
+                  '@indicator(name="${1:My Indicator}", pane="${2:overlay}")\ndef run_strategy(ctx):\n    ${3:pass}',
                 insertTextRules:
                   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 range,
@@ -537,6 +549,24 @@ const CodeEditorPanel = ({
             </button>
           </div>
         </div>
+        {indicatorContract?.features && (
+          <div
+            style={{
+              maxHeight: "240px",
+              overflowY: "auto",
+              padding: "12px 14px",
+              borderBottom: "1px solid var(--border-color)",
+              background: "rgba(15, 23, 42, 0.34)",
+            }}
+          >
+            <IndicatorFeaturePanel
+              contract={indicatorContract}
+              values={indicatorSettings}
+              onChange={onIndicatorSettingsChange}
+              onRerun={onIndicatorSettingsRerun}
+            />
+          </div>
+        )}
         <Editor
           height="100%"
           defaultLanguage="python"

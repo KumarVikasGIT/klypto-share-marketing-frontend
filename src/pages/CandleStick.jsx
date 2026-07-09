@@ -53,6 +53,12 @@ import { getStrategySocket } from "../services/websocket/socket";
 import { toast } from "react-toastify";
 import useAlerts from "../util/useAlerts";
 import CodeEditorPanel from "../components/layout/CodeEditorPanel";
+import StrategySyncedIndicatorCharts from "../components/strategy/StrategySyncedIndicatorCharts";
+import { renderIndicatorContract } from "../chart/IndicatorManager";
+import {
+  getScriptChartContract,
+  splitContractByPane,
+} from "../chart/indicatorContract";
 import OIAnalytics from "../components/tradingModals/OIAnalytics";
 import Swal from "sweetalert2";
 import apiService from "../services/apiServices";
@@ -64,42 +70,35 @@ import {
   DEFAULT_MAIN_SCALE_MARGINS,
 } from "../util/smartPlotLayout";
 
-const StrategyEChartsPanel = React.lazy(
-  () => import("../components/strategy/StrategyEChartsPanel"),
-);
+const PANDAS_TA_TEMPLATE = `from chartlab import indicator, input_int, plot, hline, fill, signal
 
-const PANDAS_TA_TEMPLATE = `# Preloaded chart series:
-# open, high, low, close, volume, time
+# Preloaded context:
+# ctx.open, ctx.high, ctx.low, ctx.close, ctx.volume, ctx.time
+# ctx.hl2, ctx.hlc3, ctx.ohlc4, ctx.symbol, ctx.timeframe, ctx.bar_index
 #
-# Preloaded helpers:
-# ta.sma, ta.ema, ta.rsi, ta.macd, ta.atr, ta.bbands,
-# ta.supertrend, ta.vwap, ta.stoch, ta.adx,
-# ta.highest, ta.lowest, ta.crossover, ta.crossunder
-# np.full, np.where, pd.Series, pd.DataFrame, df.copy()
-# const(value) -> full-length constant series
-#
-# Optional imports still work:
+# Preloaded libraries still work:
 # import numpy as np
 # import pandas as pd
 # import pandas_ta as ta
 
-def run_strategy():
-    bb = ta.bbands(close, length=20, std=2)
-    bb_upper = bb["BBU_20_2.0"]
-    bb_middle = bb["BBM_20_2.0"]
-    bb_lower = bb["BBL_20_2.0"]
+@indicator(name="Beautiful RSI", pane="oscillator")
+def beautiful_rsi(ctx):
+    length = input_int("RSI Length", 14, min=2, max=100)
+    upper = input_int("Upper Level", 70, min=50, max=100)
+    lower = input_int("Lower Level", 30, min=0, max=50)
 
-    long_entry = ta.crossover(close, bb_lower)
-    short_entry = ta.crossunder(close, bb_upper)
+    rsi = ctx.ta.rsi(ctx.close, length)
+    long_entry = ctx.ta.crossover(rsi, lower)
+    short_entry = ctx.ta.crossunder(rsi, upper)
 
-    plot("BB Upper", bb_upper, color="#ef4444")
-    plot("BB Middle", bb_middle, color="#f59e0b")
-    plot("BB Lower", bb_lower, color="#22c55e")
+    plot(rsi, title="RSI", color="#3b82f6", width=2)
+    hline(upper, "Overbought", color="#ef4444")
+    hline(50, "Middle", color="#9ca3af")
+    hline(lower, "Oversold", color="#22c55e")
+    fill(rsi, 50, color_top="rgba(59,130,246,0.28)", color_bottom="rgba(59,130,246,0.02)")
 
-    buy(long_entry, label="BB LONG")
-    sell(short_entry, label="BB SHORT")
-
-run_strategy()`;
+    signal(long_entry, side="BUY", label="RSI LONG")
+    signal(short_entry, side="SELL", label="RSI SHORT")`;
 
 export default function Candlestick() {
   const chartRef = useRef();
@@ -115,12 +114,16 @@ export default function Candlestick() {
   const chartDisposedRef = useRef(false);
   const allCreatedSeriesRef = useRef([]);
   const syncingRef = useRef(false);
+  const syncReleaseFrameRef = useRef(null);
   const fetchedIndicatorsRef = useRef(new Set());
   const socketRef = useRef(null);
   const chartIndicatorHandlerRef = useRef(null);
   const customScriptSeriesRef = useRef([]);
   const customScriptMarkersRef = useRef(null);
   const lastDeployedMarkersRef = useRef(null);
+  const strategyIndicatorChartsRef = useRef([]);
+  const strategyIndicatorSyncDetachersRef = useRef([]);
+  const strategyIndicatorCrosshairDetachersRef = useRef([]);
   const scannerIntervalRef = useRef(null);
   const pyodideRef = useRef(null);
   const lastIndicatorRequestRef = useRef(0);
@@ -249,12 +252,10 @@ export default function Candlestick() {
   const [scannerProgressData, setScannerProgressData] = useState(null);
   const [dashboardSignals, setDashboardSignals] = useState([]);
   const [deployedStrategyCode, setDeployedStrategyCode] = useState(null);
-  const [strategyStudioData, setStrategyStudioData] = useState(null);
-  const [isStrategyStudioCollapsed, setIsStrategyStudioCollapsed] = useState(false);
-  const hasStrategyStudio =
-    strategyStudioData &&
-    Array.isArray(strategyStudioData?.result?.plots) &&
-    strategyStudioData.result.plots.length > 0;
+  const [customStrategyPlotResult, setCustomStrategyPlotResult] = useState(null);
+  const [strategyFeatureContract, setStrategyFeatureContract] = useState(null);
+  const [strategyFeatureSettings, setStrategyFeatureSettings] = useState({});
+  const strategyFeatureRerunTimerRef = useRef(null);
 
   const handleStrategyClick = () => {
     setIsPredicting(true);
@@ -417,6 +418,45 @@ export default function Candlestick() {
     } catch (error) {}
   }, []);
 
+  const handleStrategyIndicatorChartsReady = useCallback((charts) => {
+    strategyIndicatorSyncDetachersRef.current.forEach((detach) => {
+      try {
+        detach?.();
+      } catch (error) {}
+    });
+    strategyIndicatorSyncDetachersRef.current = [];
+
+    strategyIndicatorCrosshairDetachersRef.current.forEach((detach) => {
+      try {
+        detach?.();
+      } catch (error) {}
+    });
+    strategyIndicatorCrosshairDetachersRef.current = [];
+
+    const nextCharts = Array.isArray(charts) ? charts.filter(Boolean) : [];
+    strategyIndicatorChartsRef.current = nextCharts;
+
+    strategyIndicatorSyncDetachersRef.current = nextCharts
+      .map((chart) => attachSync(chart))
+      .filter(Boolean);
+    strategyIndicatorCrosshairDetachersRef.current = nextCharts
+      .map((chart) => attachCrosshair(chart))
+      .filter(Boolean);
+
+    const mainChart = chartRef.current;
+    if (!mainChart) return;
+
+    try {
+      const logicalRange = mainChart.timeScale().getVisibleLogicalRange?.();
+      if (!logicalRange) return;
+
+      nextCharts.forEach((chart) => {
+        if (!chart || chart === mainChart) return;
+        chart.timeScale().setVisibleLogicalRange(logicalRange);
+      });
+    } catch (error) {}
+  }, []);
+
   const handleClearCode = useCallback(() => {
     clearCustomScriptOverlaySeries();
     if (customScriptMarkersRef.current) {
@@ -434,8 +474,26 @@ export default function Candlestick() {
     setCustomSignals([]);
     setDashboardSignals([]);
     setDeployedStrategyCode(null);
-    setStrategyStudioData(null);
-    setIsStrategyStudioCollapsed(false);
+    setCustomStrategyPlotResult(null);
+    setStrategyFeatureContract(null);
+    setStrategyFeatureSettings({});
+    if (strategyFeatureRerunTimerRef.current) {
+      clearTimeout(strategyFeatureRerunTimerRef.current);
+      strategyFeatureRerunTimerRef.current = null;
+    }
+    strategyIndicatorChartsRef.current = [];
+    strategyIndicatorSyncDetachersRef.current.forEach((detach) => {
+      try {
+        detach?.();
+      } catch (error) {}
+    });
+    strategyIndicatorSyncDetachersRef.current = [];
+    strategyIndicatorCrosshairDetachersRef.current.forEach((detach) => {
+      try {
+        detach?.();
+      } catch (error) {}
+    });
+    strategyIndicatorCrosshairDetachersRef.current = [];
     setIsDeployed(false);
   }, [clearCustomScriptOverlaySeries]);
 
@@ -467,8 +525,36 @@ export default function Candlestick() {
   function applyCustomScriptPlots(result) {
     clearCustomScriptOverlaySeries();
 
+    const chartContract = getScriptChartContract(result);
+    if (chartContract) {
+      const { overlay, panes } = splitContractByPane(chartContract);
+      const renderedSeries = [];
+
+      if (overlay?.plots?.length > 0 && chartRef.current) {
+        try {
+          chartRef.current.priceScale("right").applyOptions({
+            autoScale: true,
+            mode: 0,
+            scaleMargins: DEFAULT_MAIN_SCALE_MARGINS,
+          });
+        } catch (error) {}
+
+        const rendered = renderIndicatorContract(chartRef.current, overlay, {
+          markerSeries: seriesRef.current,
+        });
+        renderedSeries.push(...(rendered?.series || []));
+      }
+
+      customScriptSeriesRef.current = renderedSeries;
+      return {
+        rendered: renderedSeries.length,
+        skipped: [],
+        hasSecondaryPanels: panes.length > 0,
+      };
+    }
+
     if (!Array.isArray(result?.plots) || result.plots.length === 0) {
-      return { rendered: 0, skipped: [] };
+      return { rendered: 0, skipped: [], hasSecondaryPanels: false };
     }
 
     const fallbackColors = [
@@ -487,7 +573,16 @@ export default function Candlestick() {
       const plotName = plot?.name || `Plot ${index + 1}`;
       const plotType = String(plot?.type || "line").toLowerCase();
 
-      if (plotType !== "line" && plotType !== "horizontal_line") {
+      if (
+        ![
+          "line",
+          "horizontal_line",
+          "histogram",
+          "bar",
+          "column",
+          "columns",
+        ].includes(plotType)
+      ) {
         skipped.push(`${plotName} uses unsupported type "${plot?.type}"`);
         return;
       }
@@ -520,23 +615,45 @@ export default function Candlestick() {
       );
     } catch (error) {}
 
-    smartLayout.plans.forEach((plan) => {
+    const overlayPlans = smartLayout.plans.filter(
+      (plan) => plan.placement === "overlay",
+    );
+
+    overlayPlans.forEach((plan) => {
       const plotName = plan.plot?.name || `Plot ${plan.index + 1}`;
-      const series = addSeries(`CUSTOM_SCRIPT_PLOT_${plan.index}`, LineSeries, {
-        ...chartSeriesStyles.line,
-        color:
-          plan.styleOptions?.color ||
-          plan.plot?.color ||
-          fallbackColors[plan.index % fallbackColors.length],
-        lineWidth: plan.styleOptions?.lineWidth ?? 2,
-        lineStyle: plan.styleOptions?.lineStyle ?? 0,
-        priceScaleId: plan.priceScaleId,
-        scaleMargins: plan.priceScaleOptions?.scaleMargins,
-        priceLineVisible: plan.styleOptions?.priceLineVisible ?? false,
-        lastValueVisible: plan.styleOptions?.lastValueVisible ?? true,
-        crosshairMarkerVisible:
-          plan.styleOptions?.crosshairMarkerVisible ?? true,
-      });
+      const normalizedPlotType = String(plan.plot?.type || "line").toLowerCase();
+      const isHistogramPlot =
+        ["histogram", "bar", "column", "columns"].includes(normalizedPlotType) ||
+        /histogram|hist\b/i.test(plotName);
+      const plotColor =
+        plan.styleOptions?.color ||
+        plan.plot?.color ||
+        fallbackColors[plan.index % fallbackColors.length];
+      const series = addSeries(
+        `CUSTOM_SCRIPT_PLOT_${plan.index}`,
+        isHistogramPlot ? HistogramSeries : LineSeries,
+        isHistogramPlot
+          ? {
+              ...chartSeriesStyles.histogram,
+              color: plotColor,
+              priceScaleId: plan.priceScaleId,
+              scaleMargins: plan.priceScaleOptions?.scaleMargins,
+              priceLineVisible: false,
+              lastValueVisible: plan.styleOptions?.lastValueVisible ?? true,
+            }
+          : {
+              ...chartSeriesStyles.line,
+              color: plotColor,
+              lineWidth: plan.styleOptions?.lineWidth ?? 2,
+              lineStyle: plan.styleOptions?.lineStyle ?? 0,
+              priceScaleId: plan.priceScaleId,
+              scaleMargins: plan.priceScaleOptions?.scaleMargins,
+              priceLineVisible: plan.styleOptions?.priceLineVisible ?? false,
+              lastValueVisible: plan.styleOptions?.lastValueVisible ?? true,
+              crosshairMarkerVisible:
+                plan.styleOptions?.crosshairMarkerVisible ?? true,
+            },
+      );
 
       if (!series?.setData) {
         skipped.push(`${plotName} could not create a chart series`);
@@ -558,13 +675,29 @@ export default function Candlestick() {
     });
 
     customScriptSeriesRef.current = renderedSeries;
-    return { rendered: renderedSeries.length, skipped };
+    return {
+      rendered: renderedSeries.length,
+      skipped,
+      hasSecondaryPanels: smartLayout.plans.length > overlayPlans.length,
+    };
   }
 
   useEffect(() => {
     clearCustomScriptOverlaySeries();
-    setStrategyStudioData(null);
-    setIsStrategyStudioCollapsed(false);
+    setCustomStrategyPlotResult(null);
+    strategyIndicatorChartsRef.current = [];
+    strategyIndicatorSyncDetachersRef.current.forEach((detach) => {
+      try {
+        detach?.();
+      } catch (error) {}
+    });
+    strategyIndicatorSyncDetachersRef.current = [];
+    strategyIndicatorCrosshairDetachersRef.current.forEach((detach) => {
+      try {
+        detach?.();
+      } catch (error) {}
+    });
+    strategyIndicatorCrosshairDetachersRef.current = [];
   }, [
     clearCustomScriptOverlaySeries,
     selectedCurrency?.name,
@@ -962,8 +1095,11 @@ export default function Candlestick() {
   }, [dashboardSignals, isDeployed, selectedCurrency]);
 
   const handleDeployCode = useCallback(
-    async (code) => {
+    async (code, featureSettingsOverride = null) => {
       if (!chartRef.current) return;
+
+      const activeFeatureSettings =
+        featureSettingsOverride || strategyFeatureSettings || {};
 
       // 1. Clear previous
       handleClearCode();
@@ -1209,7 +1345,12 @@ json.dumps(result)
           candles,
           settings: {
             use_historical_only: !isMarketOpen,
+            features: activeFeatureSettings,
           },
+          inputs: activeFeatureSettings.inputs || {},
+          style: activeFeatureSettings.style || {},
+          theme: activeFeatureSettings.theme || {},
+          pane: activeFeatureSettings.pane || null,
           user_id: String(userId),
         };
 
@@ -1268,6 +1409,11 @@ json.dumps(result)
         }
 
         const plotResult = applyCustomScriptPlots(result);
+        setStrategyFeatureContract(result.chart || null);
+        setStrategyFeatureSettings(activeFeatureSettings);
+        setCustomStrategyPlotResult(
+          plotResult.hasSecondaryPanels ? result : null,
+        );
         if (plotResult.skipped.length > 0) {
           console.warn("[Custom Strategy] Skipped plots:", plotResult.skipped);
         }
@@ -1275,14 +1421,6 @@ json.dumps(result)
         if (Array.isArray(result.warnings) && result.warnings.length > 0) {
           console.warn("[Custom Strategy] Warnings:", result.warnings);
         }
-
-        setStrategyStudioData({
-          symbol: payload.symbol,
-          timeframe: payload.timeframe,
-          candles,
-          result,
-        });
-        setIsStrategyStudioCollapsed(false);
 
         const responseSignals = Array.isArray(result.signals)
           ? result.signals
@@ -1326,7 +1464,35 @@ json.dumps(result)
         setIsDeploying(false);
       }
     },
-    [handleClearCode, selectedCurrency, timeframeValue],
+    [
+      handleClearCode,
+      isMarketOpen,
+      selectedCurrency,
+      strategyFeatureSettings,
+      timeframeValue,
+    ],
+  );
+
+  const handleStrategyFeatureSettingsChange = useCallback((nextSettings) => {
+    setStrategyFeatureSettings(nextSettings || {});
+  }, []);
+
+  const handleStrategyFeatureSettingsRerun = useCallback(
+    (nextSettings) => {
+      const nextFeatureSettings = nextSettings || {};
+      setStrategyFeatureSettings(nextFeatureSettings);
+
+      if (!deployedStrategyCode || isDeploying) return;
+
+      if (strategyFeatureRerunTimerRef.current) {
+        clearTimeout(strategyFeatureRerunTimerRef.current);
+      }
+
+      strategyFeatureRerunTimerRef.current = setTimeout(() => {
+        handleDeployCode(deployedStrategyCode, nextFeatureSettings);
+      }, 450);
+    },
+    [deployedStrategyCode, handleDeployCode, isDeploying],
   );
 
   useEffect(() => {
@@ -1989,27 +2155,63 @@ json.dumps(result)
   };
 
   //  ✅ CHART SYNC ENGINE
+  function getSyncedCharts() {
+    return [
+      ...new Set([
+        chartRef.current,
+        ...Object.values(panesRef.current)?.map((p) => p.chart),
+        ...strategyIndicatorChartsRef.current,
+      ]),
+    ].filter(Boolean);
+  }
+
+  function releaseSyncOnNextFrame(frameRef, syncRef) {
+    if (frameRef.current) {
+      window.cancelAnimationFrame(frameRef.current);
+    }
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      syncRef.current = false;
+      frameRef.current = null;
+    });
+  }
+
+  function rangesAreClose(left, right) {
+    if (!left || !right) return false;
+    return (
+      Math.abs((left.from ?? 0) - (right.from ?? 0)) < 0.01 &&
+      Math.abs((left.to ?? 0) - (right.to ?? 0)) < 0.01
+    );
+  }
+
   function syncCharts(sourceChart, logicalRange) {
     if (!logicalRange || syncingRef.current) return;
     syncingRef.current = true;
-    const charts = [
-      chartRef.current,
-      ...Object.values(panesRef.current)?.map((p) => p.chart),
-    ];
+    const charts = getSyncedCharts();
 
     charts.forEach((chart) => {
       if (!chart || chart === sourceChart) return;
+      const targetRange = chart.timeScale().getVisibleLogicalRange?.();
+      if (rangesAreClose(targetRange, logicalRange)) return;
       chart.timeScale().setVisibleLogicalRange(logicalRange);
     });
-    syncingRef.current = false;
+
+    releaseSyncOnNextFrame(syncReleaseFrameRef, syncingRef);
   }
   function attachSync(chart) {
-    if (!chart) return;
+    if (!chart) return () => {};
 
-    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+    const handler = (range) => {
       if (!range || syncingRef.current) return;
       syncCharts(chart, range);
-    });
+    };
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(handler);
+    return () => {
+      try {
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(handler);
+      } catch (error) {}
+    };
   }
 
   //  ✅ INDICATOR REMOVAL — accepts instance id
@@ -2127,10 +2329,15 @@ json.dumps(result)
     };
 
     chartRef.current = chart;
-    attachSync(chart);
+    const detachSync = attachSync(chart);
 
     return () => {
       chartDisposedRef.current = true;
+      detachSync?.();
+      if (syncReleaseFrameRef.current) {
+        window.cancelAnimationFrame(syncReleaseFrameRef.current);
+        syncReleaseFrameRef.current = null;
+      }
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
@@ -2455,15 +2662,9 @@ json.dumps(result)
   const attachCrosshair = useCallback((chart) => {
     if (!chart) return () => {};
     const handler = (param) => {
-      const charts = [
-        chartRef.current,
-        ...Object.values(panesRef.current)?.map((p) => p.chart),
-      ].filter(Boolean);
-
-      // clear crosshair if invalid
       if (!param?.point || param.time === undefined) {
-        charts.forEach((c) => c.clearCrosshairPosition?.());
-        // Since we bypassed React state for live indicators, we need to show the last available data if crosshair leaves
+        // Since we bypassed React state for live indicators, we need to show
+        // the last available data if crosshair leaves a chart.
         Object.keys(indicatorSeriesRef.current).forEach((indicator) => {
           const mainEl = document.getElementById(
             `indicator-val-${indicator}-main`,
@@ -2533,15 +2734,6 @@ json.dumps(result)
         return;
       }
 
-      // sync crosshair
-      charts.forEach((c) => {
-        c.setCrosshairPosition(
-          param.point?.x ?? 0,
-          param.point?.y ?? 0,
-          param.time,
-        );
-      });
-
       // update candles
       const candle = param.seriesData?.get(seriesRef.current);
       if (candle && ohlcvDisplayRef.current) {
@@ -2594,6 +2786,30 @@ json.dumps(result)
 
     return () => detachHandlers.forEach((d) => d());
   }, [indicatorSeriesRef.current, timeframeValue]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    const container = containerRef.current;
+    if (!chart || !container) return;
+
+    const syncMainChartSize = () => {
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      if (!width || !height) return;
+
+      try {
+        chart.resize(width, height);
+      } catch (error) {}
+    };
+
+    const frame = window.requestAnimationFrame(syncMainChartSize);
+    const timer = window.setTimeout(syncMainChartSize, 120);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [customStrategyPlotResult, timeframeValue, selectedCurrency?.symbol, selectedCurrency?.name]);
 
   // Define dynamic vars used by handlers
   const intervalSec = TIMEFRAME_TO_SECONDS[timeframeValue];
@@ -3202,10 +3418,7 @@ json.dumps(result)
   }, [selectedCurrency, timeframeValue, chartType, fromDate, toDate]);
 
   const zoomCharts = (delta) => {
-    const charts = [
-      chartRef.current,
-      ...Object.values(panesRef.current)?.map((p) => p.chart),
-    ].filter(Boolean);
+    const charts = getSyncedCharts();
     charts.forEach((chart) => {
       const range = chart.timeScale().getVisibleLogicalRange();
       if (!range) return;
@@ -3219,10 +3432,7 @@ json.dumps(result)
   const zoomIn = () => zoomCharts(10);
   const zoomOut = () => zoomCharts(-10);
   const resetZoom = () => {
-    const charts = [
-      chartRef.current,
-      ...Object.values(panesRef.current)?.map((p) => p.chart),
-    ].filter(Boolean);
+    const charts = getSyncedCharts();
     charts.forEach((chart) => chart.timeScale().fitContent());
   };
 
@@ -3537,11 +3747,16 @@ json.dumps(result)
                     style={{
                       display: "flex",
                       flexDirection: "column",
+                      alignItems: "stretch",
+                      gap: customStrategyPlotResult ? "10px" : 0,
                       flex: 1,
+                      height: "100%",
                       minWidth: 0,
+                      minHeight: 0,
                       overflowX: "hidden",
-                      overflowY: hasStrategyStudio ? "auto" : "hidden",
+                      overflowY: "hidden",
                       position: "relative",
+                      background: "var(--bg-primary)",
                     }}
                   >
                     {/* main chart */}
@@ -3549,12 +3764,12 @@ json.dumps(result)
                       ref={containerRef}
                       style={{
                         width: "100%",
-                        flex: 1,
+                        flex: customStrategyPlotResult ? "1 1 0" : "1 1 auto",
+                        minHeight: customStrategyPlotResult ? 320 : 450,
                         position: "relative",
                         overflow: "hidden",
                         display: "flex",
                         flexDirection: "column",
-                        minHeight: hasStrategyStudio ? 320 : 450,
                         cursor: activeTool ? "crosshair" : "default",
                       }}
                     >
@@ -4136,11 +4351,11 @@ json.dumps(result)
                        opacity: 1;
                        visibility: visible;
                     }
-                    .chart-zoom-overlay {
-                       position: absolute;
-                       bottom: 24px;
-                       left: 50%;
-                       transform: translateX(-50%);
+                     .chart-zoom-overlay {
+                        position: absolute;
+                       bottom: ${customStrategyPlotResult ? "calc(32% + 34px)" : "24px"};
+                        left: 50%;
+                        transform: translateX(-50%);
                        z-index: 50;
                        display: flex;
                        align-items: center;
@@ -4201,38 +4416,28 @@ json.dumps(result)
                         <LuCirclePlus size={18} />
                       </button>
                     </div>
-                  </div>
 
-                  {hasStrategyStudio && (
-                    <React.Suspense
-                      fallback={
-                        <div
-                          style={{
-                            flexShrink: 0,
-                            borderTop: "1px solid var(--border-color)",
-                            background:
-                              "linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.98) 100%)",
-                            padding: "18px 16px",
-                            color: "var(--text-secondary)",
-                            fontSize: "0.82rem",
-                          }}
-                        >
-                          Loading Strategy Studio...
-                        </div>
-                      }
-                    >
-                      <StrategyEChartsPanel
-                        candles={strategyStudioData.candles}
-                        result={strategyStudioData.result}
-                        symbol={strategyStudioData.symbol}
-                        timeframe={strategyStudioData.timeframe}
-                        collapsed={isStrategyStudioCollapsed}
-                        onToggleCollapsed={() =>
-                          setIsStrategyStudioCollapsed((prev) => !prev)
-                        }
-                      />
-                    </React.Suspense>
-                  )}
+                    {customStrategyPlotResult && (
+                      <div
+                        style={{
+                          width: "100%",
+                          flex: "0 0 32%",
+                          minHeight: 210,
+                          maxHeight: "42%",
+                          overflowX: "hidden",
+                          overflowY: "auto",
+                          borderTop: "1px solid rgba(120, 123, 134, 0.24)",
+                          background: "rgba(17, 24, 39, 0.92)",
+                        }}
+                      >
+                        <StrategySyncedIndicatorCharts
+                          candles={candlesRef.current}
+                          result={customStrategyPlotResult}
+                          onChartsReady={handleStrategyIndicatorChartsReady}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {isCodeEditorOpen && (
                     <CodeEditorPanel
@@ -4243,10 +4448,18 @@ json.dumps(result)
                       editorCode={editorCode}
                       setEditorCode={setEditorCode}
                       templateCode={PANDAS_TA_TEMPLATE}
-                      templateLabel="TA Template"
-                      helperText="Preloaded: ta, np, pd, df, const(), open/high/low/close/volume/time | optional imports: pandas_ta, numpy, pandas | output helpers: plot, buy, sell, alert"
+                      templateLabel="Indicator SDK"
+                      helperText="Use chartlab for visuals: indicator, input_int, plot, hline, fill, signal | preloaded: ctx, ta, np, pd, df, open/high/low/close/volume/time"
                       isDeployed={isDeployed}
                       isDeploying={isDeploying}
+                      indicatorContract={strategyFeatureContract}
+                      indicatorSettings={strategyFeatureSettings}
+                      onIndicatorSettingsChange={
+                        handleStrategyFeatureSettingsChange
+                      }
+                      onIndicatorSettingsRerun={
+                        handleStrategyFeatureSettingsRerun
+                      }
                     />
                   )}
                 </div>
