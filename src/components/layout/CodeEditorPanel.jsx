@@ -7,6 +7,10 @@ import {
   generateStrategyFromPrompt,
   PROMPT_SUGGESTIONS,
 } from "../../util/strategyPromptGenerator";
+import {
+  extractStrategyAgentError,
+  generateStrategyAgent,
+} from "../../services/strategyAgentService";
 import IndicatorFeaturePanel from "../../chart/settings/IndicatorFeaturePanel";
 
 const CodeEditorPanel = ({
@@ -35,7 +39,7 @@ const CodeEditorPanel = ({
   const [chatMessages, setChatMessages] = useState([
     {
       role: "assistant",
-      text: "Describe a strategy in plain English and I will generate code directly into the editor.",
+      text: "Describe a strategy in plain English and I will generate code directly into the editor using the backend agent.",
     },
   ]);
 
@@ -251,21 +255,56 @@ const CodeEditorPanel = ({
     if (onEdit) onEdit();
   };
 
-  const handleGenerateFromPrompt = useCallback(() => {
+  const handleGenerateFromPrompt = useCallback(async () => {
     const cleanedPrompt = promptInput.trim();
     if (!cleanedPrompt || isGeneratingPrompt) return;
 
     setIsGeneratingPrompt(true);
 
     try {
+      const generated = await generateStrategyAgent({
+        prompt: cleanedPrompt,
+        include_codebase: true,
+        include_books: false,
+      });
+
+      if (generated?.replace_editor_code !== false && generated?.code) {
+        setEditorCode(generated.code);
+        if (onEdit) onEdit();
+      }
+
+      const warningText =
+        Array.isArray(generated.warnings) && generated.warnings.length > 0
+          ? `\n\nWarnings: ${generated.warnings.slice(0, 2).join(" | ")}`
+          : "";
+
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "user", text: cleanedPrompt },
+        {
+          role: "assistant",
+          text: `${generated.reply || "Strategy generated from backend."}${warningText}`,
+        },
+      ]);
+      setPromptInput("");
+      editorRef.current?.focus?.();
+    } catch (error) {
+      console.error("[Strategy Agent] Remote generation failed:", error);
       const generated = generateStrategyFromPrompt(cleanedPrompt);
+      const errorMessage = extractStrategyAgentError(error);
+
       setEditorCode(generated.code);
       if (onEdit) onEdit();
 
       setChatMessages((prev) => [
         ...prev,
         { role: "user", text: cleanedPrompt },
-        { role: "assistant", text: generated.reply },
+        {
+          role: "assistant",
+          text:
+            `${generated.reply}\n\n` +
+            `Backend note: ${errorMessage}. I used the local fallback generator so you can keep editing.`,
+        },
       ]);
       setPromptInput("");
       editorRef.current?.focus?.();
@@ -406,8 +445,9 @@ const CodeEditorPanel = ({
               }}
             >
               Ask for a setup like "RSI 14 mean reversion with 30/70 levels"
-              or "EMA 9/21 crossover with long only entries". I will generate
-              editable strategy code and load it into the editor.
+              or "EMA 9/21 crossover with long only entries". I will call the
+              backend agent, generate editable strategy code, and load it into
+              the editor.
             </div>
           </div>
 
@@ -518,7 +558,9 @@ const CodeEditorPanel = ({
                 color: "var(--text-secondary)",
               }}
             >
-              Press `Ctrl+Enter` to generate and replace the editor code.
+              Press `Ctrl+Enter` to chat with the backend agent. Strategy
+              replies can update the editor; chat replies will stay in the
+              conversation only.
             </div>
             <button
               type="button"
