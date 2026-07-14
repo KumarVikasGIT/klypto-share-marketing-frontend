@@ -9,7 +9,6 @@ import {
   BaselineSeries,
   createSeriesMarkers,
 } from "lightweight-charts";
-import axios from "axios";
 import React from "react";
 import { createPortal } from "react-dom";
 import { LuCirclePlus, LuCircleMinus } from "react-icons/lu";
@@ -62,6 +61,7 @@ import {
 import OIAnalytics from "../components/tradingModals/OIAnalytics";
 import Swal from "sweetalert2";
 import apiService from "../services/apiServices";
+import { executeIndicatorSandbox } from "../services/sandboxService";
 import useDrawingTools from "../util/useDrawingTools";
 import DrawingToolbar from "../components/tradingModals/DrawingToolbar";
 import DrawingToolbox from "../components/tradingModals/DrawingToolbox";
@@ -734,6 +734,7 @@ export default function Candlestick() {
   // Dedicated Strategy Socket Handlers
   const signalBufferRef = useRef([]);
   const deploymentSignalsRef = useRef([]);
+  const strategySandboxSessionIdRef = useRef(null);
 
   // Flush buffer to state every 500ms to avoid freezing the UI on mass updates
   useEffect(() => {
@@ -1343,18 +1344,18 @@ json.dumps(result)
             "UNKNOWN",
           timeframe: timeframeValue,
           candles,
-          settings: {
+          featureSettings: {
             use_historical_only: !isMarketOpen,
             features: activeFeatureSettings,
+            inputs: activeFeatureSettings.inputs || {},
+            style: activeFeatureSettings.style || {},
+            theme: activeFeatureSettings.theme || {},
+            pane: activeFeatureSettings.pane || null,
           },
-          inputs: activeFeatureSettings.inputs || {},
-          style: activeFeatureSettings.style || {},
-          theme: activeFeatureSettings.theme || {},
-          pane: activeFeatureSettings.pane || null,
           user_id: String(userId),
         };
 
-        console.log("🚀 [API] Triggering run-scanner API...");
+        console.log("[API] Triggering sandbox execute...");
         console.log("📦 [API] Payload:", payload);
         console.log("👤 Active User ID (from auth):", userId);
 
@@ -1364,23 +1365,19 @@ json.dumps(result)
           return;
         }
 
-        const strategyApiBaseUrl =
-          import.meta.env.VITE_STRATEGY_API_URL ||
-          import.meta.env.VITE_API_BASE_URL ||
-          "http://localhost:4001";
-
-        const response = await axios.post(
-          `${strategyApiBaseUrl}/api/strategy/run-scanner`,
-          payload,
-          {
-            timeout: 600000,
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
-        );
-        const result = response?.data || {};
-        console.log("✅ [API] run-scanner response:", result);
+        const result = await executeIndicatorSandbox({
+          code: payload.code,
+          symbol: payload.symbol,
+          timeframe: payload.timeframe,
+          candles: payload.candles,
+          featureSettings: payload.featureSettings,
+          sessionId: strategySandboxSessionIdRef.current || undefined,
+          resetBeforeExecution: true,
+          timeoutSeconds: 120,
+        });
+        strategySandboxSessionIdRef.current =
+          result?.sessionStatus?.sessionId || strategySandboxSessionIdRef.current;
+        console.log("[API] sandbox execute response:", result);
 
         if (Array.isArray(result.logs) && result.logs.length > 0) {
           console.groupCollapsed(
@@ -3511,7 +3508,7 @@ json.dumps(result)
           height: isFullscreen ? "100vh" : "calc(100vh - 60px)",
           display: "flex",
           flexDirection: "column",
-          overflowY: "auto",
+          overflowY: "hidden",
           ...(isFullscreen
             ? {
                 position: "fixed",
@@ -3531,7 +3528,9 @@ json.dumps(result)
             flexDirection: "column",
             width: "100%",
             flex: 1,
-            minHeight: "fit-content",
+            minHeight: 0,
+            height: "100%",
+            overflow: "hidden",
           }}
         >
           <div
@@ -3540,7 +3539,9 @@ json.dumps(result)
               flexDirection: "row",
               width: "100%",
               flex: 1,
-              minHeight: "fit-content",
+              minHeight: 0,
+              height: "100%",
+              overflow: "hidden",
             }}
           >
             <style>{`
@@ -3672,7 +3673,9 @@ json.dumps(result)
                 borderRight: "1px solid var(--border-color)",
                 display: "flex",
                 flexDirection: "column",
-                minHeight: "100%",
+                minHeight: 0,
+                height: "100%",
+                overflow: "hidden",
                 transition: "border-color 0.3s ease",
               }}
             >
@@ -3694,6 +3697,7 @@ json.dumps(result)
                       ? "flex"
                       : "none",
                   flexDirection: "column",
+                  minHeight: 0,
                   overflow: "hidden",
                 }}
               >
@@ -3733,6 +3737,7 @@ json.dumps(result)
                   style={{
                     display: "flex",
                     flex: 1,
+                    minHeight: 0,
                     overflowX: "auto",
                     overflowY: "hidden",
                   }}

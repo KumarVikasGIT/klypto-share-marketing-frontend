@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Editor from "@monaco-editor/react";
-import { IoCloseSharp } from "react-icons/io5";
+import { IoCloseSharp, IoSendSharp } from "react-icons/io5";
 import { FaPlay, FaTrash } from "react-icons/fa";
 import { Spinner } from "../tradingModals/Spinner";
-import {
-  generateStrategyFromPrompt,
-  PROMPT_SUGGESTIONS,
-} from "../../util/strategyPromptGenerator";
 import {
   extractStrategyAgentError,
   generateStrategyAgent,
@@ -36,10 +32,11 @@ const CodeEditorPanel = ({
   const [hasErrors, setHasErrors] = useState(false);
   const [promptInput, setPromptInput] = useState("");
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [agentSessionId, setAgentSessionId] = useState(null);
   const [chatMessages, setChatMessages] = useState([
     {
       role: "assistant",
-      text: "Describe a strategy in plain English and I will generate code directly into the editor using the backend agent.",
+      text: "Describe a strategy or just chat with me. I will only update the editor when the agent returns strategy code.",
     },
   ]);
 
@@ -260,58 +257,64 @@ const CodeEditorPanel = ({
     if (!cleanedPrompt || isGeneratingPrompt) return;
 
     setIsGeneratingPrompt(true);
+    setChatMessages((prev) => [...prev, { role: "user", text: cleanedPrompt }]);
+    setPromptInput("");
 
     try {
       const generated = await generateStrategyAgent({
         prompt: cleanedPrompt,
-        include_codebase: true,
-        include_books: false,
+        session_id: agentSessionId,
+        current_file_path: "strategy.py",
+        current_editor_code: editorCode || "",
+        project_summary:
+          "ChartLab Python strategy editor. Generate code only when the user asks for an indicator, strategy, or code edit.",
+        constraints: [
+          "Use ChartLab-compatible Python.",
+          "Do not replace editor code for pure chat or greetings.",
+        ],
       });
 
-      if (generated?.replace_editor_code !== false && generated?.code) {
+      if (generated?.session_id) {
+        setAgentSessionId(generated.session_id);
+      }
+
+      if (generated?.replace_editor_code && generated?.code) {
         setEditorCode(generated.code);
         if (onEdit) onEdit();
       }
 
-      const warningText =
-        Array.isArray(generated.warnings) && generated.warnings.length > 0
-          ? `\n\nWarnings: ${generated.warnings.slice(0, 2).join(" | ")}`
-          : "";
-
       setChatMessages((prev) => [
         ...prev,
-        { role: "user", text: cleanedPrompt },
-        {
-          role: "assistant",
-          text: `${generated.reply || "Strategy generated from backend."}${warningText}`,
-        },
-      ]);
-      setPromptInput("");
-      editorRef.current?.focus?.();
-    } catch (error) {
-      console.error("[Strategy Agent] Remote generation failed:", error);
-      const generated = generateStrategyFromPrompt(cleanedPrompt);
-      const errorMessage = extractStrategyAgentError(error);
-
-      setEditorCode(generated.code);
-      if (onEdit) onEdit();
-
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "user", text: cleanedPrompt },
         {
           role: "assistant",
           text:
-            `${generated.reply}\n\n` +
-            `Backend note: ${errorMessage}. I used the local fallback generator so you can keep editing.`,
+            generated.reply ||
+            "I received a response from the strategy agent.",
         },
       ]);
-      setPromptInput("");
       editorRef.current?.focus?.();
+    } catch (error) {
+      console.error("[Strategy Agent] Generation failed:", error);
+      const message = extractStrategyAgentError(error);
+
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: `The strategy agent could not respond: ${message}`,
+        },
+      ]);
     } finally {
       setIsGeneratingPrompt(false);
     }
-  }, [isGeneratingPrompt, onEdit, promptInput, setEditorCode]);
+  }, [
+    agentSessionId,
+    editorCode,
+    isGeneratingPrompt,
+    onEdit,
+    promptInput,
+    setEditorCode,
+  ]);
 
   const handleValidate = useCallback((markers) => {
     // MarkerSeverity.Error is 8
@@ -325,8 +328,12 @@ const CodeEditorPanel = ({
         .code-editor-panel {
           width: 400px;
           max-width: 100%;
+          height: 100%;
+          min-height: 0;
+          flex: 0 0 400px;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
           border-left: 1px solid var(--border-color);
           border-right: 1px solid var(--border-color);
           background-color: var(--bg-primary);
@@ -398,6 +405,7 @@ const CodeEditorPanel = ({
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -424,6 +432,7 @@ const CodeEditorPanel = ({
             display: "flex",
             flexDirection: "column",
             gap: "10px",
+            flex: "0 0 auto",
           }}
         >
           <div>
@@ -449,33 +458,6 @@ const CodeEditorPanel = ({
               backend agent, generate editable strategy code, and load it into
               the editor.
             </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "8px",
-            }}
-          >
-            {PROMPT_SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                onClick={() => setPromptInput(suggestion)}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: "999px",
-                  border: "1px solid rgba(59,130,246,0.22)",
-                  background: "rgba(59,130,246,0.08)",
-                  color: "#60a5fa",
-                  fontSize: "0.72rem",
-                  cursor: "pointer",
-                }}
-              >
-                {suggestion}
-              </button>
-            ))}
           </div>
 
           <div
@@ -520,29 +502,70 @@ const CodeEditorPanel = ({
             ))}
           </div>
 
-          <textarea
-            value={promptInput}
-            onChange={(e) => setPromptInput(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                e.preventDefault();
-                handleGenerateFromPrompt();
-              }
-            }}
-            placeholder="Describe the strategy you want to generate..."
+          <div
             style={{
-              minHeight: "78px",
-              resize: "vertical",
-              borderRadius: "10px",
-              border: "1px solid var(--border-color)",
-              background: "var(--bg-primary)",
-              color: "var(--text-primary)",
-              padding: "10px 12px",
-              fontSize: "0.82rem",
-              lineHeight: 1.5,
-              outline: "none",
+              display: "grid",
+              gridTemplateColumns: "1fr 44px",
+              gap: "8px",
+              alignItems: "stretch",
             }}
-          />
+          >
+            <textarea
+              value={promptInput}
+              onChange={(e) => setPromptInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleGenerateFromPrompt();
+                }
+              }}
+              placeholder="Message the strategy agent..."
+              style={{
+                minHeight: "64px",
+                resize: "none",
+                borderRadius: "10px",
+                border: "1px solid var(--border-color)",
+                background: "var(--bg-primary)",
+                color: "var(--text-primary)",
+                padding: "10px 12px",
+                fontSize: "0.82rem",
+                lineHeight: 1.5,
+                outline: "none",
+              }}
+            />
+            <button
+              type="button"
+              aria-label="Send message"
+              title="Send message"
+              onClick={handleGenerateFromPrompt}
+              disabled={!promptInput.trim() || isGeneratingPrompt}
+              style={{
+                minWidth: "44px",
+                minHeight: "44px",
+                alignSelf: "stretch",
+                borderRadius: "10px",
+                border: "1px solid rgba(59,130,246,0.35)",
+                background:
+                  !promptInput.trim() || isGeneratingPrompt
+                    ? "var(--bg-secondary)"
+                    : "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)",
+                color:
+                  !promptInput.trim() || isGeneratingPrompt
+                    ? "var(--text-secondary)"
+                    : "#fff",
+                cursor:
+                  !promptInput.trim() || isGeneratingPrompt
+                    ? "not-allowed"
+                    : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1rem",
+              }}
+            >
+              {isGeneratingPrompt ? "..." : <IoSendSharp />}
+            </button>
+          </div>
 
           <div
             style={{
@@ -558,42 +581,29 @@ const CodeEditorPanel = ({
                 color: "var(--text-secondary)",
               }}
             >
-              Press `Ctrl+Enter` to chat with the backend agent. Strategy
-              replies can update the editor; chat replies will stay in the
-              conversation only.
+              Press `Enter` to send. Use `Shift+Enter` for a new line.
             </div>
-            <button
-              type="button"
-              onClick={handleGenerateFromPrompt}
-              disabled={!promptInput.trim() || isGeneratingPrompt}
+            <span
               style={{
-                padding: "9px 12px",
-                borderRadius: "8px",
-                border: "1px solid rgba(59,130,246,0.35)",
-                background:
-                  !promptInput.trim() || isGeneratingPrompt
-                    ? "var(--bg-secondary)"
-                    : "linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)",
-                color:
-                  !promptInput.trim() || isGeneratingPrompt
-                    ? "var(--text-secondary)"
-                    : "#fff",
-                cursor:
-                  !promptInput.trim() || isGeneratingPrompt
-                    ? "not-allowed"
-                    : "pointer",
+                padding: "5px 8px",
+                borderRadius: "999px",
+                border: "1px solid rgba(34,197,94,0.24)",
+                color: isGeneratingPrompt ? "#93c5fd" : "#22c55e",
+                background: "rgba(34,197,94,0.08)",
+                fontSize: "0.68rem",
                 fontWeight: 700,
-                fontSize: "0.78rem",
-                minWidth: "150px",
+                whiteSpace: "nowrap",
               }}
             >
-              {isGeneratingPrompt ? "Generating..." : "Generate Strategy"}
-            </button>
+              {isGeneratingPrompt ? "Thinking" : "Agent"}
+            </span>
           </div>
+
         </div>
         {indicatorContract?.features && (
           <div
             style={{
+              flex: "0 0 auto",
               maxHeight: "240px",
               overflowY: "auto",
               padding: "12px 14px",
@@ -609,38 +619,40 @@ const CodeEditorPanel = ({
             />
           </div>
         )}
-        <Editor
-          height="100%"
-          defaultLanguage="python"
-          theme={theme === "light" ? "light" : "vs-dark"}
-          value={editorCode}
-          onChange={handleChange}
-          onValidate={handleValidate}
-          onMount={handleEditorDidMount}
-          loading={
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "100%",
-              }}
-            >
-              <Spinner />
-            </div>
-          }
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            lineHeight: 24,
-            padding: { top: 16 },
-            scrollBeyondLastLine: false,
-            smoothScrolling: true,
-            cursorBlinking: "smooth",
-            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            renderLineHighlight: "all",
-          }}
-        />
+        <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <Editor
+            height="100%"
+            defaultLanguage="python"
+            theme={theme === "light" ? "light" : "vs-dark"}
+            value={editorCode}
+            onChange={handleChange}
+            onValidate={handleValidate}
+            onMount={handleEditorDidMount}
+            loading={
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                }}
+              >
+                <Spinner />
+              </div>
+            }
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineHeight: 24,
+              padding: { top: 16 },
+              scrollBeyondLastLine: false,
+              smoothScrolling: true,
+              cursorBlinking: "smooth",
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              renderLineHighlight: "all",
+            }}
+          />
+        </div>
       </div>
       <div
         style={{
